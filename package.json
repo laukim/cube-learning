@@ -1,0 +1,13 @@
+{
+  "name": "cube-last-layer",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "npx --yes serve .",
+    "test": "node scripts/test-cube.mjs"
+  },
+  "dependencies": {
+    "cubejs": "^1.3.2"
+  }
+}

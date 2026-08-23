@@ -25,6 +25,18 @@ let appMode = "guide"; // guide | f2l | match | algs
 let lastF2lAlg = "";
 /** When true, ignore ERNO twist events (we're driving facelets ourselves). */
 let syncingFromUi = false;
+/** True while an undo animation is in flight — next onTwist pops history. */
+let undoingMove = false;
+/** User-facing move notation (not scramble playback). */
+let moveHistory = [];
+
+const MOVE_PAD_KEY = "bylayer-show-move-pad";
+const stageMain = document.querySelector(".stage-main");
+const movePad = document.getElementById("move-pad");
+const btnUndo = document.getElementById("btn-undo");
+const btnTogglePad = document.getElementById("btn-toggle-pad");
+const moveTraceAlg = document.getElementById("move-trace-alg");
+const moveTraceLast = document.getElementById("move-trace-last");
 
 const CENTER_COLOR = {
   U: "yellow",
@@ -37,19 +49,56 @@ const CENTER_COLOR = {
 
 let erno = null;
 
+function updateMoveTrace() {
+  if (!moveHistory.length) {
+    moveTraceAlg.textContent = "—";
+    moveTraceLast.hidden = true;
+    moveTraceLast.textContent = "";
+  } else {
+    const recent = moveHistory.slice(-24);
+    moveTraceAlg.textContent = recent.join(" ");
+    const last = moveHistory[moveHistory.length - 1];
+    moveTraceLast.hidden = false;
+    moveTraceLast.textContent = `last ${last}`;
+  }
+  const canVirtualY =
+    moveHistory.length > 0 && /^y2?$|^y'$/.test(moveHistory[moveHistory.length - 1]);
+  btnUndo.disabled = (!erno?.canUndo() && !canVirtualY) || undoingMove || syncingFromUi;
+}
+
+function clearMoveHistory() {
+  moveHistory = [];
+  updateMoveTrace();
+}
+
+function recordTwist(move) {
+  if (undoingMove) {
+    undoingMove = false;
+    moveHistory.pop();
+  } else {
+    moveHistory.push(move);
+  }
+  updateMoveTrace();
+}
+
 function mountErno() {
   erno?.destroy();
   erno = createErnoCube(ernoBox, {
+    shouldIgnoreTwist: () => syncingFromUi,
     onTwist(move) {
       if (syncingFromUi) return;
       try {
         applyMove(facelets, move);
+        recordTwist(move);
         refreshGuide();
       } catch (err) {
         console.warn("twist sync failed", move, err);
+        undoingMove = false;
+        updateMoveTrace();
       }
     },
   });
+  updateMoveTrace();
 }
 
 function refreshGuide() {
@@ -145,9 +194,9 @@ function setPanelCopy(mode) {
   const btnHint = document.getElementById("btn-hint");
 
   if (mode === "f2l") {
-    title.textContent = "Intuitive F2L. Cross stays. Pair, then insert.";
+    title.textContent = "F2L — corner and edge go in as a pair";
     blurb.innerHTML =
-      "White on bottom. Bring each unsolved pair to <strong>front-right</strong> with <code class=\"inline-alg\">y</code>. Hints follow the <strong>5 fundamental cases</strong> (matching, non-matching, white on top, and the two mirrors).";
+      "You already solve corners, then edges. F2L does <strong>both at once</strong>. Cross stays. Use <code class=\"inline-alg\">y</code> so the pair you’re working on is <strong>front-right</strong>, then read the hint.";
     btnScramble.hidden = true;
     btnF2l.hidden = false;
     btnHint.textContent = "F2L hint";
@@ -167,7 +216,18 @@ function render() {
 
 /** Drive the ERNO cube; facelets update from onTwist (or we apply first when skipping events). */
 function doMove(move) {
+  flashMovePad(move);
   erno?.twist(move);
+}
+
+function flashMovePad(move) {
+  const btn = document.querySelector(`.move-btn[data-move="${CSS.escape(move)}"]`);
+  if (!btn || movePad.hidden) return;
+  btn.classList.remove("is-flash");
+  // reflow so rapid repeats still animate
+  void btn.offsetWidth;
+  btn.classList.add("is-flash");
+  window.setTimeout(() => btn.classList.remove("is-flash"), 280);
 }
 
 function doAlg(alg) {
@@ -177,6 +237,8 @@ function doAlg(alg) {
 
 function resetCube() {
   facelets = solvedFacelets();
+  undoingMove = false;
+  clearMoveHistory();
   mountErno();
   refreshGuide();
 }
@@ -184,20 +246,91 @@ function resetCube() {
 function playScrambleAlg(alg) {
   facelets = solvedFacelets();
   if (alg) applyAlg(facelets, alg);
+  undoingMove = false;
+  clearMoveHistory();
   mountErno();
   if (alg) {
     syncingFromUi = true;
+    erno.setSuppressOrbitDetect(true);
+    updateMoveTrace();
+    // Scramble is cube-space; temporarily clear viewer yaw (fresh mount is 0)
     erno.twistAlg(alg);
-    // Facelets already match; clear flag after twists are queued
-    window.setTimeout(() => {
+    erno.whenIdle(() => {
+      erno.clearHistory();
       syncingFromUi = false;
-    }, 50);
+      erno.setSuppressOrbitDetect(false);
+      updateMoveTrace();
+      erno.healVisual();
+    });
   }
   refreshGuide();
 }
 
+function inverseMove(move) {
+  const m = String(move).trim();
+  if (!m) return m;
+  if (m.endsWith("2")) return m;
+  if (m.endsWith("'")) return m.slice(0, -1);
+  return `${m}'`;
+}
+
+function undoLastMove() {
+  if (!erno || syncingFromUi || undoingMove) return;
+
+  // Prefer ERNO undo for real face turns / animated y
+  if (erno.canUndo()) {
+    undoingMove = true;
+    updateMoveTrace();
+    if (!erno.undo()) {
+      undoingMove = false;
+      updateMoveTrace();
+    }
+    return;
+  }
+
+  // Orbit-detected y / y' / y2 never entered ERNO's queue — undo in viewer space
+  const last = moveHistory[moveHistory.length - 1];
+  if (!last || last[0] !== "y") {
+    updateMoveTrace();
+    return;
+  }
+
+  applyMove(facelets, inverseMove(last));
+  moveHistory.pop();
+
+  let yaw = erno.getViewYaw();
+  if (last === "y'") yaw = (yaw + 3) % 4;
+  else if (last === "y") yaw = (yaw + 1) % 4;
+  else if (last === "y2") yaw = (yaw + 2) % 4;
+  erno.setViewYaw(yaw);
+
+  refreshGuide();
+  updateMoveTrace();
+}
+
+function setMovePadVisible(visible) {
+  stageMain.classList.toggle("move-pad-hidden", !visible);
+  movePad.hidden = !visible;
+  btnTogglePad.setAttribute("aria-pressed", visible ? "true" : "false");
+  btnTogglePad.textContent = visible ? "Hide moves" : "Show moves";
+  try {
+    localStorage.setItem(MOVE_PAD_KEY, visible ? "1" : "0");
+  } catch {
+    /* ignore */
+  }
+  // Give the cube more room after the pad collapses
+  requestAnimationFrame(() => erno?.resize());
+}
+
 document.querySelectorAll(".move-btn").forEach((btn) => {
   btn.addEventListener("click", () => doMove(btn.dataset.move));
+});
+
+btnUndo.addEventListener("click", () => undoLastMove());
+
+btnTogglePad.addEventListener("click", () => {
+  const visible = btnTogglePad.getAttribute("aria-pressed") !== "true";
+  setMovePadVisible(visible);
 });
 
 document.getElementById("btn-reset").addEventListener("click", () => {
@@ -330,6 +463,8 @@ document.getElementById("btn-net-apply").addEventListener("click", () => {
   if (!netDraft) return;
   for (const face of FACES) setFacelet(netDraft, face, 4, CENTER_COLOR[face]);
   facelets = cloneFacelets(netDraft);
+  undoingMove = false;
+  clearMoveHistory();
   // 3D cube stays on its twist history; reset visual to solved — match mode is for hints
   mountErno();
   refreshGuide();
@@ -381,8 +516,15 @@ const KEY_MOVES = {
 };
 
 window.addEventListener("keydown", (e) => {
-  if (e.target.matches("input, textarea")) return;
+  if (e.target?.matches?.("input, textarea")) return;
+  // Holding a key must not spam turns — that looks like a snap / no animation
+  if (e.repeat) return;
   const key = e.key.toLowerCase();
+  if (key === "z" && !e.altKey && !e.shiftKey) {
+    e.preventDefault();
+    undoLastMove();
+    return;
+  }
   if (key === "y" && e.shiftKey) {
     e.preventDefault();
     doMove("y'");
@@ -399,6 +541,12 @@ window.addEventListener("resize", () => {
   erno?.resize();
 });
 
+try {
+  setMovePadVisible(localStorage.getItem(MOVE_PAD_KEY) !== "0");
+} catch {
+  setMovePadVisible(true);
+}
+
 buildPalette();
 buildAlgList();
 buildF2LTips();
@@ -407,3 +555,4 @@ buildNet();
 setPanelCopy("guide");
 mountErno();
 render();
+clearMoveHistory();

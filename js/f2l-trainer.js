@@ -598,23 +598,23 @@ function bothOnUHint(facelets, corner, edge) {
 
 export const F2L_TIPS = [
   {
-    title: "Rule of the game",
-    body: "Hold white on bottom. Always bring the pair you’re solving to front-right (y). Solve FR the same way four times.",
+    title: "What F2L is",
+    body: "Instead of white corners first, then middle edges, you put each corner+edge pair in together. White cross stays solved. Four pairs → first two layers done.",
   },
   {
-    title: "Five fundamental cases",
-    body: "With corner above FR and edge separated on U: (1) Matching — white on right, tops same. (2) Non-matching — white on right, tops differ → R U R′. (3) White on top — hide / match edge / reunite. (4) Mirrored matching — white on front, tops same. (5) Mirrored non-matching — white on front, tops differ → y′ L′ U′ L.",
+    title: "How to practice here",
+    body: "Tap New F2L case. Keep white on the bottom. Pick one unsolved corner+edge. Turn the whole cube (y) until that pair’s slot is front-right. Then follow the hint.",
   },
   {
-    title: "Convert first",
-    body: "Both pieces on U and separated. If stuck in a slot, righty to eject. If touching, use the hiding trick (R′ / R) to split. Then you have one of the five.",
+    title: "The only goal",
+    body: "Get the corner sitting above the front-right hole, and its edge nearby on top — then join them and drop them in with a righty (R U R' U').",
   },
   {
-    title: "Basic insert",
-    body: `Connected pair above FR → ${RIGHTY}. That’s your beginner corner insert — now the edge comes along for the ride.`,
+    title: "The 5 setups (same slot)",
+    body: "Once the corner is above front-right: white sticker on the right side → “normal”. White sticker on the front side → “mirror” (use the left). Same colour on top of corner and edge → matching. Different tops → join with R U R' first. White on top of the corner → hide it, move the edge, bring them back.",
   },
   {
-    title: "Wrong in the slot",
-    body: "Never twist forever. One righty ejects the pair; rebuild on U; insert clean.",
+    title: "If pieces are stuck",
+    body: "Pair already jammed in a slot but wrong? One righty pops them out. Corner and edge stuck together on top? Peek the corner away with R' (or R), spin the edge, then bring the corner back.",
   },
 ];

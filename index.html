@@ -33,10 +33,12 @@
         <div class="stage-main">
           <div class="cube-wrap" id="cube-wrap">
             <div id="erno-container" aria-label="3D cube"></div>
-            <p class="orbit-hint">Drag pieces to turn · drag around the cube to rotate the view</p>
+            <p class="orbit-hint">
+              Drag pieces to turn · drag around to turn the cube (y) — F follows the face toward you
+            </p>
           </div>
 
-          <div class="move-pad" aria-label="Face turns">
+          <div class="move-pad" id="move-pad" aria-label="Face turns">
             <div class="move-row">
               <button type="button" class="move-btn" data-move="U">U</button>
               <button type="button" class="move-btn" data-move="U'">U'</button>
@@ -69,7 +71,17 @@
           </div>
         </div>
 
+        <div class="move-trace" id="move-trace" aria-live="polite" aria-label="Move history">
+          <span class="move-trace-label">Moves</span>
+          <code class="move-trace-alg" id="move-trace-alg">—</code>
+          <span class="move-trace-last" id="move-trace-last" hidden></span>
+        </div>
+
         <div class="toolbar">
+          <button type="button" class="btn btn-ghost" id="btn-undo" disabled title="Undo last move (Z)">Undo</button>
+          <button type="button" class="btn btn-ghost" id="btn-toggle-pad" aria-pressed="true" title="Hide or show U R F… buttons">
+            Hide moves
+          </button>
           <button type="button" class="btn btn-ghost" id="btn-reset">Reset</button>
           <button type="button" class="btn btn-ghost" id="btn-scramble">Scramble</button>
           <button type="button" class="btn btn-ghost" id="btn-f2l-case" hidden>New F2L case</button>
@@ -127,8 +139,9 @@
             <div class="hint-kicker" id="f2l-hint-kicker">F2L</div>
             <h2 class="hint-title" id="f2l-hint-title">Ready</h2>
             <p class="hint-copy" id="f2l-hint-copy">
-              Hit <strong>New F2L case</strong> — white cross stays solved, pairs scramble. Bring each pair to
-              front-right with <code class="inline-alg">y</code>, then pair + insert.
+              Tap <strong>New F2L case</strong>. White cross stays. Turn the cube with
+              <code class="inline-alg">y</code> so an unsolved pair’s slot is
+              <strong>front-right</strong>, then tap <strong>F2L hint</strong>.
             </p>
             <div class="alg-block">
               <code class="alg" id="f2l-hint-alg"></code>
@@ -165,7 +178,7 @@
 
     <footer class="foot">
       <span>Offline-friendly · open this folder anytime</span>
-      <kbd>Around cube</kbd> rotate view · <kbd>Drag pieces</kbd> turn (onlinecube) · <kbd>U R F…</kbd> faces
+      <kbd>Pieces</kbd> turn · <kbd>Around</kbd> = y (F follows you) · <kbd>Z</kbd> undo
     </footer>
 
     <script src="vendor/cubejs.js"></script>

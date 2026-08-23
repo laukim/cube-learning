@@ -117,7 +117,7 @@ export function createErnoCube(container, hooks) {
   }
   applyHomeTilt();
 
-  /** Viewer yaw in y' steps; facelets + history stay in viewer space. */
+  /** Viewer yaw in y' steps; F/R/L/B buttons follow the face toward you. */
   let viewYaw = 0;
   let orbitPointerDown = false;
   let quatAtDown = null;
@@ -213,8 +213,8 @@ export function createErnoCube(container, hooks) {
     if (!move) return;
 
     viewYaw = newYaw;
-    // Viewer-space whole-cube turn only (facelets + history). ERNO stays put.
-    hooks.onTwist?.(move);
+    // Camera already orbited — remap F only; do not mutate facelet state.
+    hooks.onTwist?.({ cubeMove: null, viewMove: move, virtual: true });
   }
 
   cube.addEventListener("onTwistComplete", (e) => {
@@ -222,8 +222,11 @@ export function createErnoCube(container, hooks) {
     if (!twist || twist.degrees === 0) return;
     const cubeMove = twistToMove(twist);
     if (!cubeMove) return;
-    const viewMove = cubeMoveToViewMove(cubeMove, viewYaw);
-    hooks.onTwist?.(viewMove);
+    hooks.onTwist?.({
+      cubeMove,
+      viewMove: cubeMoveToViewMove(cubeMove, viewYaw),
+      virtual: false,
+    });
     healVisual();
   });
 

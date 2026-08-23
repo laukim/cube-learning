@@ -83,22 +83,30 @@ function recordTwist(move) {
   updateMoveTrace();
 }
 
+function handleTwist(payload) {
+  if (syncingFromUi) return;
+
+  const { cubeMove, viewMove, virtual } =
+    typeof payload === "string"
+      ? { cubeMove: payload, viewMove: payload, virtual: false }
+      : payload;
+
+  try {
+    if (!virtual && cubeMove) applyMove(facelets, cubeMove);
+    if (viewMove) recordTwist(viewMove);
+    refreshGuide();
+  } catch (err) {
+    console.warn("twist sync failed", cubeMove ?? viewMove, err);
+    undoingMove = false;
+    updateMoveTrace();
+  }
+}
+
 function mountErno() {
   erno?.destroy();
   erno = createErnoCube(ernoBox, {
     shouldIgnoreTwist: () => syncingFromUi,
-    onTwist(move) {
-      if (syncingFromUi) return;
-      try {
-        applyMove(facelets, move);
-        recordTwist(move);
-        refreshGuide();
-      } catch (err) {
-        console.warn("twist sync failed", move, err);
-        undoingMove = false;
-        updateMoveTrace();
-      }
-    },
+    onTwist: handleTwist,
   });
   updateMoveTrace();
 }
@@ -322,14 +330,6 @@ function playScrambleAlg(alg) {
   refreshGuide();
 }
 
-function inverseMove(move) {
-  const m = String(move).trim();
-  if (!m) return m;
-  if (m.endsWith("2")) return m;
-  if (m.endsWith("'")) return m.slice(0, -1);
-  return `${m}'`;
-}
-
 function undoLastMove() {
   if (!erno || syncingFromUi || undoingMove) return;
 
@@ -344,14 +344,13 @@ function undoLastMove() {
     return;
   }
 
-  // Orbit-detected y / y' / y2 never entered ERNO's queue — undo in viewer space
+  // Orbit-only y / y' / y2 — never entered ERNO or facelet state
   const last = moveHistory[moveHistory.length - 1];
   if (!last || last[0] !== "y") {
     updateMoveTrace();
     return;
   }
 
-  applyMove(facelets, inverseMove(last));
   moveHistory.pop();
 
   let yaw = erno.getViewYaw();

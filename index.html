@@ -23,7 +23,7 @@
         <span class="brand-mark" aria-hidden="true"></span>
         <span class="brand-name">BY LAYER</span>
       </a>
-      <p class="brand-tag">LBL guide · F2L trainer · drag like onlinecube</p>
+      <p class="brand-tag">Cross drill · F2L · LBL guide</p>
     </header>
 
     <main class="layout">
@@ -84,6 +84,7 @@
           </button>
           <button type="button" class="btn btn-ghost" id="btn-reset">Reset</button>
           <button type="button" class="btn btn-ghost" id="btn-scramble">Scramble</button>
+          <button type="button" class="btn btn-ghost" id="btn-cross-case" hidden>New cross</button>
           <button type="button" class="btn btn-ghost" id="btn-f2l-case" hidden>New F2L case</button>
           <button type="button" class="btn btn-primary" id="btn-hint">Next hint</button>
         </div>
@@ -101,6 +102,9 @@
         <div class="mode-tabs" role="tablist" aria-label="Input mode">
           <button type="button" class="mode-tab is-active" role="tab" aria-selected="true" data-mode="guide" id="tab-guide">
             Guide
+          </button>
+          <button type="button" class="mode-tab" role="tab" aria-selected="false" data-mode="cross" id="tab-cross">
+            Cross
           </button>
           <button type="button" class="mode-tab" role="tab" aria-selected="false" data-mode="f2l" id="tab-f2l">
             F2L
@@ -130,6 +134,30 @@
           <div class="solved-banner" id="solved-banner" hidden>
             <strong>Solved.</strong> All layers done.
           </div>
+        </div>
+
+        <div class="panel-body" id="panel-cross" data-panel="cross" hidden>
+          <div class="f2l-progress" id="cross-progress" aria-label="Cross edges"></div>
+
+          <div class="hint-card" id="cross-hint-card">
+            <div class="hint-kicker" id="cross-hint-kicker">Cross</div>
+            <h2 class="hint-title" id="cross-hint-title">Ready</h2>
+            <p class="hint-copy" id="cross-hint-copy">
+              Tap <strong>New cross</strong>. White stays on the bottom. Build the white + — each edge matching its
+              centre — then tap <strong>Cross hint</strong> for the next edge.
+            </p>
+            <div class="alg-block">
+              <code class="alg" id="cross-hint-alg"></code>
+              <button type="button" class="btn btn-small" id="btn-cross-apply" hidden>Apply on cube</button>
+            </div>
+            <p class="hint-note" id="cross-hint-note"></p>
+          </div>
+
+          <div class="solved-banner" id="cross-solved-banner" hidden>
+            <strong>Cross complete.</strong> New cross to drill again.
+          </div>
+
+          <div class="f2l-tips" id="cross-tips"></div>
         </div>
 
         <div class="panel-body" id="panel-f2l" data-panel="f2l" hidden>

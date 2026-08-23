@@ -9,6 +9,7 @@ import {
   solvedFacelets,
 } from "./cube.js";
 import { createErnoCube } from "./erno-view.js";
+import { analyzeCross, CROSS_TIPS, scrambleCross } from "./cross-trainer.js";
 import { analyzeF2L, F2L_TIPS, scrambleF2L } from "./f2l-trainer.js";
 import { ALG_LIBRARY, analyze, STEPS } from "./solver.js";
 
@@ -21,8 +22,9 @@ let facelets = solvedFacelets();
 let paintColor = "white";
 let netDraft = null;
 let lastHintAlg = "";
-let appMode = "guide"; // guide | f2l | match | algs
+let appMode = "guide"; // guide | cross | f2l | match | algs
 let lastF2lAlg = "";
+let lastCrossAlg = "";
 /** When true, ignore ERNO twist events (we're driving facelets ourselves). */
 let syncingFromUi = false;
 /** True while an undo animation is in flight — next onTwist pops history. */
@@ -102,6 +104,10 @@ function mountErno() {
 }
 
 function refreshGuide() {
+  if (appMode === "cross") {
+    refreshCross();
+    return;
+  }
   if (appMode === "f2l") {
     refreshF2L();
     return;
@@ -179,6 +185,47 @@ function refreshF2L() {
   document.getElementById("btn-f2l-apply").hidden = !lastF2lAlg;
 }
 
+function refreshCross() {
+  const result = analyzeCross(facelets);
+  const prog = document.getElementById("cross-progress");
+  prog.innerHTML = result.edges
+    .map(
+      (e) =>
+        `<div class="f2l-slot ${e.done ? "is-done" : ""}" title="${e.name}">
+          <span class="f2l-slot-id">${e.id.replace("D", "")}</span>
+          <span class="f2l-slot-mark">${e.done ? "✓" : "·"}</span>
+        </div>`
+    )
+    .join("");
+
+  const solvedEl = document.getElementById("cross-solved-banner");
+  const card = document.getElementById("cross-hint-card");
+  if (result.complete) {
+    solvedEl.hidden = false;
+    card.hidden = true;
+    lastCrossAlg = "";
+    return;
+  }
+
+  solvedEl.hidden = true;
+  card.hidden = false;
+  const h = result.hint;
+  document.getElementById("cross-hint-kicker").textContent = `Cross · ${result.solvedCount}/4 edges`;
+  document.getElementById("cross-hint-title").textContent = h.title;
+  document.getElementById("cross-hint-copy").textContent = h.copy;
+  document.getElementById("cross-hint-alg").textContent = h.alg || "—";
+  document.getElementById("cross-hint-note").textContent = h.note || "";
+  lastCrossAlg = h.alg && h.alg.trim() && !h.alg.includes("…") && !h.alg.includes("intuitive") ? h.alg : "";
+  document.getElementById("btn-cross-apply").hidden = !lastCrossAlg;
+}
+
+function buildCrossTips() {
+  const el = document.getElementById("cross-tips");
+  el.innerHTML = CROSS_TIPS.map(
+    (t) => `<article class="f2l-tip"><h3>${t.title}</h3><p>${t.body}</p></article>`
+  ).join("");
+}
+
 function buildF2LTips() {
   const el = document.getElementById("f2l-tips");
   el.innerHTML = F2L_TIPS.map(
@@ -190,14 +237,24 @@ function setPanelCopy(mode) {
   const title = document.getElementById("panel-title");
   const blurb = document.getElementById("panel-blurb");
   const btnScramble = document.getElementById("btn-scramble");
+  const btnCross = document.getElementById("btn-cross-case");
   const btnF2l = document.getElementById("btn-f2l-case");
   const btnHint = document.getElementById("btn-hint");
 
-  if (mode === "f2l") {
+  btnScramble.hidden = true;
+  btnCross.hidden = true;
+  btnF2l.hidden = true;
+
+  if (mode === "cross") {
+    title.textContent = "White cross drill";
+    blurb.innerHTML =
+      "White on the bottom. Build the <strong>+</strong> — four edges, each side colour matching its centre. Tap <strong>New cross</strong>, then solve one edge at a time.";
+    btnCross.hidden = false;
+    btnHint.textContent = "Cross hint";
+  } else if (mode === "f2l") {
     title.textContent = "F2L — corner and edge go in as a pair";
     blurb.innerHTML =
       "You already solve corners, then edges. F2L does <strong>both at once</strong>. Cross stays. Use <code class=\"inline-alg\">y</code> so the pair you’re working on is <strong>front-right</strong>, then read the hint.";
-    btnScramble.hidden = true;
     btnF2l.hidden = false;
     btnHint.textContent = "F2L hint";
   } else {
@@ -205,7 +262,6 @@ function setPanelCopy(mode) {
     blurb.innerHTML =
       "Righty = <code class=\"inline-alg\">R U R' U'</code> · Lefty = <code class=\"inline-alg\">L' U' L U</code>. Scramble, match your cube, or follow hints one step at a time.";
     btnScramble.hidden = false;
-    btnF2l.hidden = true;
     btnHint.textContent = "Next hint";
   }
 }
@@ -343,6 +399,12 @@ document.getElementById("btn-scramble").addEventListener("click", () => {
   playScrambleAlg(alg);
 });
 
+document.getElementById("btn-cross-case").addEventListener("click", () => {
+  const draft = solvedFacelets();
+  const alg = scrambleCross(draft);
+  playScrambleAlg(alg);
+});
+
 document.getElementById("btn-f2l-case").addEventListener("click", () => {
   const draft = solvedFacelets();
   const alg = scrambleF2L(draft);
@@ -350,6 +412,12 @@ document.getElementById("btn-f2l-case").addEventListener("click", () => {
 });
 
 document.getElementById("btn-hint").addEventListener("click", () => {
+  if (appMode === "cross") {
+    refreshCross();
+    document.getElementById("cross-hint-card").hidden = false;
+    document.getElementById("cross-hint-card").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    return;
+  }
   if (appMode === "f2l") {
     refreshF2L();
     document.getElementById("f2l-hint-card").hidden = false;
@@ -370,8 +438,13 @@ document.getElementById("btn-f2l-apply").addEventListener("click", () => {
   if (lastF2lAlg) doAlg(lastF2lAlg);
 });
 
+document.getElementById("btn-cross-apply").addEventListener("click", () => {
+  if (lastCrossAlg) doAlg(lastCrossAlg);
+});
+
 const panels = {
   guide: document.getElementById("panel-guide"),
+  cross: document.getElementById("panel-cross"),
   f2l: document.getElementById("panel-f2l"),
   match: document.getElementById("panel-match"),
   algs: document.getElementById("panel-algs"),
@@ -389,6 +462,7 @@ document.querySelectorAll(".mode-tab").forEach((tab) => {
       el.hidden = key !== mode;
     });
     setPanelCopy(mode);
+    if (mode === "cross") refreshCross();
     if (mode === "f2l") refreshF2L();
     if (mode === "guide") refreshGuide();
   });
@@ -548,6 +622,7 @@ try {
 }
 
 buildPalette();
+buildCrossTips();
 buildAlgList();
 buildF2LTips();
 syncNetFromCube();

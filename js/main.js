@@ -11,6 +11,8 @@ import {
 import { createErnoCube } from "./erno-view.js";
 import { analyzeCross, CROSS_TIPS, scrambleCross } from "./cross-trainer.js";
 import { analyzeF2L, F2L_TIPS, scrambleF2L } from "./f2l-trainer.js";
+import { analyzeOll, expandWideAlg, OLL_TIPS, scrambleOll } from "./oll-trainer.js";
+import { analyzePll, PLL_TIPS, scramblePll } from "./pll-trainer.js";
 import { ALG_LIBRARY, analyze, STEPS } from "./solver.js";
 
 const ernoBox = document.getElementById("erno-container");
@@ -22,9 +24,11 @@ let facelets = solvedFacelets();
 let paintColor = "white";
 let netDraft = null;
 let lastHintAlg = "";
-let appMode = "guide"; // guide | cross | f2l | match | algs
+let appMode = "guide"; // guide | cross | f2l | oll | pll | match | algs
 let lastF2lAlg = "";
 let lastCrossAlg = "";
+let lastOllAlg = "";
+let lastPllAlg = "";
 /** When true, ignore ERNO twist events (we're driving facelets ourselves). */
 let syncingFromUi = false;
 /** True while an undo animation is in flight — next onTwist pops history. */
@@ -118,6 +122,14 @@ function refreshGuide() {
   }
   if (appMode === "f2l") {
     refreshF2L();
+    return;
+  }
+  if (appMode === "oll") {
+    refreshOll();
+    return;
+  }
+  if (appMode === "pll") {
+    refreshPll();
     return;
   }
 
@@ -227,6 +239,102 @@ function refreshCross() {
   document.getElementById("btn-cross-apply").hidden = !lastCrossAlg;
 }
 
+function refreshOll() {
+  const result = analyzeOll(facelets);
+  const prog = document.getElementById("oll-progress");
+  prog.innerHTML = [
+    { id: "1", label: "Cross", done: result.crossDone },
+    { id: "2", label: "Finish", done: result.complete },
+  ]
+    .map(
+      (s) =>
+        `<div class="f2l-slot ${s.done ? "is-done" : ""}" title="${s.label}">
+          <span class="f2l-slot-id">${s.id}</span>
+          <span class="f2l-slot-mark">${s.done ? "✓" : "·"}</span>
+        </div>`
+    )
+    .join("");
+
+  const solvedEl = document.getElementById("oll-solved-banner");
+  const card = document.getElementById("oll-hint-card");
+  if (result.complete) {
+    solvedEl.hidden = false;
+    card.hidden = true;
+    lastOllAlg = "";
+    return;
+  }
+
+  solvedEl.hidden = true;
+  card.hidden = false;
+  const h = result.hint;
+  const stageLabel =
+    result.stage === "cross" ? "Step 1 · Cross" : result.stage === "finish" ? "Step 2 · Finish" : "2-look OLL";
+  document.getElementById("oll-hint-kicker").textContent = stageLabel;
+  document.getElementById("oll-hint-title").textContent = h.title;
+  document.getElementById("oll-hint-copy").textContent = h.copy;
+  document.getElementById("oll-hint-alg").textContent = h.alg || "—";
+  document.getElementById("oll-hint-note").textContent = h.note || "";
+  lastOllAlg = h.alg && h.alg.trim() && !h.alg.includes("…") ? h.alg : "";
+  document.getElementById("btn-oll-apply").hidden = !lastOllAlg;
+}
+
+function refreshPll() {
+  const result = analyzePll(facelets);
+  const prog = document.getElementById("pll-progress");
+  prog.innerHTML = [
+    { id: "1", label: "Corners", done: result.cornersDone || result.complete },
+    { id: "2", label: "Edges", done: result.complete },
+  ]
+    .map(
+      (s) =>
+        `<div class="f2l-slot ${s.done ? "is-done" : ""}" title="${s.label}">
+          <span class="f2l-slot-id">${s.id}</span>
+          <span class="f2l-slot-mark">${s.done ? "✓" : "·"}</span>
+        </div>`
+    )
+    .join("");
+
+  const solvedEl = document.getElementById("pll-solved-banner");
+  const card = document.getElementById("pll-hint-card");
+  if (result.complete) {
+    solvedEl.hidden = false;
+    card.hidden = true;
+    lastPllAlg = "";
+    return;
+  }
+
+  solvedEl.hidden = true;
+  card.hidden = false;
+  const h = result.hint;
+  const stageLabel =
+    result.stage === "corners"
+      ? "Step 1 · Corners"
+      : result.stage === "edges"
+        ? "Step 2 · Edges"
+        : "2-look PLL";
+  document.getElementById("pll-hint-kicker").textContent = stageLabel;
+  document.getElementById("pll-hint-title").textContent = h.title;
+  document.getElementById("pll-hint-copy").textContent = h.copy;
+  document.getElementById("pll-hint-alg").textContent = h.alg || "—";
+  document.getElementById("pll-hint-note").textContent = h.note || "";
+  lastPllAlg = h.alg && h.alg.trim() && !h.alg.includes("…") ? h.alg : "";
+  document.getElementById("btn-pll-apply").hidden = !lastPllAlg;
+}
+
+function buildPllTips() {
+  const el = document.getElementById("pll-tips");
+  el.innerHTML = PLL_TIPS.map(
+    (t) => `<article class="f2l-tip"><h3>${t.title}</h3><p>${t.body}</p></article>`
+  ).join("");
+}
+
+function buildOllTips() {
+  const el = document.getElementById("oll-tips");
+  el.innerHTML = OLL_TIPS.map(
+    (t) => `<article class="f2l-tip"><h3>${t.title}</h3><p>${t.body}</p></article>`
+  ).join("");
+}
+
 function buildCrossTips() {
   const el = document.getElementById("cross-tips");
   el.innerHTML = CROSS_TIPS.map(
@@ -247,11 +355,15 @@ function setPanelCopy(mode) {
   const btnScramble = document.getElementById("btn-scramble");
   const btnCross = document.getElementById("btn-cross-case");
   const btnF2l = document.getElementById("btn-f2l-case");
+  const btnOll = document.getElementById("btn-oll-case");
+  const btnPll = document.getElementById("btn-pll-case");
   const btnHint = document.getElementById("btn-hint");
 
   btnScramble.hidden = true;
   btnCross.hidden = true;
   btnF2l.hidden = true;
+  btnOll.hidden = true;
+  btnPll.hidden = true;
 
   if (mode === "cross") {
     title.textContent = "White cross drill";
@@ -265,6 +377,18 @@ function setPanelCopy(mode) {
       "You already solve corners, then edges. F2L does <strong>both at once</strong>. Cross stays. Use <code class=\"inline-alg\">y</code> so the pair you’re working on is <strong>front-right</strong>, then read the hint.";
     btnF2l.hidden = false;
     btnHint.textContent = "F2L hint";
+  } else if (mode === "oll") {
+    title.textContent = "2-look OLL — yellow face in two steps";
+    blurb.innerHTML =
+      "After F2L: <strong>1)</strong> yellow cross · <strong>2)</strong> twist corners. Algs from <a class=\"ext-link\" href=\"https://www.cube.academy/2-look-oll-algs\" target=\"_blank\" rel=\"noopener\">Cube Academy</a>.";
+    btnOll.hidden = false;
+    btnHint.textContent = "OLL hint";
+  } else if (mode === "pll") {
+    title.textContent = "2-look PLL — finish the cube";
+    blurb.innerHTML =
+      "After OLL: <strong>1)</strong> corners (headlights) · <strong>2)</strong> edges (Ua/Ub/H/Z). Algs from <a class=\"ext-link\" href=\"https://www.cube.academy/2-look-pll-algs\" target=\"_blank\" rel=\"noopener\">Cube Academy</a>.";
+    btnPll.hidden = false;
+    btnHint.textContent = "PLL hint";
   } else {
     title.textContent = "White on bottom. Yellow on top. Seven steps you already know.";
     blurb.innerHTML =
@@ -296,7 +420,7 @@ function flashMovePad(move) {
 
 function doAlg(alg) {
   if (!alg || alg.includes("intuitive") || alg.includes("repeat")) return;
-  erno?.twistAlg(alg);
+  erno?.twistAlg(expandWideAlg(alg));
 }
 
 function resetCube() {
@@ -410,6 +534,18 @@ document.getElementById("btn-f2l-case").addEventListener("click", () => {
   playScrambleAlg(alg);
 });
 
+document.getElementById("btn-oll-case").addEventListener("click", () => {
+  const draft = solvedFacelets();
+  const alg = scrambleOll(draft);
+  playScrambleAlg(alg);
+});
+
+document.getElementById("btn-pll-case").addEventListener("click", () => {
+  const draft = solvedFacelets();
+  const alg = scramblePll(draft);
+  playScrambleAlg(alg);
+});
+
 document.getElementById("btn-hint").addEventListener("click", () => {
   if (appMode === "cross") {
     refreshCross();
@@ -421,6 +557,18 @@ document.getElementById("btn-hint").addEventListener("click", () => {
     refreshF2L();
     document.getElementById("f2l-hint-card").hidden = false;
     document.getElementById("f2l-hint-card").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    return;
+  }
+  if (appMode === "oll") {
+    refreshOll();
+    document.getElementById("oll-hint-card").hidden = false;
+    document.getElementById("oll-hint-card").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    return;
+  }
+  if (appMode === "pll") {
+    refreshPll();
+    document.getElementById("pll-hint-card").hidden = false;
+    document.getElementById("pll-hint-card").scrollIntoView({ behavior: "smooth", block: "nearest" });
     return;
   }
   refreshGuide();
@@ -441,10 +589,20 @@ document.getElementById("btn-cross-apply").addEventListener("click", () => {
   if (lastCrossAlg) doAlg(lastCrossAlg);
 });
 
+document.getElementById("btn-oll-apply").addEventListener("click", () => {
+  if (lastOllAlg) doAlg(lastOllAlg);
+});
+
+document.getElementById("btn-pll-apply").addEventListener("click", () => {
+  if (lastPllAlg) doAlg(lastPllAlg);
+});
+
 const panels = {
   guide: document.getElementById("panel-guide"),
   cross: document.getElementById("panel-cross"),
   f2l: document.getElementById("panel-f2l"),
+  oll: document.getElementById("panel-oll"),
+  pll: document.getElementById("panel-pll"),
   match: document.getElementById("panel-match"),
   algs: document.getElementById("panel-algs"),
 };
@@ -463,6 +621,8 @@ document.querySelectorAll(".mode-tab").forEach((tab) => {
     setPanelCopy(mode);
     if (mode === "cross") refreshCross();
     if (mode === "f2l") refreshF2L();
+    if (mode === "oll") refreshOll();
+    if (mode === "pll") refreshPll();
     if (mode === "guide") refreshGuide();
   });
 });
@@ -552,7 +712,11 @@ document.getElementById("tab-match").addEventListener("click", () => {
 function buildAlgList() {
   const el = document.getElementById("alg-list");
   el.innerHTML = ALG_LIBRARY.map((a) => {
-    const canTry = a.alg && !a.alg.includes("intuitive") && !a.alg.includes("repeat");
+    const canTry =
+      a.alg &&
+      !a.alg.includes("intuitive") &&
+      !a.alg.includes("repeat") &&
+      !a.alg.includes("(see");
     return `<article class="alg-item">
       <h3>${a.name}</h3>
       <p><strong>${a.group}.</strong> ${a.when}. ${a.tip}</p>
@@ -622,6 +786,8 @@ try {
 
 buildPalette();
 buildCrossTips();
+buildOllTips();
+buildPllTips();
 buildAlgList();
 buildF2LTips();
 syncNetFromCube();

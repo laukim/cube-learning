@@ -8,12 +8,49 @@ import {
   setFacelet,
   solvedFacelets,
 } from "./cube.js";
+import { consumeAlgMove, initAlgProgress, restoreAlgMove } from "./alg-progress.js";
 import { createErnoCube } from "./erno-view.js";
 import { analyzeCross, CROSS_TIPS, scrambleCross } from "./cross-trainer.js";
 import { analyzeF2L, F2L_TIPS, scrambleF2L } from "./f2l-trainer.js";
+import { renderCaseDiagram } from "./case-diagram.js";
 import { analyzeOll, expandWideAlg, OLL_TIPS, scrambleOll } from "./oll-trainer.js";
 import { analyzePll, PLL_TIPS, scramblePll } from "./pll-trainer.js";
 import { ALG_LIBRARY, analyze, STEPS } from "./solver.js";
+
+function setHintCopy(el, text) {
+  if (!el) return;
+  el.textContent = text || "";
+  el.style.whiteSpace = text && text.includes("\n") ? "pre-line" : "";
+}
+
+function setHintDiagram(el, diagram) {
+  if (!el) return;
+  const html = renderCaseDiagram(diagram);
+  if (!html) {
+    el.hidden = true;
+    el.innerHTML = "";
+    return;
+  }
+  el.hidden = false;
+  el.innerHTML = html;
+}
+
+function bindStickyAlg(sticky, hint, stage) {
+  const alg = hint?.alg && !hint.alg.includes("…") ? hint.alg : "";
+  if (!alg) return { ...hint, stage };
+  if (sticky && sticky.fullAlg === alg) {
+    return { ...sticky, ...hint, stage, fullAlg: sticky.fullAlg, remaining: sticky.remaining };
+  }
+  const prog = initAlgProgress(expandWideAlg(alg));
+  return { ...hint, stage, fullAlg: prog.fullAlg, remaining: prog.remaining };
+}
+
+function displayAlgFromSticky(sticky, fallbackAlg) {
+  if (sticky && sticky.fullAlg) {
+    return sticky.remaining || "— done —";
+  }
+  return fallbackAlg || "";
+}
 
 const ernoBox = document.getElementById("erno-container");
 const stepsEl = document.getElementById("steps");
@@ -29,6 +66,9 @@ let lastF2lAlg = "";
 let lastCrossAlg = "";
 let lastOllAlg = "";
 let lastPllAlg = "";
+/** Last valid OLL/PLL case hint — kept while mid-alg temporarily breaks F2L. */
+let stickyOllHint = null;
+let stickyPllHint = null;
 /** When true, ignore ERNO twist events (we're driving facelets ourselves). */
 let syncingFromUi = false;
 /** True while an undo animation is in flight — next onTwist pops history. */
@@ -87,6 +127,19 @@ function recordTwist(move) {
   updateMoveTrace();
 }
 
+function advanceStickyOnTwist(cubeMove) {
+  if (!cubeMove) return;
+  const sticky = appMode === "pll" ? stickyPllHint : appMode === "oll" ? stickyOllHint : null;
+  if (!sticky?.fullAlg) return;
+
+  if (undoingMove) {
+    sticky.remaining = restoreAlgMove(sticky.remaining, cubeMove);
+  } else {
+    const { remaining, matched } = consumeAlgMove(sticky.remaining, cubeMove);
+    if (matched) sticky.remaining = remaining;
+  }
+}
+
 function handleTwist(payload) {
   if (syncingFromUi) return;
 
@@ -96,7 +149,10 @@ function handleTwist(payload) {
       : payload;
 
   try {
-    if (!virtual && cubeMove) applyMove(facelets, cubeMove);
+    if (!virtual && cubeMove) {
+      applyMove(facelets, cubeMove);
+      advanceStickyOnTwist(cubeMove);
+    }
     if (viewMove) recordTwist(viewMove);
     refreshGuide();
   } catch (err) {
@@ -261,20 +317,48 @@ function refreshOll() {
     solvedEl.hidden = false;
     card.hidden = true;
     lastOllAlg = "";
+    stickyOllHint = null;
     return;
   }
 
+  if (result.stage === "cross" || result.stage === "finish") {
+    stickyOllHint = bindStickyAlg(stickyOllHint, result.hint, result.stage);
+  }
+
+  let h = result.hint;
+  let stage = result.stage;
+  if (result.stage === "need-f2l" && stickyOllHint?.alg) {
+    h = {
+      title: stickyOllHint.title,
+      copy:
+        "Mid-alg — the first moves break F2L on purpose. Finish the remaining moves below (or tap Apply / Undo).",
+      alg: stickyOllHint.alg,
+      note: stickyOllHint.note,
+      diagram: stickyOllHint.diagram,
+    };
+    stage = stickyOllHint.stage;
+  } else if (result.stage === "need-f2l") {
+    stickyOllHint = null;
+  }
+
+  const shownAlg = displayAlgFromSticky(stickyOllHint, h.alg);
+
   solvedEl.hidden = true;
   card.hidden = false;
-  const h = result.hint;
   const stageLabel =
-    result.stage === "cross" ? "Step 1 · Cross" : result.stage === "finish" ? "Step 2 · Finish" : "2-look OLL";
+    stage === "cross" ? "Step 1 · Cross" : stage === "finish" ? "Step 2 · Finish" : "2-look OLL";
   document.getElementById("oll-hint-kicker").textContent = stageLabel;
   document.getElementById("oll-hint-title").textContent = h.title;
-  document.getElementById("oll-hint-copy").textContent = h.copy;
-  document.getElementById("oll-hint-alg").textContent = h.alg || "—";
+  setHintDiagram(document.getElementById("oll-hint-diagram"), h.diagram);
+  setHintCopy(document.getElementById("oll-hint-copy"), h.copy);
+  document.getElementById("oll-hint-alg").textContent = shownAlg || "—";
   document.getElementById("oll-hint-note").textContent = h.note || "";
-  lastOllAlg = h.alg && h.alg.trim() && !h.alg.includes("…") ? h.alg : "";
+  lastOllAlg =
+    stickyOllHint?.remaining && stickyOllHint.remaining !== "— done —"
+      ? stickyOllHint.remaining
+      : shownAlg && shownAlg !== "— done —" && !shownAlg.includes("…")
+        ? shownAlg
+        : "";
   document.getElementById("btn-oll-apply").hidden = !lastOllAlg;
 }
 
@@ -300,24 +384,55 @@ function refreshPll() {
     solvedEl.hidden = false;
     card.hidden = true;
     lastPllAlg = "";
+    stickyPllHint = null;
     return;
   }
 
+  if (result.stage === "corners" || result.stage === "edges") {
+    stickyPllHint = bindStickyAlg(stickyPllHint, result.hint, result.stage);
+  }
+
+  let h = result.hint;
+  let stage = result.stage;
+  if (
+    (result.stage === "need-f2l" || result.stage === "need-oll") &&
+    stickyPllHint?.alg
+  ) {
+    h = {
+      title: stickyPllHint.title,
+      copy:
+        "Mid-alg — F2L looks broken until you finish. Do the remaining moves below (or tap Apply / Undo).",
+      alg: stickyPllHint.alg,
+      note: stickyPllHint.note,
+      diagram: stickyPllHint.diagram,
+    };
+    stage = stickyPllHint.stage;
+  } else if (result.stage === "need-f2l" || result.stage === "need-oll") {
+    stickyPllHint = null;
+  }
+
+  const shownAlg = displayAlgFromSticky(stickyPllHint, h.alg);
+
   solvedEl.hidden = true;
   card.hidden = false;
-  const h = result.hint;
   const stageLabel =
-    result.stage === "corners"
+    stage === "corners"
       ? "Step 1 · Corners"
-      : result.stage === "edges"
+      : stage === "edges"
         ? "Step 2 · Edges"
         : "2-look PLL";
   document.getElementById("pll-hint-kicker").textContent = stageLabel;
   document.getElementById("pll-hint-title").textContent = h.title;
-  document.getElementById("pll-hint-copy").textContent = h.copy;
-  document.getElementById("pll-hint-alg").textContent = h.alg || "—";
+  setHintDiagram(document.getElementById("pll-hint-diagram"), h.diagram);
+  setHintCopy(document.getElementById("pll-hint-copy"), h.copy);
+  document.getElementById("pll-hint-alg").textContent = shownAlg || "—";
   document.getElementById("pll-hint-note").textContent = h.note || "";
-  lastPllAlg = h.alg && h.alg.trim() && !h.alg.includes("…") ? h.alg : "";
+  lastPllAlg =
+    stickyPllHint?.remaining && stickyPllHint.remaining !== "— done —"
+      ? stickyPllHint.remaining
+      : shownAlg && shownAlg !== "— done —" && !shownAlg.includes("…")
+        ? shownAlg
+        : "";
   document.getElementById("btn-pll-apply").hidden = !lastPllAlg;
 }
 
@@ -384,9 +499,9 @@ function setPanelCopy(mode) {
     btnOll.hidden = false;
     btnHint.textContent = "OLL hint";
   } else if (mode === "pll") {
-    title.textContent = "2-look PLL — finish the cube";
+    title.textContent = "Beginner PLL — only 2 algs";
     blurb.innerHTML =
-      "After OLL: <strong>1)</strong> corners (headlights) · <strong>2)</strong> edges (Ua/Ub/H/Z). Algs from <a class=\"ext-link\" href=\"https://www.cube.academy/2-look-pll-algs\" target=\"_blank\" rel=\"noopener\">Cube Academy</a>.";
+      "After OLL: <strong>1)</strong> T-perm (corners) · <strong>2)</strong> U-perm (edges). From <a class=\"ext-link\" href=\"https://www.youtube.com/watch?v=RCPVu112HKg\" target=\"_blank\" rel=\"noopener\">CFOP Cubing</a>.";
     btnPll.hidden = false;
     btnHint.textContent = "PLL hint";
   } else {
@@ -427,6 +542,8 @@ function resetCube() {
   facelets = solvedFacelets();
   undoingMove = false;
   clearMoveHistory();
+  stickyOllHint = null;
+  stickyPllHint = null;
   mountErno();
   refreshGuide();
 }
@@ -436,6 +553,8 @@ function playScrambleAlg(alg) {
   if (alg) applyAlg(facelets, alg);
   undoingMove = false;
   clearMoveHistory();
+  stickyOllHint = null;
+  stickyPllHint = null;
   mountErno();
   if (alg) {
     syncingFromUi = true;
@@ -468,7 +587,7 @@ function undoLastMove() {
     return;
   }
 
-  // Orbit-only y / y' / y2 — never entered ERNO or facelet state
+  // Leftover virtual orbit y from older sessions (orbit no longer remaps F)
   const last = moveHistory[moveHistory.length - 1];
   if (!last || last[0] !== "y") {
     updateMoveTrace();
@@ -476,13 +595,6 @@ function undoLastMove() {
   }
 
   moveHistory.pop();
-
-  let yaw = erno.getViewYaw();
-  if (last === "y'") yaw = (yaw + 3) % 4;
-  else if (last === "y") yaw = (yaw + 1) % 4;
-  else if (last === "y2") yaw = (yaw + 2) % 4;
-  erno.setViewYaw(yaw);
-
   refreshGuide();
   updateMoveTrace();
 }

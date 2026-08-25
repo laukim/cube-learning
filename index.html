@@ -34,7 +34,7 @@
           <div class="cube-wrap" id="cube-wrap">
             <div id="erno-container" aria-label="3D cube"></div>
             <p class="orbit-hint">
-              Drag pieces to turn · drag around to turn the cube (y) — F follows the face toward you
+              Drag pieces to turn · long-drag empty space to look around (F stays green · white bottom)
             </p>
           </div>
 
@@ -199,18 +199,23 @@
           <div class="hint-card" id="oll-hint-card">
             <div class="hint-kicker" id="oll-hint-kicker">2-look OLL</div>
             <h2 class="hint-title" id="oll-hint-title">Ready</h2>
-            <p class="hint-copy" id="oll-hint-copy">
-              Tap <strong>New OLL</strong> — F2L stays solved, last layer scrambles. First make the
-              <strong>yellow cross</strong>, then <strong>finish OLL</strong> (corners). Algs from
-              <a class="ext-link" href="https://www.cube.academy/2-look-oll-algs" target="_blank" rel="noopener"
-                >Cube Academy</a
-              >.
-            </p>
-            <div class="alg-block">
-              <code class="alg" id="oll-hint-alg"></code>
-              <button type="button" class="btn btn-small" id="btn-oll-apply" hidden>Apply on cube</button>
+            <div class="hint-layout">
+              <div class="hint-diagram" id="oll-hint-diagram" hidden></div>
+              <div class="hint-text">
+                <p class="hint-copy" id="oll-hint-copy">
+                  Tap <strong>New OLL</strong> — F2L stays solved, last layer scrambles. First make the
+                  <strong>yellow cross</strong>, then <strong>finish OLL</strong> (corners). Algs from
+                  <a class="ext-link" href="https://www.cube.academy/2-look-oll-algs" target="_blank" rel="noopener"
+                    >Cube Academy</a
+                  >.
+                </p>
+                <div class="alg-block">
+                  <code class="alg" id="oll-hint-alg"></code>
+                  <button type="button" class="btn btn-small" id="btn-oll-apply" hidden>Apply on cube</button>
+                </div>
+                <p class="hint-note" id="oll-hint-note"></p>
+              </div>
             </div>
-            <p class="hint-note" id="oll-hint-note"></p>
           </div>
 
           <div class="solved-banner" id="oll-solved-banner" hidden>
@@ -226,18 +231,28 @@
           <div class="hint-card" id="pll-hint-card">
             <div class="hint-kicker" id="pll-hint-kicker">2-look PLL</div>
             <h2 class="hint-title" id="pll-hint-title">Ready</h2>
-            <p class="hint-copy" id="pll-hint-copy">
-              Tap <strong>New PLL</strong> — F2L + yellow face stay solved. First
-              <strong>corners</strong> (headlights), then <strong>edges</strong> (Ua/Ub/H/Z). Algs from
-              <a class="ext-link" href="https://www.cube.academy/2-look-pll-algs" target="_blank" rel="noopener"
-                >Cube Academy</a
-              >.
-            </p>
-            <div class="alg-block">
-              <code class="alg" id="pll-hint-alg"></code>
-              <button type="button" class="btn btn-small" id="btn-pll-apply" hidden>Apply on cube</button>
+            <div class="hint-layout">
+              <div class="hint-diagram" id="pll-hint-diagram" hidden></div>
+              <div class="hint-text">
+                <p class="hint-copy" id="pll-hint-copy">
+                  Tap <strong>New PLL</strong> — F2L + yellow face stay solved. Only
+                  <strong>2 algs</strong>: <strong>T-perm</strong> (corners, headlights on LEFT) then
+                  <strong>U-perm</strong> (edges, bar at BACK). Method from
+                  <a
+                    class="ext-link"
+                    href="https://www.youtube.com/watch?v=RCPVu112HKg"
+                    target="_blank"
+                    rel="noopener"
+                    >this video</a
+                  >.
+                </p>
+                <div class="alg-block">
+                  <code class="alg" id="pll-hint-alg"></code>
+                  <button type="button" class="btn btn-small" id="btn-pll-apply" hidden>Apply on cube</button>
+                </div>
+                <p class="hint-note" id="pll-hint-note"></p>
+              </div>
             </div>
-            <p class="hint-note" id="pll-hint-note"></p>
           </div>
 
           <div class="solved-banner" id="pll-solved-banner" hidden>

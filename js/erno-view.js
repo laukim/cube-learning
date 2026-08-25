@@ -2,9 +2,9 @@
  * Exact onlinecube.com drag behaviour via vendored ERNO / Cuber.
  * https://onlinecube.com — Chrome Cube Lab (Mark Lundin / Stewart Smith / Google Creative Lab)
  *
- * Orbit (drag around the cube) is treated like turning the cube in your hands:
- * when a new side faces you, we record y / y' / y2 and remap F/R/L/B so F stays
- * “the face toward you”. Piece flicks are unchanged.
+ * Orbit is look-only: F/R/L/B always mean fixed cube faces (green = F with white
+ * on bottom). Dragging around the cube does not remap pad/keyboard notation.
+ * Orbit needs a deliberate slide (~35% of the cube) before it sticks.
  */
 
 function moveToErno(move) {
@@ -40,54 +40,8 @@ function twistToMove(twist) {
   return notation;
 }
 
-/** Side faces in y-cycle: one y sends F→R→B→L→F. */
+/** Side faces in y-cycle (kept for callers / debugging). */
 const Y_CYCLE = ["F", "R", "B", "L"];
-
-/**
- * viewYaw = how many y' from cube-space to viewer-space
- * (1 ⇒ cube R is what the viewer calls F).
- */
-function mapSideFace(face, yaw, invert) {
-  const i = Y_CYCLE.indexOf(face);
-  if (i < 0) return face;
-  const y = ((yaw % 4) + 4) % 4;
-  const j = invert ? (i - y + 4) % 4 : (i + y) % 4;
-  return Y_CYCLE[j];
-}
-
-/** Viewer notation → cube-space notation (for sending twists to ERNO). */
-function viewMoveToCubeMove(move, viewYaw) {
-  const m = String(move).trim();
-  if (!m) return m;
-  const face = m[0];
-  const rest = m.slice(1);
-  const upper = face.toUpperCase();
-  if ("xyzXYZ".includes(face)) return face.toLowerCase() + rest;
-  if (upper === "U" || upper === "D") return upper + rest;
-  if (!Y_CYCLE.includes(upper)) return m;
-  return mapSideFace(upper, viewYaw, false) + rest;
-}
-
-/** Cube-space notation → viewer notation (for history / facelets after orbit y). */
-function cubeMoveToViewMove(move, viewYaw) {
-  const m = String(move).trim();
-  if (!m) return m;
-  const face = m[0];
-  const rest = m.slice(1);
-  const upper = face.toUpperCase();
-  if ("xyzXYZ".includes(face)) return face.toLowerCase() + rest;
-  if (upper === "U" || upper === "D") return upper + rest;
-  if (!Y_CYCLE.includes(upper)) return m;
-  return mapSideFace(upper, viewYaw, true) + rest;
-}
-
-function yawDeltaToMove(delta) {
-  const d = ((delta % 4) + 4) % 4;
-  if (d === 0) return null;
-  if (d === 1) return "y'";
-  if (d === 2) return "y2";
-  return "y"; // d === 3
-}
 
 /**
  * @param {HTMLElement} container
@@ -117,10 +71,24 @@ export function createErnoCube(container, hooks) {
   }
   applyHomeTilt();
 
-  /** Viewer yaw in y' steps; F/R/L/B buttons follow the face toward you. */
-  let viewYaw = 0;
+  // Snappier than ERNO defaults (4 / 0.25) — orbit outside pieces should feel lively
+  try {
+    if (cube.controls) {
+      cube.controls.rotationSpeed = 7;
+      cube.controls.damping = 0.2;
+    }
+  } catch {
+    /* ignore */
+  }
+
+  /**
+   * Orbit tracks freely while dragging. On release, short nudges snap back
+   * so accidental taps don’t leave the view rotated.
+   */
   let orbitPointerDown = false;
   let quatAtDown = null;
+  let pointerStart = null;
+  let orbitArmed = false;
   let faceDragPossibly = false;
 
   const resize = () => {
@@ -130,13 +98,24 @@ export function createErnoCube(container, hooks) {
   };
   resize();
 
+  function orbitThresholdPx() {
+    const size = Math.min(container.clientWidth || 320, container.clientHeight || 280);
+    return Math.max(24, size * 0.08);
+  }
+
+  function eventClient(e) {
+    if (e.touches && e.touches[0]) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    if (e.changedTouches && e.changedTouches[0]) {
+      return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+    }
+    return { x: e.clientX, y: e.clientY };
+  }
+
   function healVisual() {
     try {
       cube.showPlastics();
       cube.showStickers();
-      // Keep internal faces painted — holes often come from stuck introverts
       cube.showIntroverts(null, true);
-      // Only unstick pieces that drifted (don't yank mid-tween matrices)
       cube.cubelets.forEach((c) => {
         if (!c.radius) return;
         c.radius = 0;
@@ -154,69 +133,6 @@ export function createErnoCube(container, hooks) {
     }
   }
 
-  function cameraDirInCubeSpace() {
-    cube.object3D.updateMatrixWorld(true);
-    const inv = new THREE.Matrix4().getInverse(cube.object3D.matrixWorld);
-    return cube.camera.position.clone().applyMatrix4(inv).normalize();
-  }
-
-  /** Which cube face is most toward the camera (among UDFBRL). */
-  function dominantCubeFace() {
-    const toCam = cameraDirInCubeSpace();
-    const faces = [
-      ["F", new THREE.Vector3(0, 0, 1)],
-      ["B", new THREE.Vector3(0, 0, -1)],
-      ["R", new THREE.Vector3(1, 0, 0)],
-      ["L", new THREE.Vector3(-1, 0, 0)],
-      ["U", new THREE.Vector3(0, 1, 0)],
-      ["D", new THREE.Vector3(0, -1, 0)],
-    ];
-    let best = "F";
-    let bestDot = -Infinity;
-    for (const [id, n] of faces) {
-      const d = n.dot(toCam);
-      if (d > bestDot) {
-        bestDot = d;
-        best = id;
-      }
-    }
-    return { face: best, dot: bestDot };
-  }
-
-  /**
-   * If orbit left U roughly on top and a new side in front, record y/y'/y2
-   * and remap F → that side (R or L, etc.). Does not twist ERNO — camera already did.
-   */
-  let suppressOrbitDetect = false;
-
-  function detectOrbitYaw() {
-    if (suppressOrbitDetect) return;
-    if (cube.isTweening() !== 0) return;
-    if (cube.mouseInteraction?.active) return;
-    if (hooks.shouldIgnoreTwist?.()) return;
-
-    const { face, dot } = dominantCubeFace();
-    if (dot < 0.45) return;
-
-    // Need U still “up-ish” so this is a y-turn, not an x/z flip
-    const toCam = cameraDirInCubeSpace();
-    const uDot = new THREE.Vector3(0, 1, 0).dot(toCam);
-    const dDot = new THREE.Vector3(0, -1, 0).dot(toCam);
-    // Camera looks from above-front usually; U should not be the front face
-    if (face === "U" || face === "D") return;
-    if (uDot < -0.35 || dDot > 0.55) return; // upside down-ish
-
-    const newYaw = Y_CYCLE.indexOf(face);
-    if (newYaw < 0) return;
-    const delta = (newYaw - viewYaw + 4) % 4;
-    const move = yawDeltaToMove(delta);
-    if (!move) return;
-
-    viewYaw = newYaw;
-    // Camera already orbited — remap F only; do not mutate facelet state.
-    hooks.onTwist?.({ cubeMove: null, viewMove: move, virtual: true });
-  }
-
   cube.addEventListener("onTwistComplete", (e) => {
     const twist = e.detail?.twist;
     if (!twist || twist.degrees === 0) return;
@@ -224,7 +140,7 @@ export function createErnoCube(container, hooks) {
     if (!cubeMove) return;
     hooks.onTwist?.({
       cubeMove,
-      viewMove: cubeMoveToViewMove(cubeMove, viewYaw),
+      viewMove: cubeMove,
       virtual: false,
     });
     healVisual();
@@ -238,35 +154,42 @@ export function createErnoCube(container, hooks) {
   const onPointerDown = (e) => {
     if (e.type === "mousedown" && e.button !== 0) return;
     orbitPointerDown = true;
+    orbitArmed = false;
     faceDragPossibly = false;
+    pointerStart = eventClient(e);
     try {
       quatAtDown = cube.object3D.quaternion.clone();
     } catch {
       quatAtDown = null;
     }
   };
-  const onPointerMove = () => {
+
+  const onPointerMove = (e) => {
     if (!orbitPointerDown) return;
     if (cube.mouseInteraction?.active) faceDragPossibly = true;
+    if (faceDragPossibly || orbitArmed || !pointerStart) return;
+    const p = eventClient(e);
+    const dx = p.x - pointerStart.x;
+    const dy = p.y - pointerStart.y;
+    if (Math.hypot(dx, dy) >= orbitThresholdPx()) {
+      orbitArmed = true;
+    }
   };
+
   const onPointerUp = () => {
     if (!orbitPointerDown) return;
     orbitPointerDown = false;
     const wasFace = faceDragPossibly || cube.mouseInteraction?.active;
     faceDragPossibly = false;
 
-    let orbitChanged = false;
-    if (quatAtDown && cube.object3D?.quaternion) {
-      orbitChanged = quatAtDown.dot(cube.object3D.quaternion) < 0.999;
+    // Short / unintentional orbit → restore start orientation (don’t stick)
+    if (!wasFace && !orbitArmed && quatAtDown && cube.object3D?.quaternion) {
+      cube.object3D.quaternion.copy(quatAtDown);
     }
-    quatAtDown = null;
 
-    if (!wasFace && orbitChanged) {
-      // Let damping settle a frame, then snap-detect yaw
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => detectOrbitYaw());
-      });
-    }
+    quatAtDown = null;
+    pointerStart = null;
+    orbitArmed = false;
   };
 
   container.addEventListener("mousedown", onPointerDown);
@@ -280,31 +203,19 @@ export function createErnoCube(container, hooks) {
     cube,
     resize,
     healVisual,
-    getViewYaw: () => viewYaw,
-    setViewYaw(yaw) {
-      viewYaw = ((yaw % 4) + 4) % 4;
-    },
-    resetViewYaw() {
-      viewYaw = 0;
-    },
-    setSuppressOrbitDetect(on) {
-      suppressOrbitDetect = !!on;
-    },
-    /** Viewer-space move (F = face toward you). */
+    /** Always 0 — notation is cube-fixed (no orbit remap). */
+    getViewYaw: () => 0,
+    setViewYaw() {},
+    resetViewYaw() {},
+    setSuppressOrbitDetect() {},
+    /** Cube-space move (F = green when white is on bottom). */
     twist(move) {
-      const cubeMove = viewMoveToCubeMove(move, viewYaw);
-      const s = moveToErno(cubeMove);
+      const s = moveToErno(move);
       if (s) cube.twist(s);
     },
-    /** Viewer-space alg. */
+    /** Cube-space alg — not remapped by camera orbit. */
     twistAlg(alg) {
-      const mapped = String(alg)
-        .trim()
-        .split(/\s+/)
-        .filter(Boolean)
-        .map((m) => viewMoveToCubeMove(m, viewYaw))
-        .join(" ");
-      const s = algToErno(mapped);
+      const s = algToErno(alg);
       if (s) cube.twist(s);
     },
     shuffle(n = 25) {
@@ -357,4 +268,4 @@ export function createErnoCube(container, hooks) {
   };
 }
 
-export { moveToErno, algToErno, twistToMove, viewMoveToCubeMove, cubeMoveToViewMove, Y_CYCLE };
+export { moveToErno, algToErno, twistToMove, Y_CYCLE };

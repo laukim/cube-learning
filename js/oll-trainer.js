@@ -46,6 +46,82 @@ export function expandWideAlg(alg) {
     .join(" ");
 }
 
+function invertMove(move) {
+  const m = String(move).trim();
+  if (!m) return "";
+  if (m.endsWith("2")) return m;
+  if (m.endsWith("'")) return m.slice(0, -1);
+  return `${m}'`;
+}
+
+/** Reverse an alg (after expanding wide moves). */
+export function invertAlg(alg) {
+  return expandWideAlg(alg)
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .reverse()
+    .map(invertMove)
+    .join(" ");
+}
+
+function randomAuf() {
+  return ["", "U", "U'", "U2"][Math.floor(Math.random() * 4)];
+}
+
+/**
+ * Fixed OLL practice order — not random.
+ * Cross shapes first, then finish (OCLL) cases.
+ */
+export const OLL_DRILL_CASES = [
+  { id: "dot", name: "Dot", setup: () => invertAlg(OLL_CROSS.DOT.alg) },
+  { id: "l", name: "L shape", setup: () => invertAlg(OLL_CROSS.L.alg) },
+  { id: "line", name: "Line", setup: () => invertAlg(OLL_CROSS.LINE.alg) },
+  { id: "sune", name: "Sune", setup: () => invertAlg(OLL_FINISH.SUNE.alg) },
+  { id: "antisune", name: "Antisune", setup: () => invertAlg(OLL_FINISH.ANTISUNE.alg) },
+  { id: "t", name: "T", setup: () => invertAlg(OLL_FINISH.T.alg) },
+  { id: "bowtie", name: "Bowtie", setup: () => invertAlg(OLL_FINISH.BOWTIE.alg) },
+  { id: "headlights", name: "Headlights", setup: () => invertAlg(OLL_FINISH.HEADLIGHTS.alg) },
+  { id: "h", name: "H", setup: () => invertAlg(OLL_FINISH.H.alg) },
+  { id: "pi", name: "Pi", setup: () => invertAlg(OLL_FINISH.PI.alg) },
+];
+
+let ollDrillIndex = 0;
+let ollDrillStarted = false;
+
+export function getOllDrillInfo() {
+  const n = OLL_DRILL_CASES.length;
+  const i = ((ollDrillIndex % n) + n) % n;
+  const c = OLL_DRILL_CASES[i];
+  return { index: i, total: n, id: c.id, name: c.name };
+}
+
+/**
+ * @param {string[]} facelets
+ * @param {'again' | 'next'} mode again = same case (new AUF); next = advance in order
+ */
+export function scrambleOll(facelets, mode = "next") {
+  const n = OLL_DRILL_CASES.length;
+  if (!ollDrillStarted) {
+    ollDrillStarted = true;
+    ollDrillIndex = 0;
+  } else if (mode === "next") {
+    ollDrillIndex = (ollDrillIndex + 1) % n;
+  }
+
+  const c = OLL_DRILL_CASES[((ollDrillIndex % n) + n) % n];
+  const s = solvedFacelets();
+  for (let i = 0; i < 54; i++) facelets[i] = s[i];
+
+  const setup = c.setup();
+  applyAlg(facelets, setup);
+  const auf = randomAuf();
+  if (auf) applyAlg(facelets, auf);
+
+  const parts = auf ? [setup, auf] : [setup];
+  return parts.join(" ");
+}
+
 export const OLL_CROSS = {
   LINE: {
     name: "Line",
@@ -282,7 +358,7 @@ export function analyzeOll(facelets) {
       stage: "need-f2l",
       hint: hint(
         "F2L first",
-        "2-look OLL needs F2L done. Tap New OLL for a scramble that keeps F2L solved.",
+        "2-look OLL needs F2L done. Tap Again / Next case for a scramble that keeps F2L solved.",
         "",
         ""
       ),
@@ -326,43 +402,11 @@ export function analyzeOll(facelets) {
   };
 }
 
-export function scrambleOll(facelets) {
-  const s = solvedFacelets();
-  const pool = [
-    ...Object.values(OLL_CROSS).map((c) => c.alg),
-    ...Object.values(OLL_FINISH).map((c) => c.alg),
-    "U",
-    "U'",
-    "U2",
-    "R U R' U R U2 R'",
-    "R U2 R' U' R U' R'",
-  ];
-  const parts = [];
-  for (let attempt = 0; attempt < 40; attempt++) {
-    for (let i = 0; i < 54; i++) facelets[i] = s[i];
-    parts.length = 0;
-    const n = 3 + Math.floor(Math.random() * 4);
-    for (let i = 0; i < n; i++) {
-      const pick = pool[Math.floor(Math.random() * pool.length)];
-      const expanded = expandWideAlg(pick);
-      applyAlg(facelets, expanded);
-      parts.push(expanded);
-      const auf = ["U", "U'", "U2"][Math.floor(Math.random() * 3)];
-      applyAlg(facelets, auf);
-      parts.push(auf);
-    }
-    if (f2lComplete(facelets) && !yellowFaceDone(facelets)) {
-      return parts.join(" ");
-    }
-  }
-
-  for (let i = 0; i < 54; i++) facelets[i] = s[i];
-  const fallback = "R U2 R' U' R U' R' U'";
-  applyAlg(facelets, fallback);
-  return fallback;
-}
-
 export const OLL_TIPS = [
+  {
+    title: "Practice order",
+    body: "Cases go in a fixed list (Dot → L → Line → Sune…). Again = same case (new angle). Next case = move on.",
+  },
   {
     title: "How to use a hint",
     body: "Match the picture with U turns only. White on bottom; green is always Front (F). Then run the alg — or tap Apply.",

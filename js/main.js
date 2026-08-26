@@ -13,8 +13,8 @@ import { createErnoCube } from "./erno-view.js";
 import { analyzeCross, CROSS_TIPS, scrambleCross } from "./cross-trainer.js";
 import { analyzeF2L, F2L_TIPS, scrambleF2L } from "./f2l-trainer.js";
 import { renderCaseDiagram } from "./case-diagram.js";
-import { analyzeOll, expandWideAlg, OLL_TIPS, scrambleOll } from "./oll-trainer.js";
-import { analyzePll, PLL_TIPS, scramblePll } from "./pll-trainer.js";
+import { analyzeOll, expandWideAlg, getOllDrillInfo, OLL_TIPS, scrambleOll } from "./oll-trainer.js";
+import { analyzePll, getPllDrillInfo, PLL_TIPS, scramblePll } from "./pll-trainer.js";
 import { ALG_LIBRARY, analyze, STEPS } from "./solver.js";
 
 function setHintCopy(el, text) {
@@ -346,7 +346,11 @@ function refreshOll() {
   solvedEl.hidden = true;
   card.hidden = false;
   const stageLabel =
-    stage === "cross" ? "Step 1 · Cross" : stage === "finish" ? "Step 2 · Finish" : "2-look OLL";
+    stage === "cross"
+      ? `Step 1 · Cross · drill ${getOllDrillInfo().name}`
+      : stage === "finish"
+        ? `Step 2 · Finish · drill ${getOllDrillInfo().name}`
+        : `2-look OLL · ${getOllDrillInfo().name}`;
   document.getElementById("oll-hint-kicker").textContent = stageLabel;
   document.getElementById("oll-hint-title").textContent = h.title;
   setHintDiagram(document.getElementById("oll-hint-diagram"), h.diagram);
@@ -415,12 +419,13 @@ function refreshPll() {
 
   solvedEl.hidden = true;
   card.hidden = false;
+  const drill = getPllDrillInfo();
   const stageLabel =
     stage === "corners"
-      ? "Step 1 · Corners"
+      ? `Step 1 · Corners · ${drill.name}`
       : stage === "edges"
-        ? "Step 2 · Edges"
-        : "2-look PLL";
+        ? `Step 2 · Edges · ${drill.name}`
+        : `PLL · ${drill.name}`;
   document.getElementById("pll-hint-kicker").textContent = stageLabel;
   document.getElementById("pll-hint-title").textContent = h.title;
   setHintDiagram(document.getElementById("pll-hint-diagram"), h.diagram);
@@ -471,14 +476,18 @@ function setPanelCopy(mode) {
   const btnCross = document.getElementById("btn-cross-case");
   const btnF2l = document.getElementById("btn-f2l-case");
   const btnOll = document.getElementById("btn-oll-case");
+  const btnOllAgain = document.getElementById("btn-oll-again");
   const btnPll = document.getElementById("btn-pll-case");
+  const btnPllAgain = document.getElementById("btn-pll-again");
   const btnHint = document.getElementById("btn-hint");
 
   btnScramble.hidden = true;
   btnCross.hidden = true;
   btnF2l.hidden = true;
   btnOll.hidden = true;
+  btnOllAgain.hidden = true;
   btnPll.hidden = true;
+  btnPllAgain.hidden = true;
 
   if (mode === "cross") {
     title.textContent = "White cross drill";
@@ -493,16 +502,18 @@ function setPanelCopy(mode) {
     btnF2l.hidden = false;
     btnHint.textContent = "F2L hint";
   } else if (mode === "oll") {
-    title.textContent = "2-look OLL — yellow face in two steps";
-    blurb.innerHTML =
-      "After F2L: <strong>1)</strong> yellow cross · <strong>2)</strong> twist corners. Algs from <a class=\"ext-link\" href=\"https://www.cube.academy/2-look-oll-algs\" target=\"_blank\" rel=\"noopener\">Cube Academy</a>.";
+    const d = getOllDrillInfo();
+    title.textContent = "2-look OLL — fixed case order";
+    blurb.innerHTML = `Practice in order (now <strong>${d.name}</strong> · ${d.index + 1}/${d.total}). <strong>Again</strong> = same case · <strong>Next OLL</strong> = next in the list.`;
     btnOll.hidden = false;
+    btnOllAgain.hidden = false;
     btnHint.textContent = "OLL hint";
   } else if (mode === "pll") {
-    title.textContent = "Beginner PLL — only 2 algs";
-    blurb.innerHTML =
-      "After OLL: <strong>1)</strong> T-perm (corners) · <strong>2)</strong> U-perm (edges). From <a class=\"ext-link\" href=\"https://www.youtube.com/watch?v=RCPVu112HKg\" target=\"_blank\" rel=\"noopener\">CFOP Cubing</a>.";
+    const d = getPllDrillInfo();
+    title.textContent = "Beginner PLL — fixed case order";
+    blurb.innerHTML = `Practice in order (now <strong>${d.name}</strong> · ${d.index + 1}/${d.total}). <strong>Again</strong> = same case · <strong>Next PLL</strong> = next in the list.`;
     btnPll.hidden = false;
+    btnPllAgain.hidden = false;
     btnHint.textContent = "PLL hint";
   } else {
     title.textContent = "White on bottom. Yellow on top. Seven steps you already know.";
@@ -646,16 +657,32 @@ document.getElementById("btn-f2l-case").addEventListener("click", () => {
   playScrambleAlg(alg);
 });
 
+document.getElementById("btn-oll-again").addEventListener("click", () => {
+  const draft = solvedFacelets();
+  const alg = scrambleOll(draft, "again");
+  playScrambleAlg(alg);
+  setPanelCopy("oll");
+});
+
 document.getElementById("btn-oll-case").addEventListener("click", () => {
   const draft = solvedFacelets();
-  const alg = scrambleOll(draft);
+  const alg = scrambleOll(draft, "next");
   playScrambleAlg(alg);
+  setPanelCopy("oll");
+});
+
+document.getElementById("btn-pll-again").addEventListener("click", () => {
+  const draft = solvedFacelets();
+  const alg = scramblePll(draft, "again");
+  playScrambleAlg(alg);
+  setPanelCopy("pll");
 });
 
 document.getElementById("btn-pll-case").addEventListener("click", () => {
   const draft = solvedFacelets();
-  const alg = scramblePll(draft);
+  const alg = scramblePll(draft, "next");
   playScrambleAlg(alg);
+  setPanelCopy("pll");
 });
 
 document.getElementById("btn-hint").addEventListener("click", () => {

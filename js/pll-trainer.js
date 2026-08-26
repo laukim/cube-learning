@@ -18,7 +18,7 @@ import {
   sticker,
 } from "./cube.js";
 import { f2lComplete } from "./f2l-trainer.js";
-import { expandWideAlg } from "./oll-trainer.js";
+import { expandWideAlg, invertAlg } from "./oll-trainer.js";
 import { pllEdgesDiagram, pllHeadlightsDiagram } from "./case-diagram.js";
 
 export { expandWideAlg };
@@ -46,6 +46,36 @@ export const PLL_U = {
   howNone:
     "1) No solid bar yet.\n2) Do U-perm once from any angle.\n3) Re-hint — put the new bar at the BACK and U-perm again.",
 };
+
+/** Y-perm — setup only (creates no-headlights for T-perm practice). */
+const Y_PERM = "F R U' R' U' R U R' F' R U R' U' R' F R F'";
+/** H-perm — setup only (no edge bar). */
+const H_PERM = "M2 U' M2 U2 M2 U' M2";
+
+function randomAuf() {
+  return ["", "U", "U'", "U2"][Math.floor(Math.random() * 4)];
+}
+
+/**
+ * Fixed PLL practice order — not random.
+ */
+export const PLL_DRILL_CASES = [
+  { id: "t-hl", name: "T-perm · headlights", setup: () => invertAlg(PLL_T.alg) },
+  { id: "t-none", name: "T-perm · no headlights", setup: () => invertAlg(Y_PERM) },
+  { id: "u-bar", name: "U-perm · bar", setup: () => invertAlg(PLL_U.alg) },
+  { id: "u-mirror", name: "U-perm · mirror", setup: () => invertAlg(PLL_U.algMirror) },
+  { id: "u-none", name: "U-perm · no bar", setup: () => invertAlg(H_PERM) },
+];
+
+let pllDrillIndex = 0;
+let pllDrillStarted = false;
+
+export function getPllDrillInfo() {
+  const n = PLL_DRILL_CASES.length;
+  const i = ((pllDrillIndex % n) + n) % n;
+  const c = PLL_DRILL_CASES[i];
+  return { index: i, total: n, id: c.id, name: c.name };
+}
 
 const HOLD_NOTE =
   "White on bottom · green = F. Match the picture with U only — don’t orbit to follow F/R.";
@@ -228,7 +258,7 @@ export function analyzePll(facelets) {
       stage: "need-f2l",
       hint: hint(
         "F2L first",
-        "Beginner PLL needs F2L done and a full yellow face (OLL). Tap New PLL for a scramble that keeps F2L + OLL solved.",
+        "Beginner PLL needs F2L done and a full yellow face (OLL). Tap Again / Next case for a scramble that keeps F2L + OLL solved.",
         "",
         ""
       ),
@@ -244,7 +274,7 @@ export function analyzePll(facelets) {
       stage: "need-oll",
       hint: hint(
         "OLL first",
-        "Yellow face isn’t done yet. Finish OLL (or tap New PLL for an oriented last-layer scramble).",
+        "Yellow face isn’t done yet. Finish OLL (or tap Again / Next case for an oriented last-layer scramble).",
         "",
         "PLL preserves orientation — do OLL before PLL."
       ),
@@ -320,39 +350,33 @@ export function analyzePll(facelets) {
   };
 }
 
-/** Scramble PLL only — F2L + yellow face stay solved. */
-export function scramblePll(facelets) {
-  const s = solvedFacelets();
-  const pool = [PLL_T.alg, PLL_U.alg, PLL_U.algMirror, "U", "U'", "U2"];
-  const parts = [];
-  for (let attempt = 0; attempt < 48; attempt++) {
-    for (let i = 0; i < 54; i++) facelets[i] = s[i];
-    parts.length = 0;
-    const n = 2 + Math.floor(Math.random() * 3);
-    for (let i = 0; i < n; i++) {
-      const pick = pool[Math.floor(Math.random() * pool.length)];
-      const expanded = expandWideAlg(pick);
-      applyAlg(facelets, expanded);
-      parts.push(expanded);
-      const auf = ["U", "U'", "U2"][Math.floor(Math.random() * 3)];
-      applyAlg(facelets, auf);
-      parts.push(auf);
-    }
-    if (f2lComplete(facelets) && yellowFaceDone(facelets) && !isSolved(facelets)) {
-      const check = analyzePll(facelets);
-      if (check.stage === "corners" || check.stage === "edges") {
-        return parts.join(" ");
-      }
-    }
+/** Scramble PLL — fixed case order (Again / Next). */
+export function scramblePll(facelets, mode = "next") {
+  const n = PLL_DRILL_CASES.length;
+  if (!pllDrillStarted) {
+    pllDrillStarted = true;
+    pllDrillIndex = 0;
+  } else if (mode === "next") {
+    pllDrillIndex = (pllDrillIndex + 1) % n;
   }
 
+  const c = PLL_DRILL_CASES[((pllDrillIndex % n) + n) % n];
+  const s = solvedFacelets();
   for (let i = 0; i < 54; i++) facelets[i] = s[i];
-  const fallback = [PLL_T.alg, "U", PLL_U.alg].join(" ");
-  applyAlg(facelets, fallback);
-  return fallback;
+
+  const setup = expandWideAlg(c.setup());
+  applyAlg(facelets, setup);
+  const auf = randomAuf();
+  if (auf) applyAlg(facelets, auf);
+
+  return (auf ? [setup, auf] : [setup]).join(" ");
 }
 
 export const PLL_TIPS = [
+  {
+    title: "Practice order",
+    body: "Fixed list: T (headlights) → T (none) → U (bar) → U (mirror) → U (no bar). Again = same case. Next case = move on.",
+  },
   {
     title: "Only 2 algorithms",
     body: "T-perm for corners, U-perm for edges. You may need each more than once — that’s the beginner method.",

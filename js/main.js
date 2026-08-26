@@ -350,7 +350,7 @@ function refreshOll() {
       ? `Step 1 · Cross · drill ${getOllDrillInfo().name}`
       : stage === "finish"
         ? `Step 2 · Finish · drill ${getOllDrillInfo().name}`
-        : `2-look OLL · ${getOllDrillInfo().name}`;
+        : `OLL · ${getOllDrillInfo().name}`;
   document.getElementById("oll-hint-kicker").textContent = stageLabel;
   document.getElementById("oll-hint-title").textContent = h.title;
   setHintDiagram(document.getElementById("oll-hint-diagram"), h.diagram);
@@ -503,8 +503,8 @@ function setPanelCopy(mode) {
     btnHint.textContent = "F2L hint";
   } else if (mode === "oll") {
     const d = getOllDrillInfo();
-    title.textContent = "2-look OLL — fixed case order";
-    blurb.innerHTML = `Practice in order (now <strong>${d.name}</strong> · ${d.index + 1}/${d.total}). <strong>Again</strong> = same case · <strong>Next OLL</strong> = next in the list.`;
+    title.textContent = "Beginner OLL — only 2 algs";
+    blurb.innerHTML = `Now <strong>${d.name}</strong> · ${d.index + 1}/${d.total}. Cross = <code class="inline-alg">F R U R' U' F'</code> · Finish = Sune. <strong>Again</strong> / <strong>Next OLL</strong>. From <a class="ext-link" href="https://www.youtube.com/watch?v=x6EoaxxbImI" target="_blank" rel="noopener">CFOP Cubing</a>.`;
     btnOll.hidden = false;
     btnOllAgain.hidden = false;
     btnHint.textContent = "OLL hint";

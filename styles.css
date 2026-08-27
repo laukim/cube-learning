@@ -30,7 +30,7 @@
 html,
 body {
   margin: 0;
-  min-height: 100%;
+  height: 100%;
 }
 
 body {
@@ -38,7 +38,11 @@ body {
   color: var(--ink);
   background: var(--bg);
   line-height: 1.45;
-  overflow-x: hidden;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  height: 100dvh;
 }
 
 [hidden] {
@@ -84,6 +88,7 @@ body {
   justify-content: space-between;
   gap: 1rem;
   padding: 1.25rem clamp(1rem, 3vw, 2rem) 0.5rem;
+  flex-shrink: 0;
 }
 
 .brand {
@@ -130,10 +135,14 @@ body {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
   gap: clamp(1rem, 3vw, 2rem);
-  padding: 0.75rem clamp(1rem, 3vw, 2rem) 2rem;
-  align-items: start;
+  padding: 0.75rem clamp(1rem, 3vw, 2rem) 1rem;
+  align-items: stretch;
   max-width: 1320px;
   margin: 0 auto;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
 }
 
 .stage {
@@ -144,7 +153,8 @@ body {
   box-shadow: var(--shadow);
   padding: 1rem 0.85rem 1.15rem;
   overflow: hidden;
-  min-height: min(78vh, 760px);
+  min-height: 0;
+  height: 100%;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -190,10 +200,10 @@ body {
   align-items: stretch;
   justify-content: center;
   gap: 0.4rem;
-  min-height: min(62vh, 580px);
+  min-height: 0;
   height: 100%;
   padding: 0.25rem;
-  touch-action: pan-y;
+  touch-action: none;
 }
 
 .orbit-hint {
@@ -689,6 +699,10 @@ body {
   backdrop-filter: blur(10px);
   padding: 1.25rem clamp(1rem, 2vw, 1.4rem) 1.4rem;
   box-shadow: var(--shadow);
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .panel-intro h1 {
@@ -1261,11 +1275,13 @@ body {
   flex-wrap: wrap;
   gap: 0.75rem 1.25rem;
   justify-content: space-between;
-  padding: 0 1.25rem 1.5rem;
+  padding: 0 1.25rem max(0.75rem, env(safe-area-inset-bottom));
   color: var(--muted);
   font-size: 0.85rem;
   max-width: 1280px;
   margin: 0 auto;
+  flex-shrink: 0;
+  width: 100%;
 }
 
 kbd {
@@ -1280,15 +1296,25 @@ kbd {
 @media (max-width: 920px) {
   .layout {
     grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 0.95fr) minmax(0, 1.05fr);
+    gap: 0.65rem;
+    padding: 0.5rem 0.75rem 0.5rem;
   }
 
   .topbar {
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: baseline;
+    padding: 0.65rem 0.75rem 0.25rem;
+  }
+
+  .brand-tag {
+    font-size: 0.78rem;
   }
 
   .stage {
-    min-height: min(68vh, 620px);
+    min-height: 0;
+    height: auto;
+    padding: 0.65rem 0.65rem 0.75rem;
   }
 
   .stage-main {
@@ -1296,11 +1322,11 @@ kbd {
   }
 
   .cube-wrap {
-    min-height: min(52vh, 480px);
+    min-height: 0;
   }
 
   #erno-container {
-    min-height: min(48vh, 440px);
+    min-height: 0;
   }
 
   .cube-scene {
@@ -1312,6 +1338,10 @@ kbd {
   .net-full {
     grid-template-columns: repeat(4, minmax(0, 58px));
     grid-template-rows: repeat(3, 58px);
+  }
+
+  .foot {
+    display: none;
   }
 }
 
@@ -1336,11 +1366,15 @@ kbd {
   }
 
   .cube-wrap {
-    min-height: min(46vh, 380px);
+    min-height: 0;
   }
 
   #erno-container {
-    min-height: min(42vh, 340px);
+    min-height: 0;
+  }
+
+  .solve-timer-clock {
+    font-size: 1.45rem;
   }
 }
 

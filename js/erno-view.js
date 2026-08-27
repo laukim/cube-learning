@@ -97,6 +97,11 @@ export function createErnoCube(container, hooks) {
     cube.setSize(w, h);
   };
   resize();
+  let resizeObserver = null;
+  if (typeof ResizeObserver === "function") {
+    resizeObserver = new ResizeObserver(() => resize());
+    resizeObserver.observe(container);
+  }
 
   function orbitThresholdPx() {
     const size = Math.min(container.clientWidth || 320, container.clientHeight || 280);
@@ -178,23 +183,6 @@ export function createErnoCube(container, hooks) {
     healVisualSoon();
     hooks.onShuffleComplete?.();
   });
-
-  // Phone/tablet: one-finger drag on empty space should scroll the page, not orbit
-  // the cube. Piece drags still turn faces. Use y / x2 to reorient.
-  // ERNO's loop keeps writing controls.enabled — lock it off on coarse pointers.
-  const touchUi =
-    typeof window.matchMedia === "function" &&
-    window.matchMedia("(pointer: coarse), (hover: none)").matches;
-  if (touchUi) {
-    Object.defineProperty(cube.controls, "enabled", {
-      get() {
-        return false;
-      },
-      set() {},
-      configurable: true,
-    });
-    cube.controls.update = function () {};
-  }
 
   const onPointerDown = (e) => {
     if (e.type === "mousedown" && e.button !== 0) return;
@@ -305,6 +293,11 @@ export function createErnoCube(container, hooks) {
       container.removeEventListener("touchcancel", onPointerUp);
       window.removeEventListener("mousemove", onPointerMove);
       window.removeEventListener("mouseup", onPointerUp);
+      try {
+        resizeObserver?.disconnect();
+      } catch {
+        /* ignore */
+      }
       try {
         cube.domElement?.remove();
       } catch {

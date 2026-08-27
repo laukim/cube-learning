@@ -302,6 +302,253 @@ body {
   display: none;
 }
 
+.solve-timer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.55rem 0.75rem 0.65rem;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.solve-timer[data-phase="armed"] {
+  border-color: rgba(255, 200, 87, 0.35);
+}
+
+.solve-timer[data-phase="running"] {
+  border-color: rgba(109, 255, 176, 0.28);
+  background: var(--accent-dim);
+}
+
+.solve-timer[data-phase="done"] {
+  border-color: rgba(109, 255, 176, 0.4);
+}
+
+.solve-timer-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem 1.25rem;
+  flex-wrap: wrap;
+}
+
+.solve-timer-clock-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 0.65rem;
+}
+
+.solve-timer-label {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.solve-timer-clock {
+  font-family: var(--font-display);
+  font-size: clamp(1.55rem, 3.2vw, 2.05rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.solve-timer[data-phase="armed"] .solve-timer-clock {
+  color: var(--warn);
+}
+
+.solve-timer[data-phase="running"] .solve-timer-clock,
+.solve-timer[data-phase="done"] .solve-timer-clock {
+  color: var(--accent);
+}
+
+.solve-timer-status {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.solve-timer-splits {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.solve-timer-splits li {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(0, 0, 0, 0.2);
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.solve-timer-splits li strong {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.solve-timer-splits li.is-live {
+  border-color: rgba(109, 255, 176, 0.35);
+  color: var(--accent);
+}
+
+.solve-timer-splits li.is-live strong {
+  color: var(--accent);
+}
+
+.step-time {
+  display: inline-block;
+  margin-left: 0.4rem;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.step.is-done .step-time,
+.step.is-current .step-time {
+  color: var(--accent);
+}
+
+.solve-analysis {
+  margin-top: 0.85rem;
+  padding: 1rem 1rem 1.05rem;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.analysis-hero {
+  margin-bottom: 0.95rem;
+}
+
+.analysis-kicker {
+  margin: 0 0 0.2rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.analysis-total {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.7rem, 3.4vw, 2.2rem);
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.analysis-hero-meta {
+  margin: 0.3rem 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.analysis-groups {
+  display: grid;
+  gap: 0.55rem;
+  margin-bottom: 0.95rem;
+}
+
+.analysis-group-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.88rem;
+}
+
+.analysis-group-head strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.analysis-group-meta {
+  display: block;
+  margin-top: 0.15rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.analysis-bar-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  margin-top: 0.28rem;
+}
+
+.analysis-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: rgba(232, 242, 236, 0.35);
+}
+
+.analysis-bar-fill.is-slowest {
+  background: var(--accent);
+}
+
+.analysis-rows {
+  list-style: none;
+  margin: 0 0 0.95rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.analysis-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.2rem 0.65rem;
+  align-items: baseline;
+}
+
+.analysis-row .analysis-bar-track {
+  grid-column: 1 / -1;
+  margin-top: 0;
+}
+
+.analysis-row-name {
+  font-size: 0.88rem;
+}
+
+.analysis-row-moves,
+.analysis-row-time {
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.analysis-row.is-slowest .analysis-row-name,
+.analysis-row.is-slowest .analysis-row-time {
+  color: var(--accent);
+}
+
+.analysis-insights {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.analysis-insights li + li {
+  margin-top: 0.4rem;
+}
+
 .move-trace {
   display: flex;
   flex-wrap: wrap;

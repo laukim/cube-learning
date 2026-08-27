@@ -71,6 +71,17 @@
           </div>
         </div>
 
+        <div class="solve-timer" id="solve-timer" data-phase="idle">
+          <div class="solve-timer-row">
+            <div class="solve-timer-clock-wrap">
+              <span class="solve-timer-label" id="solve-timer-label">Timer</span>
+              <time class="solve-timer-clock" id="solve-timer-clock">0.00</time>
+            </div>
+            <p class="solve-timer-status" id="solve-timer-status">Scramble to time a full solve</p>
+          </div>
+          <ol class="solve-timer-splits" id="solve-timer-splits" hidden></ol>
+        </div>
+
         <div class="move-trace" id="move-trace" aria-live="polite" aria-label="Move history">
           <span class="move-trace-label">Moves</span>
           <code class="move-trace-alg" id="move-trace-alg">—</code>
@@ -99,7 +110,8 @@
           <h1 id="panel-title">White on bottom. Yellow on top. Seven steps you already know.</h1>
           <p id="panel-blurb">
             Righty = <code class="inline-alg">R U R' U'</code> · Lefty =
-            <code class="inline-alg">L' U' L U</code>. Scramble, match your cube, or follow hints one step at a time.
+            <code class="inline-alg">L' U' L U</code>. Scramble — first turn starts the timer and splits each of the 7
+            steps.
           </p>
         </div>
 
@@ -142,8 +154,11 @@
           </div>
 
           <div class="solved-banner" id="solved-banner" hidden>
-            <strong>Solved.</strong> All layers done.
+            <strong id="solved-banner-title">Solved.</strong>
+            <span id="solved-banner-copy"> All layers done.</span>
           </div>
+
+          <div class="solve-analysis" id="solve-analysis" hidden></div>
         </div>
 
         <div class="panel-body" id="panel-cross" data-panel="cross" hidden>

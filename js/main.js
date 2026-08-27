@@ -16,6 +16,21 @@ import { renderCaseDiagram } from "./case-diagram.js";
 import { analyzeOll, expandWideAlg, getOllDrillInfo, OLL_TIPS, scrambleOll } from "./oll-trainer.js";
 import { analyzePll, getPllDrillInfo, PLL_TIPS, scramblePll } from "./pll-trainer.js";
 import { ALG_LIBRARY, analyze, STEPS } from "./solver.js";
+import {
+  armTimer,
+  buildAnalysis,
+  createTimer,
+  currentSplitMs,
+  elapsedMs,
+  formatClock,
+  loadSolveHistory,
+  noteProgress,
+  recordSolve,
+  renderAnalysisHtml,
+  resetTimer,
+  SPLIT_SHORT,
+  startTimer,
+} from "./solve-timer.js";
 
 function setHintCopy(el, text) {
   if (!el) return;
@@ -56,6 +71,13 @@ const ernoBox = document.getElementById("erno-container");
 const stepsEl = document.getElementById("steps");
 const hintCard = document.getElementById("hint-card");
 const solvedBanner = document.getElementById("solved-banner");
+const solvedBannerTitle = document.getElementById("solved-banner-title");
+const solvedBannerCopy = document.getElementById("solved-banner-copy");
+const solveTimerEl = document.getElementById("solve-timer");
+const solveTimerClock = document.getElementById("solve-timer-clock");
+const solveTimerStatus = document.getElementById("solve-timer-status");
+const solveTimerSplits = document.getElementById("solve-timer-splits");
+const solveAnalysisEl = document.getElementById("solve-analysis");
 
 let facelets = solvedFacelets();
 let paintColor = "white";
@@ -75,6 +97,9 @@ let syncingFromUi = false;
 let undoingMove = false;
 /** User-facing move notation (not scramble playback). */
 let moveHistory = [];
+let solveTimer = createTimer();
+let timerRaf = 0;
+let analysisShownForSolve = false;
 
 const MOVE_PAD_KEY = "bylayer-show-move-pad";
 const stageMain = document.querySelector(".stage-main");
@@ -127,6 +152,132 @@ function recordTwist(move) {
   updateMoveTrace();
 }
 
+function stopTimerTick() {
+  if (timerRaf) {
+    cancelAnimationFrame(timerRaf);
+    timerRaf = 0;
+  }
+}
+
+function startTimerTick() {
+  stopTimerTick();
+  const loop = (now) => {
+    paintTimer(now);
+    if (solveTimer.phase === "running") timerRaf = requestAnimationFrame(loop);
+  };
+  timerRaf = requestAnimationFrame(loop);
+}
+
+function hideSolveAnalysis() {
+  analysisShownForSolve = false;
+  if (solveAnalysisEl) {
+    solveAnalysisEl.hidden = true;
+    solveAnalysisEl.innerHTML = "";
+  }
+  if (solvedBannerTitle) solvedBannerTitle.textContent = "Solved.";
+  if (solvedBannerCopy) solvedBannerCopy.textContent = " All layers done.";
+}
+
+function showSolveAnalysis() {
+  if (analysisShownForSolve || solveTimer.phase !== "done") return;
+  analysisShownForSolve = true;
+  const history = loadSolveHistory();
+  const previous = history[history.length - 1];
+  const totalMoves = solveTimer.splits.reduce((sum, s) => sum + s.moves, 0);
+  const analysis = buildAnalysis({
+    totalMs: elapsedMs(solveTimer, solveTimer.endMs),
+    splits: solveTimer.splits,
+    totalMoves,
+    previousTotalMs: previous?.totalMs ?? null,
+  });
+  recordSolve({
+    at: Date.now(),
+    totalMs: analysis.totalMs,
+    totalMoves: analysis.totalMoves,
+    splits: solveTimer.splits.map((s) => ({ id: s.id, ms: s.ms, moves: s.moves })),
+  });
+  if (solvedBannerTitle) solvedBannerTitle.textContent = `Solved in ${formatClock(analysis.totalMs)}.`;
+  if (solvedBannerCopy) solvedBannerCopy.textContent = ` ${analysis.totalMoves} moves · slowest ${analysis.slowest.short}.`;
+  if (solveAnalysisEl) {
+    solveAnalysisEl.hidden = false;
+    solveAnalysisEl.innerHTML = renderAnalysisHtml(analysis);
+    if (appMode === "guide") {
+      solveAnalysisEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }
+}
+
+function timerStatusText(now) {
+  if (solveTimer.phase === "armed") return "Ready — first turn starts the clock";
+  if (solveTimer.phase === "done") return `Solved · ${formatClock(elapsedMs(solveTimer, now))}`;
+  if (solveTimer.phase === "running") {
+    const live = solveTimer.lastDone < STEPS.length ? STEPS[solveTimer.lastDone] : null;
+    if (!live) return "Running";
+    return `Step ${solveTimer.lastDone + 1} · ${live.title} · ${formatClock(currentSplitMs(solveTimer, now))}`;
+  }
+  return "Scramble to time a full solve";
+}
+
+function paintTimerSplits(now) {
+  if (!solveTimerSplits) return;
+  const liveIndex = solveTimer.phase === "running" && solveTimer.lastDone < STEPS.length ? solveTimer.lastDone : -1;
+  const chips = [];
+  for (const split of solveTimer.splits) {
+    chips.push(
+      `<li><span>${SPLIT_SHORT[split.id] || split.title}</span><strong>${formatClock(split.ms)}</strong></li>`
+    );
+  }
+  if (liveIndex >= 0) {
+    const step = STEPS[liveIndex];
+    chips.push(
+      `<li class="is-live"><span>${SPLIT_SHORT[step.id] || step.title}</span><strong>${formatClock(currentSplitMs(solveTimer, now))}</strong></li>`
+    );
+  }
+  solveTimerSplits.hidden = chips.length === 0;
+  solveTimerSplits.innerHTML = chips.join("");
+}
+
+function paintTimer(now = performance.now()) {
+  if (!solveTimerEl) return;
+  solveTimerEl.dataset.phase = solveTimer.phase;
+  solveTimerClock.textContent = formatClock(elapsedMs(solveTimer, now));
+  solveTimerStatus.textContent = timerStatusText(now);
+  paintTimerSplits(now);
+}
+
+function syncSolveTimer() {
+  if (solveTimer.phase !== "running") {
+    paintTimer();
+    return;
+  }
+  const result = analyze(facelets);
+  noteProgress(solveTimer, {
+    now: performance.now(),
+    moveCount: moveHistory.length,
+    stepsDone: result.stepsDone,
+    solved: result.solved,
+  });
+  if (solveTimer.phase === "done") {
+    stopTimerTick();
+    showSolveAnalysis();
+  }
+  paintTimer();
+}
+
+function readyFullSolveTimer() {
+  stopTimerTick();
+  armTimer(solveTimer);
+  hideSolveAnalysis();
+  paintTimer();
+}
+
+function clearSolveTimer() {
+  stopTimerTick();
+  resetTimer(solveTimer);
+  hideSolveAnalysis();
+  paintTimer();
+}
+
 function advanceStickyOnTwist(cubeMove) {
   if (!cubeMove) return;
   const sticky = appMode === "pll" ? stickyPllHint : appMode === "oll" ? stickyOllHint : null;
@@ -149,6 +300,11 @@ function handleTwist(payload) {
       : payload;
 
   try {
+    if (solveTimer.phase === "armed") {
+      const alreadyDone = analyze(facelets).stepsDone.filter(Boolean).length;
+      startTimer(solveTimer, performance.now(), moveHistory.length, alreadyDone);
+      startTimerTick();
+    }
     if (!virtual && cubeMove) {
       applyMove(facelets, cubeMove);
       advanceStickyOnTwist(cubeMove);
@@ -172,6 +328,8 @@ function mountErno() {
 }
 
 function refreshGuide() {
+  syncSolveTimer();
+
   if (appMode === "cross") {
     refreshCross();
     return;
@@ -190,14 +348,17 @@ function refreshGuide() {
   }
 
   const result = analyze(facelets);
+  const splitByIndex = new Map(solveTimer.splits.map((s) => [s.index, s]));
   stepsEl.innerHTML = STEPS.map((step, i) => {
     const done = result.stepsDone[i];
     const current = !result.solved && result.stepIndex === i;
     const cls = ["step", done ? "is-done" : "", current ? "is-current" : ""].filter(Boolean).join(" ");
+    const split = splitByIndex.get(i);
+    const timeHtml = split ? `<span class="step-time">${formatClock(split.ms)}</span>` : "";
     return `<li class="${cls}">
       <span class="step-num">${done ? "✓" : i + 1}</span>
       <div>
-        <h3>${step.title}</h3>
+        <h3>${step.title}${timeHtml}</h3>
         <p>${step.blurb}</p>
       </div>
     </li>`;
@@ -518,7 +679,7 @@ function setPanelCopy(mode) {
   } else {
     title.textContent = "White on bottom. Yellow on top. Seven steps you already know.";
     blurb.innerHTML =
-      "Righty = <code class=\"inline-alg\">R U R' U'</code> · Lefty = <code class=\"inline-alg\">L' U' L U</code>. Scramble, match your cube, or follow hints one step at a time.";
+      "Righty = <code class=\"inline-alg\">R U R' U'</code> · Lefty = <code class=\"inline-alg\">L' U' L U</code>. Scramble — first turn starts the timer and splits each of the 7 steps.";
     btnScramble.hidden = false;
     btnHint.textContent = "Next hint";
   }
@@ -555,17 +716,26 @@ function resetCube() {
   clearMoveHistory();
   stickyOllHint = null;
   stickyPllHint = null;
+  clearSolveTimer();
   mountErno();
   refreshGuide();
 }
 
-function playScrambleAlg(alg) {
+function playScrambleAlg(alg, { timeSolve = false } = {}) {
   facelets = solvedFacelets();
   if (alg) applyAlg(facelets, alg);
   undoingMove = false;
   clearMoveHistory();
   stickyOllHint = null;
   stickyPllHint = null;
+  if (timeSolve) {
+    stopTimerTick();
+    resetTimer(solveTimer);
+    hideSolveAnalysis();
+    paintTimer();
+  } else {
+    clearSolveTimer();
+  }
   mountErno();
   if (alg) {
     syncingFromUi = true;
@@ -579,7 +749,10 @@ function playScrambleAlg(alg) {
       erno.setSuppressOrbitDetect(false);
       updateMoveTrace();
       erno.healVisual();
+      if (timeSolve) readyFullSolveTimer();
     });
+  } else if (timeSolve) {
+    readyFullSolveTimer();
   }
   refreshGuide();
 }
@@ -642,7 +815,7 @@ document.getElementById("btn-reset").addEventListener("click", () => {
 document.getElementById("btn-scramble").addEventListener("click", () => {
   const draft = solvedFacelets();
   const alg = scrambleCube(draft);
-  playScrambleAlg(alg);
+  playScrambleAlg(alg, { timeSolve: true });
 });
 
 document.getElementById("btn-cross-case").addEventListener("click", () => {
@@ -841,6 +1014,8 @@ document.getElementById("btn-net-apply").addEventListener("click", () => {
   mountErno();
   refreshGuide();
   document.getElementById("tab-guide").click();
+  if (!analyze(facelets).solved) readyFullSolveTimer();
+  else clearSolveTimer();
 });
 
 document.getElementById("tab-match").addEventListener("click", () => {
@@ -935,3 +1110,4 @@ setPanelCopy("guide");
 mountErno();
 render();
 clearMoveHistory();
+paintTimer();

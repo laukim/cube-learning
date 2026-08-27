@@ -85,7 +85,7 @@
 #erno-container {
   width: 100%;
   height: 100%;
-  min-height: 0;
+  min-height: 220px;
   flex: 1;
   position: relative;
   touch-action: none;
@@ -93,4 +93,19 @@
 
 #erno-container .cube {
   cursor: grab;
+}
+
+@media (max-width: 920px) {
+  #erno-container {
+    flex: 0 0 auto;
+    height: min(42dvh, 340px);
+    min-height: 240px;
+  }
+}
+
+@media (max-width: 520px) {
+  #erno-container {
+    height: min(38dvh, 300px);
+    min-height: 220px;
+  }
 }

@@ -4,7 +4,6 @@
  *
  * Orbit is look-only: F/R/L/B always mean fixed cube faces (green = F with white
  * on bottom). Dragging around the cube does not remap pad/keyboard notation.
- * Orbit needs a deliberate slide (~35% of the cube) before it sticks.
  */
 
 function moveToErno(move) {
@@ -71,29 +70,120 @@ export function createErnoCube(container, hooks) {
   }
   applyHomeTilt();
 
-  // Snappier than ERNO defaults (4 / 0.25) — orbit outside pieces should feel lively
-  try {
-    if (cube.controls) {
-      cube.controls.rotationSpeed = 7;
-      cube.controls.damping = 0.2;
-    }
-  } catch {
-    /* ignore */
+  // ERNO.Controls only orbits when the pointer misses every cubelet, uses
+  // pageX * devicePixelRatio (broken on iPhone), and our old snap-back undid
+  // any rotation that did happen. Own look-around here instead.
+  cube.controls.update = () => {};
+
+  const TAP_PX = 10;
+  const ORBIT_SPEED = 0.008;
+  let downPt = null;
+  let lastPt = null;
+  let quatAtDown = null;
+  let orbiting = false;
+
+  function midpoint(touches) {
+    return {
+      x: (touches[0].clientX + touches[1].clientX) / 2,
+      y: (touches[0].clientY + touches[1].clientY) / 2,
+    };
   }
 
-  /**
-   * Orbit tracks freely while dragging. On release, short nudges snap back
-   * so accidental taps don’t leave the view rotated.
-   */
-  let orbitPointerDown = false;
-  let quatAtDown = null;
-  let pointerStart = null;
-  let orbitArmed = false;
-  let faceDragPossibly = false;
+  function orbitBy(dx, dy) {
+    cube.rotation.y += dx * ORBIT_SPEED;
+    cube.rotation.x += dy * ORBIT_SPEED;
+  }
+
+  function eventClient(e) {
+    if (e.touches && e.touches.length >= 2) return midpoint(e.touches);
+    if (e.touches && e.touches[0]) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    if (e.changedTouches && e.changedTouches[0]) {
+      return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+    }
+    return { x: e.clientX, y: e.clientY };
+  }
+
+  function hitPiece(pt) {
+    const el = document.elementFromPoint(pt.x, pt.y);
+    if (!el || typeof el.closest !== "function") return false;
+    return !!el.closest(".sticker, .faceExtroverted, .cubelet");
+  }
+
+  function cancelFaceDrag() {
+    try {
+      cube.mouseInteraction.active = false;
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const onPointerDown = (e) => {
+    if (e.type === "mousedown" && e.button !== 0) return;
+    downPt = eventClient(e);
+    lastPt = downPt;
+    orbiting = false;
+    try {
+      quatAtDown = cube.object3D.quaternion.clone();
+    } catch {
+      quatAtDown = null;
+    }
+    if (e.touches && e.touches.length >= 2) {
+      e.preventDefault();
+      e.stopPropagation();
+      orbiting = true;
+      cancelFaceDrag();
+      return;
+    }
+    if (downPt && !hitPiece(downPt)) {
+      orbiting = true;
+      e.stopPropagation();
+      if (e.cancelable) e.preventDefault();
+    }
+  };
+
+  const onPointerMove = (e) => {
+    if (e.touches && e.touches.length >= 2) {
+      e.preventDefault();
+      orbiting = true;
+      cancelFaceDrag();
+      const p = midpoint(e.touches);
+      if (lastPt) orbitBy(p.x - lastPt.x, p.y - lastPt.y);
+      lastPt = p;
+      return;
+    }
+    if (!orbiting || !lastPt) return;
+    if (e.cancelable) e.preventDefault();
+    const p = eventClient(e);
+    orbitBy(p.x - lastPt.x, p.y - lastPt.y);
+    lastPt = p;
+  };
+
+  const onPointerUp = (e) => {
+    if (e.touches && e.touches.length >= 2) {
+      lastPt = midpoint(e.touches);
+      orbiting = true;
+      return;
+    }
+    if (!downPt) {
+      orbiting = false;
+      lastPt = null;
+      return;
+    }
+    const p = eventClient(e);
+    const dist = Math.hypot(p.x - downPt.x, p.y - downPt.y);
+    // Tap jitter only — never undo a real look-around drag.
+    if (!orbiting && dist < TAP_PX && quatAtDown && cube.object3D?.quaternion) {
+      cube.object3D.quaternion.copy(quatAtDown);
+    }
+    downPt = null;
+    lastPt = null;
+    quatAtDown = null;
+    orbiting = false;
+  };
 
   const resize = () => {
-    const w = container.clientWidth || 320;
-    const h = container.clientHeight || 280;
+    const w = Math.max(container.clientWidth || 0, 220);
+    const h = Math.max(container.clientHeight || 0, 220);
     cube.setSize(w, h);
   };
   resize();
@@ -101,19 +191,6 @@ export function createErnoCube(container, hooks) {
   if (typeof ResizeObserver === "function") {
     resizeObserver = new ResizeObserver(() => resize());
     resizeObserver.observe(container);
-  }
-
-  function orbitThresholdPx() {
-    const size = Math.min(container.clientWidth || 320, container.clientHeight || 280);
-    return Math.max(24, size * 0.08);
-  }
-
-  function eventClient(e) {
-    if (e.touches && e.touches[0]) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    if (e.changedTouches && e.changedTouches[0]) {
-      return { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
-    }
-    return { x: e.clientX, y: e.clientY };
   }
 
   function revealStickers() {
@@ -184,52 +261,13 @@ export function createErnoCube(container, hooks) {
     hooks.onShuffleComplete?.();
   });
 
-  const onPointerDown = (e) => {
-    if (e.type === "mousedown" && e.button !== 0) return;
-    orbitPointerDown = true;
-    orbitArmed = false;
-    faceDragPossibly = false;
-    pointerStart = eventClient(e);
-    try {
-      quatAtDown = cube.object3D.quaternion.clone();
-    } catch {
-      quatAtDown = null;
-    }
-  };
-
-  const onPointerMove = (e) => {
-    if (!orbitPointerDown) return;
-    if (cube.mouseInteraction?.active) faceDragPossibly = true;
-    if (faceDragPossibly || orbitArmed || !pointerStart) return;
-    const p = eventClient(e);
-    const dx = p.x - pointerStart.x;
-    const dy = p.y - pointerStart.y;
-    if (Math.hypot(dx, dy) >= orbitThresholdPx()) {
-      orbitArmed = true;
-    }
-  };
-
-  const onPointerUp = () => {
-    if (!orbitPointerDown) return;
-    orbitPointerDown = false;
-    const wasFace = faceDragPossibly || cube.mouseInteraction?.active;
-    faceDragPossibly = false;
-
-    // Short / unintentional orbit → restore start orientation (don’t stick)
-    if (!wasFace && !orbitArmed && quatAtDown && cube.object3D?.quaternion) {
-      cube.object3D.quaternion.copy(quatAtDown);
-    }
-
-    quatAtDown = null;
-    pointerStart = null;
-    orbitArmed = false;
-  };
-
-  container.addEventListener("mousedown", onPointerDown);
-  container.addEventListener("touchstart", onPointerDown, { passive: true });
-  container.addEventListener("touchmove", onPointerMove, { passive: true });
-  container.addEventListener("touchend", onPointerUp);
-  container.addEventListener("touchcancel", onPointerUp);
+  const mouseListen = { capture: true };
+  const touchListen = { passive: false, capture: true };
+  container.addEventListener("mousedown", onPointerDown, mouseListen);
+  container.addEventListener("touchstart", onPointerDown, touchListen);
+  container.addEventListener("touchmove", onPointerMove, touchListen);
+  container.addEventListener("touchend", onPointerUp, touchListen);
+  container.addEventListener("touchcancel", onPointerUp, touchListen);
   window.addEventListener("mousemove", onPointerMove);
   window.addEventListener("mouseup", onPointerUp);
 
@@ -286,11 +324,11 @@ export function createErnoCube(container, hooks) {
     },
     /** Hard reset: destroy and recreate (caller should replace this handle). */
     destroy() {
-      container.removeEventListener("mousedown", onPointerDown);
-      container.removeEventListener("touchstart", onPointerDown);
-      container.removeEventListener("touchmove", onPointerMove);
-      container.removeEventListener("touchend", onPointerUp);
-      container.removeEventListener("touchcancel", onPointerUp);
+      container.removeEventListener("mousedown", onPointerDown, mouseListen);
+      container.removeEventListener("touchstart", onPointerDown, touchListen);
+      container.removeEventListener("touchmove", onPointerMove, touchListen);
+      container.removeEventListener("touchend", onPointerUp, touchListen);
+      container.removeEventListener("touchcancel", onPointerUp, touchListen);
       window.removeEventListener("mousemove", onPointerMove);
       window.removeEventListener("mouseup", onPointerUp);
       try {

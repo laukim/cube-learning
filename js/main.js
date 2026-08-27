@@ -808,6 +808,23 @@ btnTogglePad.addEventListener("click", () => {
   setMovePadVisible(visible);
 });
 
+// Safari treats rapid taps as double-tap-to-zoom. preventDefault on touchend
+// keeps Undo / toolbar buttons as plain taps.
+document.querySelectorAll(".toolbar .btn, .move-btn").forEach((el) => {
+  el.addEventListener(
+    "touchend",
+    (e) => {
+      if (el.disabled) {
+        e.preventDefault();
+        return;
+      }
+      e.preventDefault();
+      el.click();
+    },
+    { passive: false }
+  );
+});
+
 document.getElementById("btn-reset").addEventListener("click", () => {
   resetCube();
 });

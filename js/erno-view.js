@@ -111,11 +111,29 @@ export function createErnoCube(container, hooks) {
     return { x: e.clientX, y: e.clientY };
   }
 
+  function revealStickers() {
+    const root = cube.domElement;
+    if (!root) return;
+    root.querySelectorAll(".faceExtroverted").forEach((el) => {
+      el.style.display = "block";
+      el.style.visibility = "visible";
+      el.style.opacity = "1";
+    });
+    root.querySelectorAll(".sticker").forEach((el) => {
+      el.style.display = "block";
+      el.style.visibility = "visible";
+      el.style.opacity = "1";
+    });
+  }
+
   function healVisual() {
     try {
       cube.showPlastics();
       cube.showStickers();
-      cube.showIntroverts(null, true);
+      cube.showExtroverts();
+      // Internal faces are dark plastic with no colour — hide them after a flip
+      // so they cannot cover the sticker that should be showing.
+      cube.hideIntroverts(null, true);
       cube.cubelets.forEach((c) => {
         if (!c.radius) return;
         c.radius = 0;
@@ -128,9 +146,19 @@ export function createErnoCube(container, hooks) {
         c.updateMatrix();
         c.matrixSlice.copy(c.matrix);
       });
+      revealStickers();
     } catch {
       /* ignore */
     }
+  }
+
+  function healVisualSoon() {
+    healVisual();
+    requestAnimationFrame(() => {
+      healVisual();
+      window.setTimeout(healVisual, 80);
+      window.setTimeout(healVisual, 360);
+    });
   }
 
   cube.addEventListener("onTwistComplete", (e) => {
@@ -143,13 +171,30 @@ export function createErnoCube(container, hooks) {
       viewMove: cubeMove,
       virtual: false,
     });
-    healVisual();
+    healVisualSoon();
   });
 
   cube.addEventListener("onShuffleComplete", () => {
-    healVisual();
+    healVisualSoon();
     hooks.onShuffleComplete?.();
   });
+
+  // Phone/tablet: one-finger drag on empty space should scroll the page, not orbit
+  // the cube. Piece drags still turn faces. Use y / x2 to reorient.
+  // ERNO's loop keeps writing controls.enabled — lock it off on coarse pointers.
+  const touchUi =
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(pointer: coarse), (hover: none)").matches;
+  if (touchUi) {
+    Object.defineProperty(cube.controls, "enabled", {
+      get() {
+        return false;
+      },
+      set() {},
+      configurable: true,
+    });
+    cube.controls.update = function () {};
+  }
 
   const onPointerDown = (e) => {
     if (e.type === "mousedown" && e.button !== 0) return;
@@ -194,10 +239,11 @@ export function createErnoCube(container, hooks) {
 
   container.addEventListener("mousedown", onPointerDown);
   container.addEventListener("touchstart", onPointerDown, { passive: true });
+  container.addEventListener("touchmove", onPointerMove, { passive: true });
+  container.addEventListener("touchend", onPointerUp);
+  container.addEventListener("touchcancel", onPointerUp);
   window.addEventListener("mousemove", onPointerMove);
-  window.addEventListener("touchmove", onPointerMove, { passive: true });
   window.addEventListener("mouseup", onPointerUp);
-  window.addEventListener("touchend", onPointerUp);
 
   return {
     cube,
@@ -242,7 +288,7 @@ export function createErnoCube(container, hooks) {
           cube.twistQueue.future.length > 0 ||
           cube.historyQueue.future.length > 0;
         if (!busy) {
-          healVisual();
+          healVisualSoon();
           cb?.();
           return;
         }
@@ -254,10 +300,11 @@ export function createErnoCube(container, hooks) {
     destroy() {
       container.removeEventListener("mousedown", onPointerDown);
       container.removeEventListener("touchstart", onPointerDown);
+      container.removeEventListener("touchmove", onPointerMove);
+      container.removeEventListener("touchend", onPointerUp);
+      container.removeEventListener("touchcancel", onPointerUp);
       window.removeEventListener("mousemove", onPointerMove);
-      window.removeEventListener("touchmove", onPointerMove);
       window.removeEventListener("mouseup", onPointerUp);
-      window.removeEventListener("touchend", onPointerUp);
       try {
         cube.domElement?.remove();
       } catch {

@@ -28,6 +28,7 @@
   height: 1em;
   background-color: #111;
   text-align: center;
+  -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
   padding: 0.05em;
   box-sizing: border-box;
@@ -51,6 +52,10 @@
   background-color: #f0f;
   border-radius: 0.1em;
   text-align: center;
+  -webkit-transform: translateZ(0.6px);
+  transform: translateZ(0.6px);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 .cube .sticker.red {
@@ -83,7 +88,7 @@
   min-height: min(58vh, 540px);
   flex: 1;
   position: relative;
-  touch-action: none;
+  touch-action: pan-y;
 }
 
 #erno-container .cube {

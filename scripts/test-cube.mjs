@@ -90,7 +90,9 @@ noteProgress(t, {
   stepsDone: [true, false, false, false, false, false, false],
   solved: false,
 });
-assert(t.splits.length === 1, "undo pops splits");
+assert(t.splits.length === 3, "broken step keeps first-occurrence splits");
+assert(t.lastDone === 3, "lastDone does not recede");
+assert(t.splits[0].ms === 2500, "cross split stays");
 assert(elapsedMs(t, 9000) === 9000, "clock keeps running");
 
 noteProgress(t, {
@@ -101,6 +103,7 @@ noteProgress(t, {
 });
 assert(t.phase === "done", "solve stops timer");
 assert(t.splits.length === 7, "all seven splits");
+assert(t.splits[0].ms === 2500, "first cross time kept through solve");
 assert(t.endMs === 12000, "end time");
 
 const analysis = buildAnalysis({

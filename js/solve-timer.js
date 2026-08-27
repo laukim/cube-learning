@@ -129,18 +129,12 @@ export function currentSplitMs(t, now) {
   return Math.max(0, now - t.stepStartMs);
 }
 
-function restoreStepStart(t) {
-  const elapsedBefore = t.splits.reduce((sum, s) => sum + s.ms, 0);
-  const movesBefore = t.splits.reduce((sum, s) => sum + s.moves, 0);
-  t.stepStartMs = t.startMs + elapsedBefore;
-  t.stepStartMoves = movesBefore;
-}
-
 export function noteProgress(t, { now, moveCount, stepsDone, solved, steps = STEPS }) {
   if (t.phase !== "running") return t;
 
   const done = (stepsDone || []).filter(Boolean).length;
 
+  // First occurrence only — if they later break a finished step (or undo), keep the split.
   if (done > t.lastDone) {
     for (let i = t.lastDone; i < done; i++) {
       const lastOfBatch = i === done - 1;
@@ -156,10 +150,6 @@ export function noteProgress(t, { now, moveCount, stepsDone, solved, steps = STE
     t.lastDone = done;
     t.stepStartMs = now;
     t.stepStartMoves = moveCount;
-  } else if (done < t.lastDone) {
-    t.splits = t.splits.slice(0, done);
-    t.lastDone = done;
-    restoreStepStart(t);
   }
 
   if (solved) {

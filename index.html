@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0b1210" />
-    <meta name="description" content="Solve a 3×3 layer by layer — white cross to yellow corners, with live hints." />
+    <meta name="description" content="Solve a 3×3: white cross, F2L pairs, yellow face, headlights, then edges — with live hints." />
     <title>BY LAYER — 3×3 beginner solver</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="vendor/erno-cube.css" />
   </head>
-  <body>
+  <body class="hints-open">
     <div class="ambient" aria-hidden="true"></div>
 
     <header class="topbar">
@@ -23,7 +23,7 @@
         <span class="brand-mark" aria-hidden="true"></span>
         <span class="brand-name">BY LAYER</span>
       </a>
-      <p class="brand-tag">Cross · F2L · OLL · PLL · LBL</p>
+      <p class="brand-tag">Cross · F2L · OLL · PLL</p>
     </header>
 
     <main class="layout">
@@ -102,18 +102,26 @@
             <button type="button" class="btn btn-ghost" id="btn-oll-case" hidden>Next OLL</button>
             <button type="button" class="btn btn-ghost" id="btn-pll-again" hidden>Again</button>
             <button type="button" class="btn btn-ghost" id="btn-pll-case" hidden>Next PLL</button>
+            <button type="button" class="btn btn-ghost" id="btn-hints" aria-pressed="false" title="Show or hide the guide">
+              Hints
+            </button>
             <button type="button" class="btn btn-primary" id="btn-hint">Next hint</button>
           </div>
         </div>
       </section>
 
-      <aside class="panel" aria-label="Layer-by-layer guide">
+      <aside class="panel" id="guide-panel" aria-label="Layer-by-layer guide">
+        <div class="hints-sheet-bar">
+          <span class="hints-sheet-label">Guide</span>
+          <button type="button" class="btn btn-ghost hints-sheet-close" id="btn-close-hints">
+            Cube
+          </button>
+        </div>
         <div class="panel-intro" id="panel-intro">
-          <h1 id="panel-title">White on bottom. Yellow on top. Seven steps you already know.</h1>
+          <h1 id="panel-title">White on bottom. Yellow on top. Six steps you already do.</h1>
           <p id="panel-blurb">
-            Righty = <code class="inline-alg">R U R' U'</code> · Lefty =
-            <code class="inline-alg">L' U' L U</code>. Scramble — first turn starts the timer and splits each of the 7
-            steps.
+            Cross → F2L pairs → yellow cross → yellow face (Sune) → headlights (T-perm) → edges (U-perm). First turn
+            starts the timer.
           </p>
         </div>
 

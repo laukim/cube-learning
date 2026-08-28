@@ -599,7 +599,7 @@ function bothOnUHint(facelets, corner, edge) {
 export const F2L_TIPS = [
   {
     title: "What F2L is",
-    body: "Instead of white corners first, then middle edges, you put each corner+edge pair in together. White cross stays solved. Four pairs → first two layers done.",
+    body: "Each white corner goes in with its matching edge. White cross stays solved. Four pairs → first two layers done.",
   },
   {
     title: "How to practice here",

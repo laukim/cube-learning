@@ -107,6 +107,38 @@ const PHONE_PAD_KEY = "bylayer-phone-move-pad";
 function isCompactLayout() {
   return window.matchMedia("(max-width: 920px)").matches;
 }
+
+const btnHints = document.getElementById("btn-hints");
+const btnCloseHints = document.getElementById("btn-close-hints");
+const guidePanel = document.getElementById("guide-panel");
+let hintsPinned = false;
+let restoreHintsTimer = 0;
+
+function setHintsOpen(open) {
+  if (!isCompactLayout()) {
+    document.body.classList.remove("hints-open");
+    return;
+  }
+  document.body.classList.toggle("hints-open", open);
+  if (guidePanel) guidePanel.setAttribute("aria-hidden", open ? "false" : "true");
+  if (btnHints) {
+    btnHints.setAttribute("aria-pressed", open ? "true" : "false");
+    btnHints.textContent = open ? "Hide hints" : "Hints";
+  }
+}
+
+function enterPlayFocus() {
+  if (!isCompactLayout()) return;
+  hintsPinned = false;
+  window.clearTimeout(restoreHintsTimer);
+  setHintsOpen(false);
+}
+
+function scheduleRestoreHints() {
+  // Stay in play until Hints is tapped. Auto-opening the sheet after every
+  // flick made the guide cover the cube again.
+  window.clearTimeout(restoreHintsTimer);
+}
 const stageMain = document.querySelector(".stage-main");
 const movePad = document.getElementById("move-pad");
 const btnUndo = document.getElementById("btn-undo");
@@ -328,6 +360,8 @@ function mountErno() {
   erno = createErnoCube(ernoBox, {
     shouldIgnoreTwist: () => syncingFromUi,
     onTwist: handleTwist,
+    onPlayStart: enterPlayFocus,
+    onPlayEnd: scheduleRestoreHints,
   });
   updateMoveTrace();
 }
@@ -664,7 +698,7 @@ function setPanelCopy(mode) {
   } else if (mode === "f2l") {
     title.textContent = "F2L — corner and edge go in as a pair";
     blurb.innerHTML =
-      "You already solve corners, then edges. F2L does <strong>both at once</strong>. Cross stays. Use <code class=\"inline-alg\">y</code> so the pair you’re working on is <strong>front-right</strong>, then read the hint.";
+      "Pair each white corner with its edge and insert them together. Cross stays. Use <code class=\"inline-alg\">y</code> so the pair you’re working on is <strong>front-right</strong>, then read the hint.";
     btnF2l.hidden = false;
     btnHint.textContent = "F2L hint";
   } else if (mode === "oll") {
@@ -682,9 +716,9 @@ function setPanelCopy(mode) {
     btnPllAgain.hidden = false;
     btnHint.textContent = "PLL hint";
   } else {
-    title.textContent = "White on bottom. Yellow on top. Seven steps you already know.";
+    title.textContent = "White on bottom. Yellow on top. Six steps you already do.";
     blurb.innerHTML =
-      "Righty = <code class=\"inline-alg\">R U R' U'</code> · Lefty = <code class=\"inline-alg\">L' U' L U</code>. Scramble — first turn starts the timer and splits each of the 7 steps.";
+      "Cross → F2L pairs → yellow cross → yellow face (Sune) → headlights (T-perm) → edges (U-perm). First turn starts the timer.";
     btnScramble.hidden = false;
     btnHint.textContent = "Next hint";
   }
@@ -814,9 +848,22 @@ btnTogglePad.addEventListener("click", () => {
   setMovePadVisible(visible);
 });
 
+btnHints?.addEventListener("click", () => {
+  const open = !document.body.classList.contains("hints-open");
+  hintsPinned = open;
+  window.clearTimeout(restoreHintsTimer);
+  setHintsOpen(open);
+});
+
+btnCloseHints?.addEventListener("click", () => {
+  hintsPinned = false;
+  window.clearTimeout(restoreHintsTimer);
+  setHintsOpen(false);
+});
+
 // Safari treats rapid taps as double-tap-to-zoom. preventDefault on touchend
 // keeps Undo / toolbar buttons as plain taps.
-document.querySelectorAll(".toolbar .btn, .move-btn").forEach((el) => {
+document.querySelectorAll(".toolbar .btn, .move-btn, #btn-close-hints").forEach((el) => {
   el.addEventListener(
     "touchend",
     (e) => {
@@ -882,6 +929,11 @@ document.getElementById("btn-pll-case").addEventListener("click", () => {
 });
 
 document.getElementById("btn-hint").addEventListener("click", () => {
+  if (isCompactLayout()) {
+    hintsPinned = true;
+    window.clearTimeout(restoreHintsTimer);
+    setHintsOpen(true);
+  }
   if (appMode === "cross") {
     refreshCross();
     document.getElementById("cross-hint-card").hidden = false;
@@ -1111,7 +1163,13 @@ window.addEventListener("keydown", (e) => {
   }
 });
 
+let wasCompactLayout = isCompactLayout();
 window.addEventListener("resize", () => {
+  const compact = isCompactLayout();
+  if (compact !== wasCompactLayout) {
+    wasCompactLayout = compact;
+    setHintsOpen(compact);
+  }
   erno?.resize();
 });
 
@@ -1124,6 +1182,8 @@ try {
 } catch {
   setMovePadVisible(!isCompactLayout());
 }
+
+setHintsOpen(isCompactLayout());
 
 buildPalette();
 buildCrossTips();

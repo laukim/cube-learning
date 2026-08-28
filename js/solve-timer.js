@@ -2,18 +2,18 @@ import { STEPS } from "./solver.js";
 
 export const SPLIT_SHORT = {
   "white-cross": "Cross",
-  "white-corners": "Corners",
-  "middle-edges": "Middle",
+  f2l: "F2L",
   "yellow-cross": "Y-cross",
-  "yellow-edges": "Y-edges",
-  "yellow-corners-place": "Y-seats",
-  "yellow-corners-orient": "Orient",
+  "yellow-face": "Y-face",
+  headlights: "Headlights",
+  "yellow-edges": "Edges",
 };
 
 export const SPLIT_GROUPS = [
   { id: "cross", title: "White cross", indices: [0] },
-  { id: "f2l", title: "First two layers", indices: [1, 2] },
-  { id: "ll", title: "Last layer", indices: [3, 4, 5, 6] },
+  { id: "f2l", title: "First two layers", indices: [1] },
+  { id: "oll", title: "Yellow face (OLL)", indices: [2, 3] },
+  { id: "pll", title: "Perm (PLL)", indices: [4, 5] },
 ];
 
 const STEP_COACHING = [
@@ -22,28 +22,24 @@ const STEP_COACHING = [
     tip: "Drill white cross with the Cross tab — four edges, centres matching, without hunting on the bottom.",
   },
   {
-    tab: "Guide",
-    tip: "White corners: match the side colours first, then righty or lefty. Fewer setups beats turning faster.",
-  },
-  {
     tab: "F2L",
-    tip: "Middle edges are the usual bottleneck. The F2L tab trains pairing instead of corners-then-edges.",
+    tip: "F2L: pair each white corner with its edge and insert together. The F2L tab trains the five setups on the front-right slot.",
   },
   {
     tab: "OLL",
     tip: "Yellow cross is one alg: F, righty, F′. Hold the L or line correctly so you don’t repeat extra times.",
   },
   {
+    tab: "OLL",
+    tip: "Yellow face: Sune only. 1 corner → bottom-left. 0 → no yellow on front. 2 adj → on the right. 2 opp → top-left + bottom-right.",
+  },
+  {
     tab: "PLL",
-    tip: "Yellow edges: opposite → one U-perm, then adjacent. Bar at back before you fire the alg.",
+    tip: "Headlights on the LEFT, then T-perm. No headlights → T-perm once from anywhere, then headlights appear.",
   },
   {
-    tab: "Algs",
-    tip: "Corner seats: hold one correct corner (or any if none), then Niklas. Don’t rotate the cube between repeats.",
-  },
-  {
-    tab: "Algs",
-    tip: "Orient: keep the cube still and only D (or U in the yellow-up hold) between corners. Repeating righty is the whole step.",
+    tab: "PLL",
+    tip: "Bar at the BACK, then U-perm. No bar → U-perm once, then put the new bar at back and repeat.",
   },
 ];
 
@@ -218,13 +214,17 @@ export function buildAnalysis({ totalMs, splits, totalMoves, previousTotalMs = n
   );
   insights.push(coach.tip);
 
-  if (slowestGroup.id === "ll" && slowestGroup.share >= 0.45) {
+  if (slowestGroup.id === "pll" && slowestGroup.share >= 0.35) {
     insights.push(
-      `Last layer was ${Math.round(slowestGroup.share * 100)}% of the clock. OLL + PLL drills shrink that block together.`
+      `Perm was ${Math.round(slowestGroup.share * 100)}% of the clock. PLL tab: headlights (T-perm) then bar-at-back (U-perm).`
+    );
+  } else if (slowestGroup.id === "oll" && slowestGroup.share >= 0.35) {
+    insights.push(
+      `Yellow face was ${Math.round(slowestGroup.share * 100)}% of the clock. OLL tab: cross alg then Sune holds.`
     );
   } else if (slowestGroup.id === "f2l" && slowestGroup.share >= 0.4) {
     insights.push(
-      `First two layers were ${Math.round(slowestGroup.share * 100)}% of the solve. Pairing corners with edges is the usual next leap.`
+      `First two layers were ${Math.round(slowestGroup.share * 100)}% of the solve. Pairing on the F2L tab is the usual next leap.`
     );
   }
 

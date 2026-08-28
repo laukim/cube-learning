@@ -81,6 +81,8 @@ export function createErnoCube(container, hooks) {
   let lastPt = null;
   let quatAtDown = null;
   let orbiting = false;
+  const orbitAxis = new THREE.Vector3();
+  const orbitMatrix = new THREE.Matrix4();
 
   function midpoint(touches) {
     return {
@@ -90,8 +92,19 @@ export function createErnoCube(container, hooks) {
   }
 
   function orbitBy(dx, dy) {
-    cube.rotation.y += dx * ORBIT_SPEED;
-    cube.rotation.x += dy * ORBIT_SPEED;
+    // Camera-space trackball — Euler X/Y increments invert after ~90° of pitch
+    // (easy to hit during a long solve, and after quaternion snap-back on a tap).
+    if (!dx && !dy) return;
+    orbitAxis.set(dy, dx, 0);
+    const len = orbitAxis.length();
+    if (len < 1e-8) return;
+    orbitAxis.divideScalar(len);
+    cube.object3D.updateMatrixWorld(true);
+    cube.camera.updateMatrixWorld(true);
+    orbitMatrix.getInverse(cube.object3D.matrixWorld);
+    orbitMatrix.multiply(cube.camera.matrixWorld);
+    orbitAxis.transformDirection(orbitMatrix);
+    cube.object3D.rotateOnAxis(orbitAxis, len * ORBIT_SPEED);
   }
 
   function eventClient(e) {
@@ -119,6 +132,7 @@ export function createErnoCube(container, hooks) {
 
   const onPointerDown = (e) => {
     if (e.type === "mousedown" && e.button !== 0) return;
+    hooks.onPlayStart?.();
     downPt = eventClient(e);
     lastPt = downPt;
     orbiting = false;
@@ -159,9 +173,13 @@ export function createErnoCube(container, hooks) {
   };
 
   const onPointerUp = (e) => {
-    if (e.touches && e.touches.length >= 2) {
-      lastPt = midpoint(e.touches);
-      orbiting = true;
+    if (e.touches && e.touches.length > 0) {
+      if (e.touches.length >= 2) {
+        lastPt = midpoint(e.touches);
+        orbiting = true;
+      } else {
+        lastPt = eventClient(e);
+      }
       return;
     }
     if (!downPt) {
@@ -179,12 +197,18 @@ export function createErnoCube(container, hooks) {
     lastPt = null;
     quatAtDown = null;
     orbiting = false;
+    hooks.onPlayEnd?.();
   };
 
   const resize = () => {
     const w = Math.max(container.clientWidth || 0, 220);
     const h = Math.max(container.clientHeight || 0, 220);
     cube.setSize(w, h);
+    const compact = window.matchMedia("(max-width: 920px)").matches;
+    // Phone stage is tall; keep the whole cube in the upper half so the
+    // guide sheet cannot crop it into a "zoomed corner".
+    cube.camera.position.z = (compact ? 5.35 : 4) * cube.size;
+    cube.object3D.position.y = compact ? 0.55 * cube.size : 0;
   };
   resize();
   let resizeObserver = null;
@@ -271,6 +295,25 @@ export function createErnoCube(container, hooks) {
   window.addEventListener("mousemove", onPointerMove);
   window.addEventListener("mouseup", onPointerUp);
 
+  // Play-focus is pointer-only so toolbar taps do not restore the sheet, and so
+  // Chrome's pointer events still hide hints when a flick starts.
+  let playPointerId = null;
+  const onPlayPointerDown = (e) => {
+    if (playPointerId !== null) return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    playPointerId = e.pointerId;
+    hooks.onPlayStart?.();
+  };
+  const onPlayPointerUp = (e) => {
+    if (playPointerId === null) return;
+    if (e.type !== "pointercancel" && e.pointerId !== playPointerId) return;
+    playPointerId = null;
+    hooks.onPlayEnd?.();
+  };
+  container.addEventListener("pointerdown", onPlayPointerDown, { capture: true });
+  window.addEventListener("pointerup", onPlayPointerUp);
+  window.addEventListener("pointercancel", onPlayPointerUp);
+
   return {
     cube,
     resize,
@@ -329,8 +372,11 @@ export function createErnoCube(container, hooks) {
       container.removeEventListener("touchmove", onPointerMove, touchListen);
       container.removeEventListener("touchend", onPointerUp, touchListen);
       container.removeEventListener("touchcancel", onPointerUp, touchListen);
+      container.removeEventListener("pointerdown", onPlayPointerDown, { capture: true });
       window.removeEventListener("mousemove", onPointerMove);
       window.removeEventListener("mouseup", onPointerUp);
+      window.removeEventListener("pointerup", onPlayPointerUp);
+      window.removeEventListener("pointercancel", onPlayPointerUp);
       try {
         resizeObserver?.disconnect();
       } catch {

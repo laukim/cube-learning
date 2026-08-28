@@ -102,6 +102,11 @@ let timerRaf = 0;
 let analysisShownForSolve = false;
 
 const MOVE_PAD_KEY = "bylayer-show-move-pad";
+const PHONE_PAD_KEY = "bylayer-phone-move-pad";
+
+function isCompactLayout() {
+  return window.matchMedia("(max-width: 920px)").matches;
+}
 const stageMain = document.querySelector(".stage-main");
 const movePad = document.getElementById("move-pad");
 const btnUndo = document.getElementById("btn-undo");
@@ -789,7 +794,8 @@ function setMovePadVisible(visible) {
   btnTogglePad.setAttribute("aria-pressed", visible ? "true" : "false");
   btnTogglePad.textContent = visible ? "Hide moves" : "Show moves";
   try {
-    localStorage.setItem(MOVE_PAD_KEY, visible ? "1" : "0");
+    const key = isCompactLayout() ? PHONE_PAD_KEY : MOVE_PAD_KEY;
+    localStorage.setItem(key, visible ? "1" : "0");
   } catch {
     /* ignore */
   }
@@ -1110,9 +1116,13 @@ window.addEventListener("resize", () => {
 });
 
 try {
-  setMovePadVisible(localStorage.getItem(MOVE_PAD_KEY) !== "0");
+  if (isCompactLayout()) {
+    setMovePadVisible(localStorage.getItem(PHONE_PAD_KEY) === "1");
+  } else {
+    setMovePadVisible(localStorage.getItem(MOVE_PAD_KEY) !== "0");
+  }
 } catch {
-  setMovePadVisible(true);
+  setMovePadVisible(!isCompactLayout());
 }
 
 buildPalette();

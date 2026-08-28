@@ -71,37 +71,39 @@
           </div>
         </div>
 
-        <div class="solve-timer" id="solve-timer" data-phase="idle">
-          <div class="solve-timer-row">
-            <div class="solve-timer-clock-wrap">
-              <span class="solve-timer-label" id="solve-timer-label">Timer</span>
-              <time class="solve-timer-clock" id="solve-timer-clock">0.00</time>
+        <div class="stage-dock">
+          <div class="solve-timer" id="solve-timer" data-phase="idle">
+            <div class="solve-timer-row">
+              <div class="solve-timer-clock-wrap">
+                <span class="solve-timer-label" id="solve-timer-label">Timer</span>
+                <time class="solve-timer-clock" id="solve-timer-clock">0.00</time>
+              </div>
+              <p class="solve-timer-status" id="solve-timer-status">Scramble to time a full solve</p>
             </div>
-            <p class="solve-timer-status" id="solve-timer-status">Scramble to time a full solve</p>
+            <ol class="solve-timer-splits" id="solve-timer-splits" hidden></ol>
           </div>
-          <ol class="solve-timer-splits" id="solve-timer-splits" hidden></ol>
-        </div>
 
-        <div class="move-trace" id="move-trace" aria-live="polite" aria-label="Move history">
-          <span class="move-trace-label">Moves</span>
-          <code class="move-trace-alg" id="move-trace-alg">—</code>
-          <span class="move-trace-last" id="move-trace-last" hidden></span>
-        </div>
+          <div class="move-trace" id="move-trace" aria-live="polite" aria-label="Move history">
+            <span class="move-trace-label">Moves</span>
+            <code class="move-trace-alg" id="move-trace-alg">—</code>
+            <span class="move-trace-last" id="move-trace-last" hidden></span>
+          </div>
 
-        <div class="toolbar">
-          <button type="button" class="btn btn-ghost" id="btn-undo" disabled title="Undo last move (Z)">Undo</button>
-          <button type="button" class="btn btn-ghost" id="btn-toggle-pad" aria-pressed="true" title="Hide or show U R F… buttons">
-            Hide moves
-          </button>
-          <button type="button" class="btn btn-ghost" id="btn-reset">Reset</button>
-          <button type="button" class="btn btn-ghost" id="btn-scramble">Scramble</button>
-          <button type="button" class="btn btn-ghost" id="btn-cross-case" hidden>New cross</button>
-          <button type="button" class="btn btn-ghost" id="btn-f2l-case" hidden>New F2L case</button>
-          <button type="button" class="btn btn-ghost" id="btn-oll-again" hidden>Again</button>
-          <button type="button" class="btn btn-ghost" id="btn-oll-case" hidden>Next OLL</button>
-          <button type="button" class="btn btn-ghost" id="btn-pll-again" hidden>Again</button>
-          <button type="button" class="btn btn-ghost" id="btn-pll-case" hidden>Next PLL</button>
-          <button type="button" class="btn btn-primary" id="btn-hint">Next hint</button>
+          <div class="toolbar">
+            <button type="button" class="btn btn-ghost" id="btn-undo" disabled title="Undo last move (Z)">Undo</button>
+            <button type="button" class="btn btn-ghost" id="btn-toggle-pad" aria-pressed="true" title="Hide or show U R F… buttons">
+              Hide moves
+            </button>
+            <button type="button" class="btn btn-ghost" id="btn-reset">Reset</button>
+            <button type="button" class="btn btn-ghost" id="btn-scramble">Scramble</button>
+            <button type="button" class="btn btn-ghost" id="btn-cross-case" hidden>New cross</button>
+            <button type="button" class="btn btn-ghost" id="btn-f2l-case" hidden>New F2L case</button>
+            <button type="button" class="btn btn-ghost" id="btn-oll-again" hidden>Again</button>
+            <button type="button" class="btn btn-ghost" id="btn-oll-case" hidden>Next OLL</button>
+            <button type="button" class="btn btn-ghost" id="btn-pll-again" hidden>Again</button>
+            <button type="button" class="btn btn-ghost" id="btn-pll-case" hidden>Next PLL</button>
+            <button type="button" class="btn btn-primary" id="btn-hint">Next hint</button>
+          </div>
         </div>
       </section>
 

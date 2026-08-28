@@ -145,6 +145,8 @@ const btnUndo = document.getElementById("btn-undo");
 const btnTogglePad = document.getElementById("btn-toggle-pad");
 const moveTraceAlg = document.getElementById("move-trace-alg");
 const moveTraceLast = document.getElementById("move-trace-last");
+const flickToast = document.getElementById("flick-toast");
+let flickToastTimer = 0;
 
 const CENTER_COLOR = {
   U: "yellow",
@@ -157,17 +159,33 @@ const CENTER_COLOR = {
 
 let erno = null;
 
+function flashFlickToast(label) {
+  if (!flickToast || !label) return;
+  flickToast.textContent = label;
+  flickToast.classList.remove("is-on");
+  void flickToast.offsetWidth;
+  flickToast.classList.add("is-on");
+  window.clearTimeout(flickToastTimer);
+  flickToastTimer = window.setTimeout(() => {
+    flickToast.classList.remove("is-on");
+  }, 1600);
+}
+
 function updateMoveTrace() {
   if (!moveHistory.length) {
     moveTraceAlg.textContent = "—";
     moveTraceLast.hidden = true;
     moveTraceLast.textContent = "";
+    btnUndo.textContent = "Undo";
+    btnUndo.title = "Undo last move (Z)";
   } else {
     const recent = moveHistory.slice(-24);
     moveTraceAlg.textContent = recent.join(" ");
     const last = moveHistory[moveHistory.length - 1];
     moveTraceLast.hidden = false;
     moveTraceLast.textContent = `last ${last}`;
+    btnUndo.textContent = `Undo ${last}`;
+    btnUndo.title = `Undo ${last} (Z)`;
   }
   const canVirtualY =
     moveHistory.length > 0 && /^y2?$|^y'$/.test(moveHistory[moveHistory.length - 1]);
@@ -182,11 +200,14 @@ function clearMoveHistory() {
 function recordTwist(move) {
   if (undoingMove) {
     undoingMove = false;
-    moveHistory.pop();
-  } else {
-    moveHistory.push(move);
+    const undone = moveHistory.pop();
+    updateMoveTrace();
+    flashFlickToast(undone ? `undid ${undone}` : `undid ${move}`);
+    return;
   }
+  moveHistory.push(move);
   updateMoveTrace();
+  flashFlickToast(move);
 }
 
 function stopTimerTick() {

@@ -70,12 +70,21 @@ export function createErnoCube(container, hooks) {
   }
   applyHomeTilt();
 
+  try {
+    cube.mouseInteraction.dragSpeed = 1.15;
+  } catch {
+    /* ignore */
+  }
+
   // ERNO.Controls only orbits when the pointer misses every cubelet, uses
   // pageX * devicePixelRatio (broken on iPhone), and our old snap-back undid
   // any rotation that did happen. Own look-around here instead.
   cube.controls.update = () => {};
 
   const TAP_PX = 10;
+  // Finger jitter on a sticker used to lock a slice after ~4px, then a fast
+  // lift counted as a 90° flick. Require a real swipe before a face turn.
+  const FLICK_MIN_PX = 28;
   const ORBIT_SPEED = 0.008;
   let downPt = null;
   let lastPt = null;
@@ -128,6 +137,35 @@ export function createErnoCube(container, hooks) {
     } catch {
       /* ignore */
     }
+  }
+
+  function snapSlicesHome() {
+    try {
+      cube.slices.forEach((slice) => {
+        slice.rotation = 0;
+      });
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function suppressAccidentalFlick() {
+    // Capture-phase pointerup runs before ERNO's mouseup/touchend. Disable
+    // interaction so a twitch cannot commit a 90° twist, then snap the slice.
+    try {
+      cube.mouseInteraction.enabled = false;
+      cube.mouseInteraction.active = false;
+    } catch {
+      /* ignore */
+    }
+    snapSlicesHome();
+    requestAnimationFrame(() => {
+      try {
+        cube.mouseInteraction.enabled = cube.mouseControlsEnabled !== false;
+      } catch {
+        /* ignore */
+      }
+    });
   }
 
   const onPointerDown = (e) => {
@@ -189,6 +227,9 @@ export function createErnoCube(container, hooks) {
     }
     const p = eventClient(e);
     const dist = Math.hypot(p.x - downPt.x, p.y - downPt.y);
+    if (!orbiting && dist < FLICK_MIN_PX) {
+      suppressAccidentalFlick();
+    }
     // Tap jitter only — never undo a real look-around drag.
     if (!orbiting && dist < TAP_PX && quatAtDown && cube.object3D?.quaternion) {
       cube.object3D.quaternion.copy(quatAtDown);
@@ -293,7 +334,7 @@ export function createErnoCube(container, hooks) {
   container.addEventListener("touchend", onPointerUp, touchListen);
   container.addEventListener("touchcancel", onPointerUp, touchListen);
   window.addEventListener("mousemove", onPointerMove);
-  window.addEventListener("mouseup", onPointerUp);
+  window.addEventListener("mouseup", onPointerUp, mouseListen);
 
   // Play-focus is pointer-only so toolbar taps do not restore the sheet, and so
   // Chrome's pointer events still hide hints when a flick starts.
@@ -374,7 +415,7 @@ export function createErnoCube(container, hooks) {
       container.removeEventListener("touchcancel", onPointerUp, touchListen);
       container.removeEventListener("pointerdown", onPlayPointerDown, { capture: true });
       window.removeEventListener("mousemove", onPointerMove);
-      window.removeEventListener("mouseup", onPointerUp);
+      window.removeEventListener("mouseup", onPointerUp, mouseListen);
       window.removeEventListener("pointerup", onPlayPointerUp);
       window.removeEventListener("pointercancel", onPlayPointerUp);
       try {

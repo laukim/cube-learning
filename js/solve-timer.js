@@ -131,16 +131,19 @@ export function noteProgress(t, { now, moveCount, stepsDone, solved, steps = STE
   const done = (stepsDone || []).filter(Boolean).length;
 
   // First occurrence only — if they later break a finished step (or undo), keep the split.
+  // Credit the step they were actually on. Extra steps that become true on the
+  // same move are skips (last Sune can also leave corners AUF-able — that must
+  // not dump the Sune onto headlights).
   if (done > t.lastDone) {
     for (let i = t.lastDone; i < done; i++) {
-      const lastOfBatch = i === done - 1;
+      const firstOfBatch = i === t.lastDone;
       const step = steps[i];
       t.splits.push({
         index: i,
         id: step.id,
         title: step.title,
-        ms: lastOfBatch ? Math.max(0, now - t.stepStartMs) : 0,
-        moves: lastOfBatch ? Math.max(0, moveCount - t.stepStartMoves) : 0,
+        ms: firstOfBatch ? Math.max(0, now - t.stepStartMs) : 0,
+        moves: firstOfBatch ? Math.max(0, moveCount - t.stepStartMoves) : 0,
       });
     }
     t.lastDone = done;

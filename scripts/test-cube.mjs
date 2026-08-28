@@ -79,10 +79,10 @@ noteProgress(t, {
   stepsDone: [true, true, true, false, false, false],
   solved: false,
 });
-assert(t.splits.length === 3, "batch skips get 0");
-assert(t.splits[1].ms === 0, "skipped F2L 0");
-assert(t.splits[2].ms === 5500, "yellow cross gets the batch");
-assert(t.splits[2].moves === 22, "yellow-cross moves");
+assert(t.splits.length === 3, "batch still records skipped steps");
+assert(t.splits[1].ms === 5500, "F2L (the step they were on) gets the batch");
+assert(t.splits[1].moves === 22, "F2L moves");
+assert(t.splits[2].ms === 0, "lucky yellow-cross skip is 0");
 
 noteProgress(t, {
   now: 9000,
@@ -104,7 +104,23 @@ noteProgress(t, {
 assert(t.phase === "done", "solve stops timer");
 assert(t.splits.length === 6, "all six splits");
 assert(t.splits[0].ms === 2500, "first cross time kept through solve");
+assert(t.splits[3].ms === 4000, "Sune / yellow-face keeps time when PLL also completes");
+assert(t.splits[4].ms === 0, "headlights skip does not steal Sune");
 assert(t.endMs === 12000, "end time");
+
+const sune = createTimer();
+armTimer(sune);
+startTimer(sune, 0, 0, 3);
+noteProgress(sune, {
+  now: 8530,
+  moveCount: 19,
+  stepsDone: [true, true, true, true, true, false],
+  solved: false,
+});
+assert(sune.splits[3].id === "yellow-face", "fourth split is yellow face");
+assert(sune.splits[3].ms === 8530, "Sune time lands on yellow face");
+assert(sune.splits[3].moves === 19, "Sune moves land on yellow face");
+assert(sune.splits[4].ms === 0 && sune.splits[4].moves === 0, "headlights not credited for Sune");
 
 const analysis = buildAnalysis({
   totalMs: 12000,

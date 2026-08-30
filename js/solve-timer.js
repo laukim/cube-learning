@@ -370,8 +370,16 @@ export function renderAnalysisHtml(analysis) {
       </div>`
       : "";
 
-  const shareBtn = analysis.canShare
-    ? `<button type="button" class="btn btn-small" id="btn-share-solve">Share</button>`
+  const shareBtn = analysis.canShare !== false
+    ? `<button type="button" class="btn btn-small btn-primary" id="btn-share-solve">Share to chat</button>`
+    : "";
+
+  const report = analysis.report ? escapeHtml(analysis.report) : "";
+  const reportHtml = report
+    ? `<label class="analysis-report-wrap">
+        <span>Report — tap Share, or long-press this text → Copy</span>
+        <textarea id="solve-report-text" readonly rows="10">${report}</textarea>
+      </label>`
     : "";
 
   return `<div class="analysis-hero">
@@ -383,11 +391,12 @@ export function renderAnalysisHtml(analysis) {
     <ol class="analysis-rows">${rowHtml}</ol>
     <ul class="analysis-insights">${insightHtml}</ul>
     ${reconHtml}
+    ${reportHtml}
     <div class="analysis-actions">
-      <button type="button" class="btn btn-small btn-primary" id="btn-copy-solve">Copy for chat</button>
       ${shareBtn}
+      <button type="button" class="btn btn-small ${shareBtn ? "" : "btn-primary"}" id="btn-copy-solve">Copy</button>
     </div>
-    <p class="analysis-share-hint">Copy or share, then paste into the Cursor chat on your Mac.</p>`;
+    <p class="analysis-share-hint">On iPhone: Share → Copy, or long-press the report. Then paste into the Cursor chat on your Mac.</p>`;
 }
 
 function escapeHtml(value) {

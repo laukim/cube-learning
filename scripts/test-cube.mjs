@@ -14,6 +14,7 @@ const {
   formatSolveReport,
   findPauses,
   noteProgress,
+  renderAnalysisHtml,
   startTimer,
 } = await import("../js/solve-timer.js");
 
@@ -154,6 +155,10 @@ assert(report.includes("R U F"), "report scramble alg");
 assert(report.includes("F' U' R'"), "report solution");
 assert(report.includes("Undos: 1"), "report undos");
 assert(report.includes("before F"), "report pause");
+
+const html = renderAnalysisHtml({ ...analysis, report, scramble: "R U F", solution: "F' U' R'" });
+assert(html.includes("solve-report-text"), "report textarea");
+assert(html.includes("R U F"), "html scramble");
 
 const seeded = createTimer();
 armTimer(seeded);

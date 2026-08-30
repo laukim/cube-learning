@@ -276,6 +276,7 @@ function showSolveAnalysis() {
     pauses,
     at: Date.now(),
   });
+  analysis.report = lastSolveReport;
   recordSolve({
     at: Date.now(),
     totalMs: analysis.totalMs,
@@ -299,31 +300,51 @@ function showSolveAnalysis() {
   setHintsOpen(true);
 }
 
-async function copyText(text) {
+function reportText() {
+  return document.getElementById("solve-report-text")?.value || lastSolveReport;
+}
+
+function selectReportField() {
+  const el = document.getElementById("solve-report-text");
+  if (!el) return false;
+  el.removeAttribute("readonly");
+  el.focus();
+  el.select();
   try {
-    await navigator.clipboard.writeText(text);
-    return true;
+    el.setSelectionRange(0, el.value.length);
   } catch {
-    const ta = document.createElement("textarea");
-    ta.value = text;
-    ta.setAttribute("readonly", "");
-    ta.style.position = "fixed";
-    ta.style.left = "-9999px";
-    document.body.appendChild(ta);
-    ta.select();
-    const ok = document.execCommand("copy");
-    ta.remove();
-    return ok;
+    /* ignore */
   }
+  return true;
+}
+
+function copyReportNow() {
+  const text = reportText();
+  if (!text) return false;
+  selectReportField();
+  let ok = false;
+  try {
+    ok = document.execCommand("copy");
+  } catch {
+    ok = false;
+  }
+  const el = document.getElementById("solve-report-text");
+  if (el) el.setAttribute("readonly", "");
+  if (ok) return true;
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).catch(() => {});
+  }
+  return false;
 }
 
 function markCopyButton(btn, ok) {
   if (!btn) return;
-  const prev = btn.textContent;
-  btn.textContent = ok ? "Copied" : "Copy failed";
+  const prev = btn.dataset.label || btn.textContent;
+  btn.dataset.label = prev;
+  btn.textContent = ok ? "Copied" : "Long-press the report";
   window.setTimeout(() => {
     btn.textContent = prev;
-  }, 1600);
+  }, 2200);
 }
 
 function timerStatusText(now) {
@@ -933,21 +954,24 @@ document.querySelectorAll(".move-btn").forEach((btn) => {
 
 btnUndo.addEventListener("click", () => undoLastMove());
 
-solveAnalysisEl?.addEventListener("click", async (e) => {
-  const copyBtn = e.target.closest("#btn-copy-solve");
+solveAnalysisEl?.addEventListener("click", (e) => {
   const shareBtn = e.target.closest("#btn-share-solve");
-  if (!copyBtn && !shareBtn) return;
-  if (!lastSolveReport) return;
+  const copyBtn = e.target.closest("#btn-copy-solve");
+  if (!shareBtn && !copyBtn) return;
+  e.preventDefault();
+  const text = reportText();
+  if (!text) return;
+
   if (shareBtn && typeof navigator.share === "function") {
-    try {
-      await navigator.share({ title: "BY LAYER solve", text: lastSolveReport });
-    } catch {
-      /* cancelled */
-    }
+    navigator.share({ title: "BY LAYER solve", text }).catch(() => {
+      selectReportField();
+    });
     return;
   }
-  const ok = await copyText(lastSolveReport);
+
+  const ok = copyReportNow();
   markCopyButton(copyBtn || shareBtn, ok);
+  if (!ok) selectReportField();
 });
 
 btnTogglePad.addEventListener("click", () => {

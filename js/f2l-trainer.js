@@ -1,6 +1,6 @@
 /**
- * Intuitive F2L trainer — white cross stays solved; practice pairing + inserting.
- * Always coach relative to the FR slot; use y / y' to bring the next pair to front-right.
+ * Standard F2L cases (1R, 1L, … 41L). Cross stays; three pairs stay; one slot is the case.
+ * https://www.youtube.com/watch?v=3tYj-9f4dA0
  */
 
 import {
@@ -12,6 +12,7 @@ import {
   solvedFacelets,
   sticker,
 } from "./cube.js";
+import { F2L_DRILL_CASES } from "./f2l-cases.js";
 
 export const RIGHTY = "R U R' U'";
 export const LEFTY = "L' U' L U";
@@ -221,80 +222,120 @@ function ejectSlotAlg(slotId) {
   return [pre, "R U' R'", post].filter(Boolean).join(" ");
 }
 
-/** Scramble F2L while keeping white cross; all 4 slots start unsolved. Returns alg string. */
-export function scrambleF2L(facelets, count = 20) {
-  const s = solvedFacelets();
-  const pool = [
-    "R U R' U'",
-    "U R U' R'",
-    "R U' R'",
-    "U' R U R'",
-    "R U2 R'",
-    "L' U' L U",
-    "U' L' U L",
-    "L' U L",
-    "U L' U' L",
-    "R U R' U R U2 R'",
-    "U",
-    "U'",
-    "U2",
-    "y",
-    "y'",
-    "y2",
-    "y R U R' U' y'",
-    "y' L' U' L U y",
-    "y2 R U' R' y2",
-    "R U R' U' R U R' U'",
-    "U R U' R' U R U' R'",
-    "L' U' L U L' U' L",
-  ];
+let f2lDrillIndex = 0;
+let f2lDrillStarted = false;
+let f2lRandom = false;
 
-  for (let attempt = 0; attempt < 36; attempt++) {
-    for (let i = 0; i < 54; i++) facelets[i] = s[i];
-    const parts = [];
-    const n = count + Math.floor(Math.random() * 10);
-    let last = "";
-    for (let i = 0; i < n; i++) {
-      let pick = pool[Math.floor(Math.random() * pool.length)];
-      if (pick === last) pick = pool[(pool.indexOf(pick) + 5) % pool.length];
-      applyAlg(facelets, pick);
-      parts.push(pick);
-      last = pick;
-    }
+export function getF2lDrillInfo() {
+  const n = F2L_DRILL_CASES.length;
+  const i = ((f2lDrillIndex % n) + n) % n;
+  const c = F2L_DRILL_CASES[i];
+  const next = F2L_DRILL_CASES[(i + 1) % n];
+  const prev = F2L_DRILL_CASES[(i - 1 + n) % n];
+  return {
+    index: i,
+    total: n,
+    id: c.id,
+    name: c.name,
+    group: c.group,
+    hand: c.hand,
+    slot: c.slot,
+    started: f2lDrillStarted,
+    random: f2lRandom,
+    nextId: next.id,
+    prevId: prev.id,
+  };
+}
 
-    if (!whiteCrossIntact(facelets)) continue;
+export function setF2lRandom(on) {
+  f2lRandom = !!on;
+}
 
-    // Force-break any slot that is still solved
-    let guard = 0;
-    while (countSlotsSolved(facelets) > 0 && guard++ < 16) {
-      for (const slot of SLOTS) {
-        if (!slotSolved(facelets, slot)) continue;
-        const seq = ejectSlotAlg(slot.id);
-        applyAlg(facelets, seq);
-        parts.push(seq);
+export function isF2lRandom() {
+  return f2lRandom;
+}
+
+/** Live hint for the F2L tab case drill (not the full-solve guide). */
+export function analyzeF2lDrill(facelets) {
+  const info = getF2lDrillInfo();
+  const c = F2L_DRILL_CASES[info.index];
+  const slot = SLOTS.find((s) => s.id === c.slot);
+  const others = SLOTS.filter((s) => s.id !== c.slot);
+  const targetIn = slotSolved(facelets, slot);
+  const othersIn = others.every((s) => slotSolved(facelets, s));
+  const cross = whiteCrossIntact(facelets);
+  const popped = others.filter((s) => !slotSolved(facelets, s)).map((s) => s.id);
+
+  if (!f2lDrillStarted) {
+    return {
+      complete: false,
+      ready: true,
+      case: c,
+      hint: hint(
+        "Standard F2L cases",
+        "Again = this case. Next F2L = next in order (1R then 1L, then 2R…). Toggle Random if you want a mix. One pair only — the other three stay in.",
+        "",
+        "From CubeHead’s 41 cases. IDs stick: 1R is always the same insert on the right."
+      ),
+    };
+  }
+
+  if (cross && targetIn && othersIn) {
+    return {
+      complete: true,
+      case: c,
+      hint: hint(
+        `${c.id} in`,
+        `Next is ${info.nextId}. It loads on its own.`,
+        "",
+        c.note
+      ),
+    };
+  }
+
+  if (cross && popped.length && !targetIn) {
+    return {
+      complete: false,
+      case: c,
+      hint: hint(
+        `${c.id} · you popped ${popped.join(", ")}`,
+        "Undo. That pair was already solved — you turned a face it sits on. Only turn the slot for this case.",
+        "Undo",
+        c.note
+      ),
+    };
+  }
+
+  return {
+    complete: false,
+    case: c,
+    hint: hint(c.name, c.copy, c.alg, c.note),
+  };
+}
+
+/** Scramble one standard F2L case (keeps cross + the other three pairs). */
+export function scrambleF2L(facelets, mode = "next") {
+  const n = F2L_DRILL_CASES.length;
+  if (!f2lDrillStarted) {
+    f2lDrillStarted = true;
+    f2lDrillIndex = 0;
+  } else if (mode === "next") {
+    if (f2lRandom) {
+      let i = f2lDrillIndex;
+      if (n > 1) {
+        while (i === f2lDrillIndex) i = Math.floor(Math.random() * n);
       }
-      const u = ["U", "U'", "U2"][Math.floor(Math.random() * 3)];
-      applyAlg(facelets, u);
-      parts.push(u);
-      if (!whiteCrossIntact(facelets)) break;
-    }
-
-    if (whiteCrossIntact(facelets) && countSlotsSolved(facelets) === 0) {
-      return parts.join(" ");
+      f2lDrillIndex = i;
+    } else {
+      f2lDrillIndex = (f2lDrillIndex + 1) % n;
     }
   }
 
-  // Deterministic fallback: eject all four slots from solved
+  const c = F2L_DRILL_CASES[((f2lDrillIndex % n) + n) % n];
+  const s = solvedFacelets();
   for (let i = 0; i < 54; i++) facelets[i] = s[i];
-  const fallback = [];
-  for (const slot of SLOTS) {
-    const seq = ejectSlotAlg(slot.id);
-    applyAlg(facelets, seq);
-    fallback.push(seq);
-  }
-  applyAlg(facelets, "U R U' R' U2");
-  fallback.push("U R U' R' U2");
-  return fallback.join(" ");
+  applyAlg(facelets, c.setup);
+  return c.setup;
 }
 
 /**
@@ -678,23 +719,19 @@ function bothOnUHint(facelets, corner, edge) {
 
 export const F2L_TIPS = [
   {
-    title: "What F2L is",
-    body: "Each white corner goes in with its matching edge. White cross stays solved. Four pairs → first two layers done.",
+    title: "How this drill works",
+    body: "Each case is one pair. The other three stay in. Solve it, the next case loads. Again = same ID. Next F2L = next in the list (or random if that toggle is on).",
   },
   {
-    title: "How to practice here",
-    body: "Tap New F2L case. Keep white on the bottom. Pick one unsolved corner+edge. Turn the whole cube (y) until that pair’s slot is front-right. Then follow the hint.",
+    title: "IDs: 1R then 1L",
+    body: "1R is front-right with R/U. 1L is the same case on the left with L/U. Then 2R, 2L, up to 41. Say the ID when you paste a solve if you want coaching on that case.",
   },
   {
-    title: "The only goal",
-    body: "Get the corner sitting above the front-right hole, and its edge nearby on top — then join them and drop them in with a righty (R U R' U').",
+    title: "Don’t pop a solved pair",
+    body: "If a pair is already in, don’t turn the two faces it sits on. That’s the whole F2L leak from your timed solves.",
   },
   {
-    title: "The 5 setups (same slot)",
-    body: "Once the corner is above front-right: white sticker on the right side → “normal”. White sticker on the front side → “mirror” (use the left). Same colour on top of corner and edge → matching. Different tops → join with R U R' first. White on top of the corner → hide it, move the edge, bring them back.",
-  },
-  {
-    title: "If pieces are stuck",
-    body: "Pair already jammed in a slot but wrong? One righty pops them out. Corner and edge stuck together on top? Peek the corner away with R' (or R), spin the edge, then bring the corner back.",
+    title: "Source",
+    body: "CubeHead — intuitive solutions for the 41 standard cases: https://www.youtube.com/watch?v=3tYj-9f4dA0",
   },
 ];

@@ -20,7 +20,8 @@ const {
   renderAnalysisHtml,
   startTimer,
 } = await import("../js/solve-timer.js");
-const { analyzeF2lFlow, formatF2lFlow } = await import("../js/f2l-trainer.js");
+const { analyzeF2lFlow, formatF2lFlow, scrambleF2L, getF2lDrillInfo, slotSolved, whiteCrossIntact, SLOTS } = await import("../js/f2l-trainer.js");
+const { F2L_DRILL_CASES } = await import("../js/f2l-cases.js");
 const {
   FLICK_MIN_PX,
   ORBIT_REMAPS_FLICKS,
@@ -228,6 +229,26 @@ const flowReport = formatSolveReport(
 );
 assert(flowReport.includes("first in: FR"), "coach report includes slot replay");
 assert(flowReport.includes("popped solved slots"), "coach report includes pops");
+
+assert(F2L_DRILL_CASES.length === 82, "41 cases × R then L");
+assert(F2L_DRILL_CASES[0].id === "1R" && F2L_DRILL_CASES[1].id === "1L", "order is 1R then 1L");
+assert(F2L_DRILL_CASES[2].id === "2R", "then 2R");
+for (const c of F2L_DRILL_CASES) {
+  const cube = solvedFacelets();
+  applyAlg(cube, c.setup);
+  assert(whiteCrossIntact(cube), `${c.id} keeps the white cross`);
+  const unsolved = SLOTS.filter((s) => !slotSolved(cube, s)).map((s) => s.id);
+  assert(unsolved.length === 1 && unsolved[0] === c.slot, `${c.id} only breaks ${c.slot}`);
+  applyAlg(cube, c.alg);
+  assert(SLOTS.every((s) => slotSolved(cube, s)), `${c.id} alg inserts the pair`);
+}
+const drill = solvedFacelets();
+scrambleF2L(drill, "next");
+assert(getF2lDrillInfo().id === "1R", "first Next F2L is 1R");
+scrambleF2L(drill, "again");
+assert(getF2lDrillInfo().id === "1R", "Again stays on 1R");
+scrambleF2L(drill, "next");
+assert(getF2lDrillInfo().id === "1L", "next in order is 1L");
 
 // Phone UX contracts — 21af0db flick deadzone + look-only orbit (f8630ef).
 // Inferring y on the same touch as a face flick remapped R/L′ into D/D′.

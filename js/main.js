@@ -11,7 +11,7 @@ import {
 import { consumeAlgMove, initAlgProgress, restoreAlgMove } from "./alg-progress.js";
 import { createErnoCube } from "./erno-view.js";
 import { analyzeCross, CROSS_TIPS, scrambleCross } from "./cross-trainer.js";
-import { analyzeF2L, countSlotsSolved, F2L_TIPS, scrambleF2L } from "./f2l-trainer.js";
+import { analyzeF2lDrill, countSlotsSolved, F2L_TIPS, getF2lDrillInfo, scrambleF2L, setF2lRandom } from "./f2l-trainer.js";
 import { renderCaseDiagram } from "./case-diagram.js";
 import { analyzeOll, expandWideAlg, getOllDrillInfo, OLL_TIPS, scrambleOll } from "./oll-trainer.js";
 import { analyzePll, getPllDrillInfo, PLL_TIPS, scramblePll } from "./pll-trainer.js";
@@ -108,6 +108,7 @@ let lastSolveReport = "";
 /** First time each F2L slot-count was reached during a timed solve. */
 let f2lPairMarks = [];
 let f2lPairsLogged = 0;
+let f2lNextTimer = 0;
 let solveTimer = createTimer();
 let timerRaf = 0;
 let analysisShownForSolve = false;
@@ -570,37 +571,69 @@ function refreshGuide() {
   document.getElementById("btn-apply-alg").hidden = !lastHintAlg;
 }
 
+function cancelF2lNextCase() {
+  if (f2lNextTimer) {
+    window.clearTimeout(f2lNextTimer);
+    f2lNextTimer = 0;
+  }
+}
+
+function scheduleF2lNextCase() {
+  if (f2lNextTimer || syncingFromUi) return;
+  f2lNextTimer = window.setTimeout(() => {
+    f2lNextTimer = 0;
+    if (appMode !== "f2l") return;
+    const draft = solvedFacelets();
+    const alg = scrambleF2L(draft, "next");
+    playScrambleAlg(alg);
+    setPanelCopy("f2l");
+  }, 850);
+}
+
 function refreshF2L() {
-  const result = analyzeF2L(facelets);
+  const result = analyzeF2lDrill(facelets);
+  const d = getF2lDrillInfo();
   const prog = document.getElementById("f2l-progress");
-  prog.innerHTML = result.slots
-    .map(
-      (s) =>
-        `<div class="f2l-slot ${s.done ? "is-done" : ""}" title="${s.name}">
-          <span class="f2l-slot-id">${s.id}</span>
-          <span class="f2l-slot-mark">${s.done ? "✓" : "·"}</span>
-        </div>`
-    )
+  const prev = d.started ? d.prevId : "";
+  const cur = d.id;
+  const nxt = d.nextId;
+  prog.innerHTML = [
+    prev && `<div class="f2l-slot" title="previous"><span class="f2l-slot-id">${prev}</span></div>`,
+    `<div class="f2l-slot is-live" title="${d.name}"><span class="f2l-slot-id">${cur}</span></div>`,
+    `<div class="f2l-slot" title="next"><span class="f2l-slot-id">${nxt}</span></div>`,
+  ]
+    .filter(Boolean)
     .join("");
 
   const solvedEl = document.getElementById("f2l-solved-banner");
   const card = document.getElementById("f2l-hint-card");
   if (result.complete) {
     solvedEl.hidden = false;
-    card.hidden = true;
+    solvedEl.innerHTML = `<strong>${d.id} in.</strong> Next is ${d.nextId} — it loads on its own. Again = same ID.`;
+    card.hidden = false;
     lastF2lAlg = "";
+    document.getElementById("btn-f2l-apply").hidden = true;
+    document.getElementById("f2l-hint-kicker").textContent = `F2L ${d.id} · ${d.index + 1}/${d.total} · ${d.group}`;
+    document.getElementById("f2l-hint-title").textContent = `${d.id} in`;
+    document.getElementById("f2l-hint-copy").textContent = `Next is ${d.nextId}.`;
+    document.getElementById("f2l-hint-alg").textContent = "";
+    document.getElementById("f2l-hint-note").textContent = "";
+    scheduleF2lNextCase();
     return;
   }
 
+  cancelF2lNextCase();
   solvedEl.hidden = true;
   card.hidden = false;
   const h = result.hint;
-  document.getElementById("f2l-hint-kicker").textContent = `F2L · ${result.solvedCount}/4 slots`;
+  document.getElementById("f2l-hint-kicker").textContent = d.started
+    ? `F2L ${d.id} · ${d.index + 1}/${d.total} · ${d.group}`
+    : "F2L · 82 cases";
   document.getElementById("f2l-hint-title").textContent = h.title;
   document.getElementById("f2l-hint-copy").textContent = h.copy;
   document.getElementById("f2l-hint-alg").textContent = h.alg || "—";
   document.getElementById("f2l-hint-note").textContent = h.note || "";
-  lastF2lAlg = h.alg && h.alg.trim() ? h.alg : "";
+  lastF2lAlg = h.alg && h.alg.trim() && h.alg !== "Undo" ? h.alg : "";
   document.getElementById("btn-f2l-apply").hidden = !lastF2lAlg;
 }
 
@@ -818,6 +851,8 @@ function setPanelCopy(mode) {
   const btnScramble = document.getElementById("btn-scramble");
   const btnCross = document.getElementById("btn-cross-case");
   const btnF2l = document.getElementById("btn-f2l-case");
+  const btnF2lAgain = document.getElementById("btn-f2l-again");
+  const btnF2lRandom = document.getElementById("btn-f2l-random");
   const btnOll = document.getElementById("btn-oll-case");
   const btnOllAgain = document.getElementById("btn-oll-again");
   const btnPll = document.getElementById("btn-pll-case");
@@ -827,6 +862,8 @@ function setPanelCopy(mode) {
   btnScramble.hidden = true;
   btnCross.hidden = true;
   btnF2l.hidden = true;
+  btnF2lAgain.hidden = true;
+  btnF2lRandom.hidden = true;
   btnOll.hidden = true;
   btnOllAgain.hidden = true;
   btnPll.hidden = true;
@@ -839,11 +876,16 @@ function setPanelCopy(mode) {
     btnCross.hidden = false;
     btnHint.textContent = "Cross hint";
   } else if (mode === "f2l") {
-    title.textContent = "F2L — corner and edge go in as a pair";
-    blurb.innerHTML =
-      "Pair each white corner with its edge and insert them together. Cross stays. Use <code class=\"inline-alg\">y</code> so the pair you’re working on is <strong>front-right</strong>, then read the hint.";
+    const d = getF2lDrillInfo();
+    title.textContent = "F2L — 41 cases, R then L";
+    blurb.innerHTML = d.started
+      ? `Now <strong>${d.id}</strong> · ${d.index + 1}/${d.total} · ${d.group}. <strong>Again</strong> = same ID · <strong>Next F2L</strong> = ${d.random ? "random" : "next in order"}.`
+      : `Practice <strong>1R → 1L → 2R → 2L</strong> … (82 holds). <strong>Again</strong> / <strong>Next F2L</strong>. Toggle <strong>Order / Random</strong>. From <a class="ext-link" href="https://www.youtube.com/watch?v=3tYj-9f4dA0" target="_blank" rel="noopener">CubeHead</a>.`;
     btnF2l.hidden = false;
+    btnF2lAgain.hidden = false;
+    btnF2lRandom.hidden = false;
     btnHint.textContent = "F2L hint";
+    syncF2lRandomButton();
   } else if (mode === "oll") {
     const d = getOllDrillInfo();
     title.textContent = "Beginner OLL — only 2 algs";
@@ -1069,10 +1111,42 @@ document.getElementById("btn-cross-case").addEventListener("click", () => {
   playScrambleAlg(alg);
 });
 
-document.getElementById("btn-f2l-case").addEventListener("click", () => {
+document.getElementById("btn-f2l-again").addEventListener("click", () => {
+  cancelF2lNextCase();
   const draft = solvedFacelets();
-  const alg = scrambleF2L(draft);
+  const alg = scrambleF2L(draft, "again");
   playScrambleAlg(alg);
+  setPanelCopy("f2l");
+});
+
+document.getElementById("btn-f2l-case").addEventListener("click", () => {
+  cancelF2lNextCase();
+  const draft = solvedFacelets();
+  const alg = scrambleF2L(draft, "next");
+  playScrambleAlg(alg);
+  setPanelCopy("f2l");
+});
+
+function syncF2lRandomButton() {
+  const btn = document.getElementById("btn-f2l-random");
+  if (!btn) return;
+  const on = btn.getAttribute("aria-pressed") === "true";
+  btn.textContent = on ? "Random" : "Order";
+  btn.title = on ? "Next case is random" : "Next case follows 1R, 1L, 2R…";
+  setF2lRandom(on);
+}
+
+document.getElementById("btn-f2l-random").addEventListener("click", () => {
+  const btn = document.getElementById("btn-f2l-random");
+  const on = btn.getAttribute("aria-pressed") !== "true";
+  btn.setAttribute("aria-pressed", on ? "true" : "false");
+  try {
+    localStorage.setItem("f2l-drill-random", on ? "1" : "0");
+  } catch {
+    /* ignore */
+  }
+  syncF2lRandomButton();
+  setPanelCopy("f2l");
 });
 
 document.getElementById("btn-oll-again").addEventListener("click", () => {
@@ -1176,6 +1250,7 @@ document.querySelectorAll(".mode-tab").forEach((tab) => {
       t.setAttribute("aria-selected", t === tab ? "true" : "false");
     });
     const mode = tab.dataset.mode;
+    if (mode !== "f2l") cancelF2lNextCase();
     appMode = mode;
     Object.entries(panels).forEach(([key, el]) => {
       el.hidden = key !== mode;
@@ -1366,6 +1441,14 @@ buildOllTips();
 buildPllTips();
 buildAlgList();
 buildF2LTips();
+try {
+  if (localStorage.getItem("f2l-drill-random") === "1") {
+    document.getElementById("btn-f2l-random")?.setAttribute("aria-pressed", "true");
+    setF2lRandom(true);
+  }
+} catch {
+  /* ignore */
+}
 syncNetFromCube();
 buildNet();
 setPanelCopy("guide");

@@ -866,7 +866,8 @@ body {
   font-size: 0.85rem;
 }
 
-.f2l-slot.is-done {
+.f2l-slot.is-done,
+.f2l-slot.is-live {
   background: var(--accent-dim);
   border-color: rgba(109, 255, 176, 0.35);
   color: var(--accent);

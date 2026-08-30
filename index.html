@@ -98,7 +98,11 @@
             <button type="button" class="btn btn-ghost" id="btn-reset">Reset</button>
             <button type="button" class="btn btn-ghost" id="btn-scramble">Scramble</button>
             <button type="button" class="btn btn-ghost" id="btn-cross-case" hidden>New cross</button>
-            <button type="button" class="btn btn-ghost" id="btn-f2l-case" hidden>New F2L case</button>
+            <button type="button" class="btn btn-ghost" id="btn-f2l-again" hidden>Again</button>
+            <button type="button" class="btn btn-ghost" id="btn-f2l-case" hidden>Next F2L</button>
+            <button type="button" class="btn btn-ghost" id="btn-f2l-random" hidden aria-pressed="false">
+              Order
+            </button>
             <button type="button" class="btn btn-ghost" id="btn-oll-again" hidden>Again</button>
             <button type="button" class="btn btn-ghost" id="btn-oll-case" hidden>Next OLL</button>
             <button type="button" class="btn btn-ghost" id="btn-pll-again" hidden>Again</button>
@@ -203,9 +207,17 @@
             <div class="hint-kicker" id="f2l-hint-kicker">F2L</div>
             <h2 class="hint-title" id="f2l-hint-title">Ready</h2>
             <p class="hint-copy" id="f2l-hint-copy">
-              Tap <strong>New F2L case</strong>. White cross stays. Turn the cube with
-              <code class="inline-alg">y</code> so an unsolved pair’s slot is
-              <strong>front-right</strong>, then tap <strong>F2L hint</strong>.
+              Tap <strong>Again</strong> / <strong>Next F2L</strong>. Cases go
+              <strong>1R → 1L → 2R → 2L</strong> … (R/U then the same case L/U). Toggle
+              <strong>Order / Random</strong>. One pair only — when it’s in, the next case loads.
+              From
+              <a
+                class="ext-link"
+                href="https://www.youtube.com/watch?v=3tYj-9f4dA0"
+                target="_blank"
+                rel="noopener"
+                >this video</a
+              >.
             </p>
             <div class="alg-block">
               <code class="alg" id="f2l-hint-alg"></code>
@@ -215,7 +227,7 @@
           </div>
 
           <div class="solved-banner" id="f2l-solved-banner" hidden>
-            <strong>F2L complete.</strong> Four pairs in — New case to drill again.
+            <strong>Case in.</strong> Next F2L loads on its own. Again = same ID.
           </div>
 
           <div class="f2l-tips" id="f2l-tips"></div>

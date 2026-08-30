@@ -25,7 +25,7 @@ const STEP_COACHING = [
   },
   {
     tab: "F2L",
-    tip: "F2L: pair each white corner with its edge and insert together. The F2L tab trains the five setups on the front-right slot.",
+    tip: "F2L: pair each white corner with its edge and insert together. The F2L tab drills the 41 standard cases as 1R, 1L, 2R…",
   },
   {
     tab: "OLL",

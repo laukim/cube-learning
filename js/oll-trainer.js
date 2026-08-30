@@ -99,7 +99,7 @@ export const OLL_SUNE = {
 };
 
 const HOLD_NOTE =
-  "White on bottom · green = F. Match the picture with U only — don’t orbit to follow F/R.";
+  "White on bottom. Match the picture with U only — spinning the cube is a real y.";
 
 function hint(title, copy, alg, note = "", diagram = null) {
   return { title, copy, alg, note, diagram };
@@ -424,8 +424,8 @@ export const OLL_TIPS = [
     body: "Again = same case. Next OLL = next hold in the list. Later you can learn full 2-look OLL (more algs, fewer repeats).",
   },
   {
-    title: "Don’t orbit for the alg",
-    body: "Dragging around only changes the camera. F/R/L/B always mean cube faces with white on bottom.",
+    title: "Spinning the cube is y",
+    body: "Dragging around the cube turns it for real (y) — a new colour becomes F. For this drill, match the picture with U only; don’t y to fake the hold.",
   },
   {
     title: "Source",

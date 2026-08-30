@@ -155,10 +155,13 @@ assert(report.includes("F' U' R'"), "report solution");
 assert(report.includes("Undos: 1"), "report undos");
 assert(report.includes("before F"), "report pause");
 
-const { countNamedAlgs } = await import("../js/coach-report.js");
+const { countNamedAlgs, countYTurns } = await import("../js/coach-report.js");
 const suneHits = countNamedAlgs("R U R' U R U2 R' U R U R' U R U2 R'");
 assert(suneHits.Sune === 2, "two Sunes");
 assert(!suneHits.righty, "Sune is not counted as righty");
+const bSune = countNamedAlgs("B U B' U B U2 B'");
+assert(!bSune.Sune, "orbit-held Sune (B) is not the R-face Sune");
+assert(countYTurns("R U R' y U y'") === 2, "y turns counted");
 const tHits = countNamedAlgs("R U R' U' R' F R2 U' R' U' R U R' F'");
 assert(tHits["T-perm"] === 1, "T-perm");
 assert(!tHits.righty, "T-perm is not counted as righty");

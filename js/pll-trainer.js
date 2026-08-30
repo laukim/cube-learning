@@ -78,7 +78,7 @@ export function getPllDrillInfo() {
 }
 
 const HOLD_NOTE =
-  "White on bottom · green = F. Match the picture with U only — don’t orbit to follow F/R.";
+  "White on bottom. Match the picture with U only — spinning the cube is a real y.";
 
 function hint(title, copy, alg, note = "", diagram = null) {
   return { title, copy, alg, note, diagram };
@@ -394,8 +394,8 @@ export const PLL_TIPS = [
     body: "The first R or F messes up the first two layers on purpose. Finish every move — F2L comes back. Or use Apply / Undo.",
   },
   {
-    title: "Don’t orbit for the alg",
-    body: "Dragging around only changes the camera. F/R/L/B always mean cube faces with white on bottom.",
+    title: "Spinning the cube is y",
+    body: "Dragging around the cube turns it for real (y) — a new colour becomes F. For this drill, match the picture with U only; don’t y to fake the hold.",
   },
   {
     title: "Source",

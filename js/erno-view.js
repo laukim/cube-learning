@@ -2,8 +2,9 @@
  * Exact onlinecube.com drag behaviour via vendored ERNO / Cuber.
  * https://onlinecube.com — Chrome Cube Lab (Mark Lundin / Stewart Smith / Google Creative Lab)
  *
- * Orbit is look-only: F/R/L/B always mean fixed cube faces (green = F with white
- * on bottom). Dragging around the cube does not remap pad/keyboard notation.
+ * Spinning the whole cube (empty space, or two fingers on it) is a real y —
+ * same as turning it in your hands. Flick a sticker to turn a face. After y,
+ * a new colour is F; notation follows the cube, not the camera.
  */
 
 function moveToErno(move) {
@@ -76,44 +77,30 @@ export function createErnoCube(container, hooks) {
     /* ignore */
   }
 
-  // ERNO.Controls only orbits when the pointer misses every cubelet, uses
-  // pageX * devicePixelRatio (broken on iPhone), and our old snap-back undid
-  // any rotation that did happen. Own look-around here instead.
+  // ERNO.Controls orbits on a miss using pageX * devicePixelRatio (broken on
+  // iPhone). We own whole-cube spins (real y) and leave face flicks to ERNO.
   cube.controls.update = () => {};
 
   const TAP_PX = 10;
   // Finger jitter on a sticker used to lock a slice after ~4px, then a fast
   // lift counted as a 90° flick. Require a real swipe before a face turn.
   const FLICK_MIN_PX = 28;
-  const ORBIT_SPEED = 0.008;
+  // ~90° of spin in ~130px; snap to y at 45°.
+  const YAW_SPEED = 0.012;
+  const Y_QUARTER = Math.PI / 2;
   let downPt = null;
   let lastPt = null;
   let quatAtDown = null;
-  let orbiting = false;
-  const orbitAxis = new THREE.Vector3();
-  const orbitMatrix = new THREE.Matrix4();
+  let spinning = false;
+  let spinStart = null;
+  const yawAxis = new THREE.Vector3();
+  const yawMatrix = new THREE.Matrix4();
 
   function midpoint(touches) {
     return {
       x: (touches[0].clientX + touches[1].clientX) / 2,
       y: (touches[0].clientY + touches[1].clientY) / 2,
     };
-  }
-
-  function orbitBy(dx, dy) {
-    // Camera-space trackball — Euler X/Y increments invert after ~90° of pitch
-    // (easy to hit during a long solve, and after quaternion snap-back on a tap).
-    if (!dx && !dy) return;
-    orbitAxis.set(dy, dx, 0);
-    const len = orbitAxis.length();
-    if (len < 1e-8) return;
-    orbitAxis.divideScalar(len);
-    cube.object3D.updateMatrixWorld(true);
-    cube.camera.updateMatrixWorld(true);
-    orbitMatrix.getInverse(cube.object3D.matrixWorld);
-    orbitMatrix.multiply(cube.camera.matrixWorld);
-    orbitAxis.transformDirection(orbitMatrix);
-    cube.object3D.rotateOnAxis(orbitAxis, len * ORBIT_SPEED);
   }
 
   function eventClient(e) {
@@ -131,9 +118,73 @@ export function createErnoCube(container, hooks) {
     return !!el.closest(".sticker, .faceExtroverted, .cubelet");
   }
 
-  function cancelFaceDrag() {
+  function restorePose() {
+    if (quatAtDown && cube.object3D?.quaternion) {
+      cube.object3D.quaternion.copy(quatAtDown);
+    }
+  }
+
+  // Spin around world up (yellow stays on top), like turning a cube in your hands.
+  function yawPreview(dx) {
+    if (!dx) return;
+    cube.object3D.updateMatrixWorld(true);
+    yawAxis.set(0, 1, 0);
+    yawMatrix.getInverse(cube.object3D.matrixWorld);
+    yawAxis.transformDirection(yawMatrix);
+    // Swipe right → front goes right → cubing y (CW from above). Three.js +Y is CCW.
+    cube.object3D.rotateOnAxis(yawAxis, -dx * YAW_SPEED);
+  }
+
+  function beginSpin(pt) {
+    spinning = true;
+    spinStart = pt;
+    lastPt = pt;
     try {
+      quatAtDown = cube.object3D.quaternion.clone();
+    } catch {
+      quatAtDown = null;
+    }
+  }
+
+  function commitSpin() {
+    if (!spinning || !spinStart || !lastPt) {
+      spinning = false;
+      spinStart = null;
+      restorePose();
+      return;
+    }
+    const dx = lastPt.x - spinStart.x;
+    const dy = lastPt.y - spinStart.y;
+    spinning = false;
+    spinStart = null;
+    restorePose();
+    // Mostly vertical = peek; snap back, no cube turn.
+    if (Math.abs(dx) < Math.abs(dy)) return;
+    const turns = Math.round((dx * YAW_SPEED) / Y_QUARTER);
+    const n = Math.max(-2, Math.min(2, turns));
+    if (!n) return;
+    const move = n === 2 || n === -2 ? "y2" : n > 0 ? "y" : "y'";
+    const s = moveToErno(move);
+    if (!s) return;
+    const prev = cube.twistDuration;
+    cube.twistDuration = 1;
+    cube.twist(s);
+    cube.twistDuration = prev;
+  }
+
+  function freezeSlices() {
+    try {
+      cube.mouseInteraction.enabled = false;
       cube.mouseInteraction.active = false;
+    } catch {
+      /* ignore */
+    }
+    snapSlicesHome();
+  }
+
+  function unfreezeSlices() {
+    try {
+      cube.mouseInteraction.enabled = cube.mouseControlsEnabled !== false;
     } catch {
       /* ignore */
     }
@@ -173,7 +224,8 @@ export function createErnoCube(container, hooks) {
     hooks.onPlayStart?.();
     downPt = eventClient(e);
     lastPt = downPt;
-    orbiting = false;
+    spinning = false;
+    spinStart = null;
     try {
       quatAtDown = cube.object3D.quaternion.clone();
     } catch {
@@ -182,12 +234,12 @@ export function createErnoCube(container, hooks) {
     if (e.touches && e.touches.length >= 2) {
       e.preventDefault();
       e.stopPropagation();
-      orbiting = true;
-      cancelFaceDrag();
+      freezeSlices();
+      beginSpin(midpoint(e.touches));
       return;
     }
     if (downPt && !hitPiece(downPt)) {
-      orbiting = true;
+      beginSpin(downPt);
       e.stopPropagation();
       if (e.cancelable) e.preventDefault();
     }
@@ -196,48 +248,63 @@ export function createErnoCube(container, hooks) {
   const onPointerMove = (e) => {
     if (e.touches && e.touches.length >= 2) {
       e.preventDefault();
-      orbiting = true;
-      cancelFaceDrag();
-      const p = midpoint(e.touches);
-      if (lastPt) orbitBy(p.x - lastPt.x, p.y - lastPt.y);
-      lastPt = p;
+      e.stopPropagation();
+      freezeSlices();
+      const mid = midpoint(e.touches);
+      if (!spinning) beginSpin(mid);
+      else if (lastPt) {
+        yawPreview(mid.x - lastPt.x);
+        lastPt = mid;
+      }
       return;
     }
-    if (!orbiting || !lastPt) return;
+    if (!spinning || !lastPt) return;
     if (e.cancelable) e.preventDefault();
     const p = eventClient(e);
-    orbitBy(p.x - lastPt.x, p.y - lastPt.y);
+    yawPreview(p.x - lastPt.x);
     lastPt = p;
   };
 
   const onPointerUp = (e) => {
-    if (e.touches && e.touches.length > 0) {
-      if (e.touches.length >= 2) {
-        lastPt = midpoint(e.touches);
-        orbiting = true;
-      } else {
+    if (e.touches && e.touches.length >= 2) {
+      lastPt = midpoint(e.touches);
+      return;
+    }
+    if (spinning) {
+      commitSpin();
+      unfreezeSlices();
+      if (e.touches && e.touches.length > 0) {
         lastPt = eventClient(e);
+        downPt = lastPt;
+        spinning = false;
+        return;
       }
+      downPt = null;
+      lastPt = null;
+      quatAtDown = null;
+      hooks.onPlayEnd?.();
+      return;
+    }
+    if (e.touches && e.touches.length > 0) {
+      lastPt = eventClient(e);
       return;
     }
     if (!downPt) {
-      orbiting = false;
       lastPt = null;
       return;
     }
     const p = eventClient(e);
     const dist = Math.hypot(p.x - downPt.x, p.y - downPt.y);
-    if (!orbiting && dist < FLICK_MIN_PX) {
+    if (dist < FLICK_MIN_PX) {
       suppressAccidentalFlick();
     }
-    // Tap jitter only — never undo a real look-around drag.
-    if (!orbiting && dist < TAP_PX && quatAtDown && cube.object3D?.quaternion) {
+    if (dist < TAP_PX && quatAtDown && cube.object3D?.quaternion) {
       cube.object3D.quaternion.copy(quatAtDown);
     }
     downPt = null;
     lastPt = null;
     quatAtDown = null;
-    orbiting = false;
+    spinning = false;
     hooks.onPlayEnd?.();
   };
 
@@ -364,7 +431,7 @@ export function createErnoCube(container, hooks) {
     setViewYaw() {},
     resetViewYaw() {},
     setSuppressOrbitDetect() {},
-    /** Cube-space move (F = green when white is on bottom). */
+    /** Cube-space move. Spinning the cube is a real y. */
     twist(move) {
       const s = moveToErno(move);
       if (s) cube.twist(s);

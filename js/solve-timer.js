@@ -1,5 +1,6 @@
 import { STEPS } from "./solver.js";
 import { countNamedAlgs, countYTurns, formatAlgCounts } from "./coach-report.js";
+import { analyzeF2lFlow, formatF2lFlow } from "./f2l-trainer.js";
 
 export const SPLIT_SHORT = {
   "white-cross": "Cross",
@@ -312,6 +313,10 @@ export function formatSolveReport(analysis, extra = {}) {
         return `${p.pair} in ${formatClock(p.ms - prev)}`;
       });
       lines.push(`   pairs: ${pairBits.join(" · ")}`);
+    }
+    if (row.id === "f2l" && alg && scramble) {
+      const crossAlg = splitById.get("white-cross")?.alg || "";
+      lines.push(...formatF2lFlow(analyzeF2lFlow(scramble, crossAlg, alg)));
     }
     if (alg) {
       const counts = countNamedAlgs(alg);

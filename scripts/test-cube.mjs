@@ -20,6 +20,7 @@ const {
   renderAnalysisHtml,
   startTimer,
 } = await import("../js/solve-timer.js");
+const { analyzeF2lFlow, formatF2lFlow } = await import("../js/f2l-trainer.js");
 const {
   FLICK_MIN_PX,
   ORBIT_REMAPS_FLICKS,
@@ -185,6 +186,48 @@ armTimer(seeded);
 startTimer(seeded, 0, 0, 2);
 assert(seeded.lastDone === 2 && seeded.splits.length === 2, "seed already-done steps");
 assert(seeded.splits.every((s) => s.ms === 0), "seeded splits are 0");
+
+// This 2:52 F2L: four slots one at a time, then R/B popped already-solved pairs.
+const f2lFlow = analyzeF2lFlow(
+  "R' U D' B L2 B R2 U' R2 L2 B D R' U B2 D2 L' R2 D2 B2 L' B' R2 F U'",
+  "F U L L B' R L U' F' F' L L' L'",
+  "U' B U U' U' B' U' F' U' U' F U' U' U' U' U' F' U F U U U L U2 U L' U U U B U U B' U U U' R' U U U R L' U L R' U' R R' U' R U' U' U' U' B U B' U U B U' B'"
+);
+assert(f2lFlow.inserts.map((x) => x.slot).join(" ") === "FR BL FL BR", "solved FR then BL then FL then BR");
+assert(f2lFlow.inserts[0].trigger.endsWith("F' U F"), "FR insert is F' U F");
+assert(f2lFlow.pops.filter((p) => p.slot === "FR").length >= 3, "R popped FR after it was in");
+assert(f2lFlow.pops.filter((p) => p.slot === "BL").length >= 3, "B popped BL after it was in");
+const flowLines = formatF2lFlow(f2lFlow).join("\n");
+assert(flowLines.includes("first in:"), "report names the slot order");
+assert(flowLines.includes("popped solved slots"), "report flags reinserts");
+
+const flowReport = formatSolveReport(
+  {
+    totalMs: 1000,
+    totalMoves: 10,
+    tps: 1,
+    rows: [
+      { index: 0, id: "white-cross", title: "White cross", ms: 100, moves: 2 },
+      { index: 1, id: "f2l", title: "F2L pairs", ms: 900, moves: 8 },
+    ],
+    groups: [],
+    slowest: { short: "F2L", title: "F2L", ms: 900, share: 0.9 },
+    insights: [],
+  },
+  {
+    scramble: "R' U D' B L2 B R2 U' R2 L2 B D R' U B2 D2 L' R2 D2 B2 L' B' R2 F U'",
+    splits: [
+      { id: "white-cross", alg: "F U L L B' R L U' F' F' L L' L'", trace: [] },
+      {
+        id: "f2l",
+        alg: "U' B U U' U' B' U' F' U' U' F U' U' U' U' U' F' U F U U U L U2 U L' U U U B U U B' U U U' R' U U U R L' U L R' U' R R' U' R U' U' U' U' B U B' U U B U' B'",
+        trace: [],
+      },
+    ],
+  }
+);
+assert(flowReport.includes("first in: FR"), "coach report includes slot replay");
+assert(flowReport.includes("popped solved slots"), "coach report includes pops");
 
 // Phone UX contracts — 21af0db flick deadzone + look-only orbit (f8630ef).
 // Inferring y on the same touch as a face flick remapped R/L′ into D/D′.

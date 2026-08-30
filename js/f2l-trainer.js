@@ -5,8 +5,10 @@
 
 import {
   applyAlg,
+  applyMove,
   cloneFacelets,
   getFace,
+  parseAlg,
   solvedFacelets,
   sticker,
 } from "./cube.js";
@@ -117,6 +119,84 @@ export function countSlotsSolved(facelets) {
 
 export function f2lComplete(facelets) {
   return whiteCrossIntact(facelets) && countSlotsSolved(facelets) === 4;
+}
+
+function solvedSlotIds(facelets) {
+  return SLOTS.filter((s) => slotSolved(facelets, s)).map((s) => s.id);
+}
+
+function insertTrigger(moves) {
+  let i = 0;
+  while (i < moves.length && /^U/i.test(moves[i])) i += 1;
+  const rest = moves.slice(i);
+  if (!rest.length) return moves.join(" ");
+  if (rest.length <= 8) return rest.join(" ");
+  return rest.slice(-4).join(" ");
+}
+
+/**
+ * Replay cross + F2L flicks (cube-fixed F/R/L/B). Orbit is look-only and will
+ * not appear as y — this still shows which slot went in, and when a later
+ * side turn popped a pair that was already solved.
+ */
+export function analyzeF2lFlow(scramble, crossAlg, f2lAlg) {
+  const f = solvedFacelets();
+  try {
+    if (scramble) applyAlg(f, scramble);
+    if (crossAlg) applyAlg(f, crossAlg);
+  } catch {
+    return { inserts: [], pops: [] };
+  }
+  const moves = parseAlg(f2lAlg);
+  const inserts = [];
+  const pops = [];
+  let buf = [];
+  let prev = new Set(solvedSlotIds(f));
+  const seen = new Set(prev);
+  for (const m of moves) {
+    applyMove(f, m);
+    buf.push(m);
+    const now = new Set(solvedSlotIds(f));
+    for (const id of prev) {
+      if (now.has(id)) continue;
+      pops.push({ slot: id, move: m });
+    }
+    for (const id of now) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      inserts.push({
+        slot: id,
+        moves: buf.slice(),
+        trigger: insertTrigger(buf),
+      });
+      buf = [];
+    }
+    prev = now;
+  }
+  return { inserts, pops, leftover: buf };
+}
+
+export function formatF2lFlow(flow) {
+  if (!flow?.inserts?.length) return [];
+  const inBits = flow.inserts.map((x) => `${x.slot} (${x.trigger})`);
+  const lines = [`   first in: ${inBits.join(" · ")}`];
+  if (!flow.pops?.length) return lines;
+  const bySlot = new Map();
+  for (const p of flow.pops) {
+    const face = String(p.move)[0];
+    if (!face || face === "U") continue;
+    const cur = bySlot.get(p.slot) || { n: 0, faces: new Set() };
+    cur.n += 1;
+    cur.faces.add(face);
+    bySlot.set(p.slot, cur);
+  }
+  const popBits = [...bySlot.entries()].map(
+    ([slot, cur]) => `${slot}×${cur.n} (${[...cur.faces].join("/")})`
+  );
+  if (popBits.length) {
+    lines.push(`   popped solved slots: ${popBits.join(" · ")} — put back while working the next pair`);
+  }
+  return lines;
 }
 
 /** How many y turns bring this slot to front-right. */

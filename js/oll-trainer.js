@@ -99,7 +99,7 @@ export const OLL_SUNE = {
 };
 
 const HOLD_NOTE =
-  "White on bottom. Match the picture with U only — spinning the cube is a real y.";
+  "White on bottom. Match the picture with U only — looking around is not a y until you turn from that view.";
 
 function hint(title, copy, alg, note = "", diagram = null) {
   return { title, copy, alg, note, diagram };
@@ -424,8 +424,8 @@ export const OLL_TIPS = [
     body: "Again = same case. Next OLL = next hold in the list. Later you can learn full 2-look OLL (more algs, fewer repeats).",
   },
   {
-    title: "Spinning the cube is y",
-    body: "Dragging around the cube turns it for real (y) — a new colour becomes F. For this drill, match the picture with U only; don’t y to fake the hold.",
+    title: "Looking around is not y",
+    body: "Drag around the cube to peek. That only moves the camera. If you start turning faces while another colour is in front, that becomes a real y.",
   },
   {
     title: "Source",

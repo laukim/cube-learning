@@ -22,7 +22,9 @@ import {
   createTimer,
   currentSplitMs,
   elapsedMs,
+  findPauses,
   formatClock,
+  formatSolveReport,
   loadSolveHistory,
   noteProgress,
   recordSolve,
@@ -97,6 +99,12 @@ let syncingFromUi = false;
 let undoingMove = false;
 /** User-facing move notation (not scramble playback). */
 let moveHistory = [];
+/** Scramble alg for the current timed Guide solve (empty during drills). */
+let timedScramble = "";
+/** { move, ms } from timer start — used to flag thinking pauses. */
+let solveTrace = [];
+let timedUndos = 0;
+let lastSolveReport = "";
 let solveTimer = createTimer();
 let timerRaf = 0;
 let analysisShownForSolve = false;
@@ -201,11 +209,18 @@ function recordTwist(move) {
   if (undoingMove) {
     undoingMove = false;
     const undone = moveHistory.pop();
+    if (solveTimer.phase === "running" || solveTimer.phase === "done") {
+      timedUndos += 1;
+      solveTrace.pop();
+    }
     updateMoveTrace();
     flashFlickToast(undone ? `undid ${undone}` : `undid ${move}`);
     return;
   }
   moveHistory.push(move);
+  if (solveTimer.phase === "running") {
+    solveTrace.push({ move, ms: elapsedMs(solveTimer, performance.now()) });
+  }
   updateMoveTrace();
   flashFlickToast(move);
 }
@@ -228,6 +243,7 @@ function startTimerTick() {
 
 function hideSolveAnalysis() {
   analysisShownForSolve = false;
+  lastSolveReport = "";
   if (solveAnalysisEl) {
     solveAnalysisEl.hidden = true;
     solveAnalysisEl.innerHTML = "";
@@ -248,11 +264,27 @@ function showSolveAnalysis() {
     totalMoves,
     previousTotalMs: previous?.totalMs ?? null,
   });
+  const solution = moveHistory.join(" ");
+  const pauses = findPauses(solveTrace);
+  analysis.scramble = timedScramble;
+  analysis.solution = solution;
+  analysis.canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
+  lastSolveReport = formatSolveReport(analysis, {
+    scramble: timedScramble,
+    solution,
+    undos: timedUndos,
+    pauses,
+    at: Date.now(),
+  });
   recordSolve({
     at: Date.now(),
     totalMs: analysis.totalMs,
     totalMoves: analysis.totalMoves,
     splits: solveTimer.splits.map((s) => ({ id: s.id, ms: s.ms, moves: s.moves })),
+    scramble: timedScramble,
+    solution,
+    undos: timedUndos,
+    pauses: pauses.map((p) => ({ after: p.after, before: p.before, ms: p.ms })),
   });
   if (solvedBannerTitle) solvedBannerTitle.textContent = `Solved in ${formatClock(analysis.totalMs)}.`;
   if (solvedBannerCopy) solvedBannerCopy.textContent = ` ${analysis.totalMoves} moves · slowest ${analysis.slowest.short}.`;
@@ -263,6 +295,35 @@ function showSolveAnalysis() {
       solveAnalysisEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
   }
+  hintsPinned = true;
+  setHintsOpen(true);
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    ta.remove();
+    return ok;
+  }
+}
+
+function markCopyButton(btn, ok) {
+  if (!btn) return;
+  const prev = btn.textContent;
+  btn.textContent = ok ? "Copied" : "Copy failed";
+  window.setTimeout(() => {
+    btn.textContent = prev;
+  }, 1600);
 }
 
 function timerStatusText(now) {
@@ -774,6 +835,10 @@ function resetCube() {
   facelets = solvedFacelets();
   undoingMove = false;
   clearMoveHistory();
+  timedScramble = "";
+  solveTrace = [];
+  timedUndos = 0;
+  lastSolveReport = "";
   stickyOllHint = null;
   stickyPllHint = null;
   clearSolveTimer();
@@ -788,6 +853,10 @@ function playScrambleAlg(alg, { timeSolve = false } = {}) {
   clearMoveHistory();
   stickyOllHint = null;
   stickyPllHint = null;
+  timedScramble = timeSolve ? alg || "" : "";
+  solveTrace = [];
+  timedUndos = 0;
+  lastSolveReport = "";
   if (timeSolve) {
     stopTimerTick();
     resetTimer(solveTimer);
@@ -863,6 +932,23 @@ document.querySelectorAll(".move-btn").forEach((btn) => {
 });
 
 btnUndo.addEventListener("click", () => undoLastMove());
+
+solveAnalysisEl?.addEventListener("click", async (e) => {
+  const copyBtn = e.target.closest("#btn-copy-solve");
+  const shareBtn = e.target.closest("#btn-share-solve");
+  if (!copyBtn && !shareBtn) return;
+  if (!lastSolveReport) return;
+  if (shareBtn && typeof navigator.share === "function") {
+    try {
+      await navigator.share({ title: "BY LAYER solve", text: lastSolveReport });
+    } catch {
+      /* cancelled */
+    }
+    return;
+  }
+  const ok = await copyText(lastSolveReport);
+  markCopyButton(copyBtn || shareBtn, ok);
+});
 
 btnTogglePad.addEventListener("click", () => {
   const visible = btnTogglePad.getAttribute("aria-pressed") !== "true";

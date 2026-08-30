@@ -255,6 +255,71 @@ export function buildAnalysis({ totalMs, splits, totalMoves, previousTotalMs = n
   };
 }
 
+export function findPauses(trace, thresholdMs = 3000) {
+  const pauses = [];
+  if (!Array.isArray(trace)) return pauses;
+  for (let i = 1; i < trace.length; i++) {
+    const gap = (trace[i].ms || 0) - (trace[i - 1].ms || 0);
+    if (gap < thresholdMs) continue;
+    pauses.push({
+      after: trace[i - 1].move,
+      before: trace[i].move,
+      ms: gap,
+    });
+  }
+  pauses.sort((a, b) => b.ms - a.ms);
+  return pauses;
+}
+
+export function formatSolveReport(analysis, extra = {}) {
+  const { scramble = "", solution = "", undos = 0, pauses = [], at = null } = extra;
+  const tps = analysis.tps > 0 ? analysis.tps.toFixed(2) : "—";
+  const lines = [
+    "SOLVE ANALYSIS",
+    formatClock(analysis.totalMs),
+    `${analysis.totalMoves} moves · ${tps} tps · slowest ${analysis.slowest.short}`,
+  ];
+  if (at) {
+    const d = new Date(at);
+    if (!Number.isNaN(d.getTime())) {
+      lines.push(d.toISOString().replace("T", " ").slice(0, 16) + " UTC");
+    }
+  }
+  lines.push("");
+  for (const g of analysis.groups) {
+    lines.push(g.title);
+    lines.push(formatClock(g.ms));
+    lines.push(`${Math.round(g.share * 100)}% · ${g.moves} moves`);
+  }
+  lines.push("");
+  for (const row of analysis.rows) {
+    lines.push(`${row.index + 1}. ${row.title}`);
+    lines.push(`${row.moves} moves`);
+    lines.push(formatClock(row.ms));
+  }
+  lines.push("");
+  if (scramble) {
+    lines.push("Scramble");
+    lines.push(scramble);
+    lines.push("");
+  }
+  if (solution) {
+    lines.push(`Solution (${analysis.totalMoves} moves)`);
+    lines.push(solution);
+    lines.push("");
+  }
+  if (undos > 0) lines.push(`Undos: ${undos}`);
+  if (pauses.length) {
+    lines.push("Pauses (≥3s)");
+    for (const p of pauses.slice(0, 8)) {
+      lines.push(`${formatClock(p.ms)} before ${p.before} (after ${p.after})`);
+    }
+    lines.push("");
+  }
+  for (const t of analysis.insights) lines.push(t);
+  return lines.join("\n");
+}
+
 function barWidth(share) {
   const pct = Math.max(2, Math.round(share * 100));
   return `${pct}%`;
@@ -295,6 +360,20 @@ export function renderAnalysisHtml(analysis) {
 
   const insightHtml = insights.map((t) => `<li>${t}</li>`).join("");
 
+  const scramble = analysis.scramble ? escapeHtml(analysis.scramble) : "";
+  const solution = analysis.solution ? escapeHtml(analysis.solution) : "";
+  const reconHtml =
+    scramble || solution
+      ? `<div class="analysis-recon">
+        ${scramble ? `<p><span>Scramble</span><code>${scramble}</code></p>` : ""}
+        ${solution ? `<p><span>Solution</span><code>${solution}</code></p>` : ""}
+      </div>`
+      : "";
+
+  const shareBtn = analysis.canShare
+    ? `<button type="button" class="btn btn-small" id="btn-share-solve">Share</button>`
+    : "";
+
   return `<div class="analysis-hero">
       <p class="analysis-kicker">Solve analysis</p>
       <p class="analysis-total">${formatClock(totalMs)}</p>
@@ -302,7 +381,20 @@ export function renderAnalysisHtml(analysis) {
     </div>
     <div class="analysis-groups">${groupHtml}</div>
     <ol class="analysis-rows">${rowHtml}</ol>
-    <ul class="analysis-insights">${insightHtml}</ul>`;
+    <ul class="analysis-insights">${insightHtml}</ul>
+    ${reconHtml}
+    <div class="analysis-actions">
+      <button type="button" class="btn btn-small btn-primary" id="btn-copy-solve">Copy for chat</button>
+      ${shareBtn}
+    </div>
+    <p class="analysis-share-hint">Copy or share, then paste into the Cursor chat on your Mac.</p>`;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
 }
 
 const HISTORY_KEY = "bylayer-solve-history";

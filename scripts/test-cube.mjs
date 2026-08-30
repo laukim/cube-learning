@@ -11,6 +11,8 @@ const {
   elapsedMs,
   formatClock,
   formatDelta,
+  formatSolveReport,
+  findPauses,
   noteProgress,
   startTimer,
 } = await import("../js/solve-timer.js");
@@ -130,6 +132,28 @@ const analysis = buildAnalysis({
 assert(analysis.slowest.ms >= 2500, "has slowest");
 assert(analysis.groups.length === 4, "four groups");
 assert(analysis.insights.length >= 2, "coaching insights");
+
+const pauses = findPauses(
+  [
+    { move: "R", ms: 1000 },
+    { move: "U", ms: 1500 },
+    { move: "F", ms: 5200 },
+  ],
+  3000
+);
+assert(pauses.length === 1 && pauses[0].before === "F", "pause before F");
+
+const report = formatSolveReport(analysis, {
+  scramble: "R U F",
+  solution: "F' U' R'",
+  undos: 1,
+  pauses,
+});
+assert(report.includes("Scramble"), "report scramble");
+assert(report.includes("R U F"), "report scramble alg");
+assert(report.includes("F' U' R'"), "report solution");
+assert(report.includes("Undos: 1"), "report undos");
+assert(report.includes("before F"), "report pause");
 
 const seeded = createTimer();
 armTimer(seeded);

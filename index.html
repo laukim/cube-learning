@@ -34,6 +34,10 @@
           <div class="cube-wrap" id="cube-wrap">
             <div id="erno-container" aria-label="3D cube"></div>
             <p class="flick-toast" id="flick-toast" aria-live="polite"></p>
+            <p class="f2l-case-overlay" id="f2l-case-overlay" hidden>
+              <strong id="f2l-case-overlay-id">—</strong>
+              <span id="f2l-case-overlay-hand"></span>
+            </p>
             <p class="orbit-hint">
               Flick a face to turn · drag empty space around the cube to look
             </p>
@@ -84,6 +88,11 @@
             <ol class="solve-timer-splits" id="solve-timer-splits" hidden></ol>
           </div>
 
+          <div class="f2l-case-badge" id="f2l-case-badge" hidden>
+            <span class="f2l-case-id" id="f2l-case-id">—</span>
+            <span class="f2l-case-hand" id="f2l-case-hand">R/U</span>
+          </div>
+
           <div class="move-trace" id="move-trace" aria-live="polite" aria-label="Move history">
             <span class="move-trace-label">Moves</span>
             <code class="move-trace-alg" id="move-trace-alg">—</code>
@@ -98,6 +107,7 @@
             <button type="button" class="btn btn-ghost" id="btn-reset">Reset</button>
             <button type="button" class="btn btn-ghost" id="btn-scramble">Scramble</button>
             <button type="button" class="btn btn-ghost" id="btn-cross-case" hidden>New cross</button>
+            <button type="button" class="btn btn-ghost" id="btn-f2l-prev" hidden>Prev</button>
             <button type="button" class="btn btn-ghost" id="btn-f2l-again" hidden>Again</button>
             <button type="button" class="btn btn-ghost" id="btn-f2l-case" hidden>Next F2L</button>
             <button type="button" class="btn btn-ghost" id="btn-f2l-random" hidden aria-pressed="false">
@@ -207,9 +217,9 @@
             <div class="hint-kicker" id="f2l-hint-kicker">F2L</div>
             <h2 class="hint-title" id="f2l-hint-title">Ready</h2>
             <p class="hint-copy" id="f2l-hint-copy">
-              Tap <strong>Again</strong> / <strong>Next F2L</strong>. Cases go
+              Tap <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong>. Order is
               <strong>1R → 1L → 2R → 2L</strong> … (R/U then the same case L/U). Toggle
-              <strong>Order / Random</strong>. One pair only — when it’s in, the next case loads.
+              <strong>Order / Random</strong>. One pair only — stay on this ID until you tap Next or Prev.
               From
               <a
                 class="ext-link"
@@ -227,7 +237,7 @@
           </div>
 
           <div class="solved-banner" id="f2l-solved-banner" hidden>
-            <strong>Case in.</strong> Next F2L loads on its own. Again = same ID.
+            <strong>Case in.</strong> Stay here, or tap Next F2L / Prev / Again.
           </div>
 
           <div class="f2l-tips" id="f2l-tips"></div>

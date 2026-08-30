@@ -249,6 +249,10 @@ scrambleF2L(drill, "again");
 assert(getF2lDrillInfo().id === "1R", "Again stays on 1R");
 scrambleF2L(drill, "next");
 assert(getF2lDrillInfo().id === "1L", "next in order is 1L");
+scrambleF2L(drill, "prev");
+assert(getF2lDrillInfo().id === "1R", "Prev from 1L returns to 1R");
+scrambleF2L(drill, "again");
+assert(getF2lDrillInfo().id === "1R", "Again stays on 1R after Prev");
 
 // Phone UX contracts — 21af0db flick deadzone + look-only orbit (f8630ef).
 // Inferring y on the same touch as a face flick remapped R/L′ into D/D′.

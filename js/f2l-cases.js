@@ -76,7 +76,7 @@ function makeDrill(n, group, name, hand, alg) {
       hand === "R"
         ? `Slot is ${slotName}. Use R and U (F if the alg has it). Don’t turn L or B — other pairs stay in.`
         : `Same case on the left. Slot is ${slotName}. Use L and U. Don’t turn R or B.`,
-    note: "White on bottom · green = F. One pair only. When it’s in, the next case loads.",
+    note: "White on bottom · green = F. One pair only. Stay on this ID until you tap Next or Prev.",
   };
 }
 

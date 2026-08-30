@@ -273,7 +273,7 @@ export function analyzeF2lDrill(facelets) {
       case: c,
       hint: hint(
         "Standard F2L cases",
-        "Again = this case. Next F2L = next in order (1R then 1L, then 2R…). Toggle Random if you want a mix. One pair only — the other three stay in.",
+        "Prev / Again / Next F2L. Order is 1R then 1L, then 2R…. Toggle Random if you want a mix. One pair only — the other three stay in.",
         "",
         "From CubeHead’s 41 cases. IDs stick: 1R is always the same insert on the right."
       ),
@@ -286,7 +286,7 @@ export function analyzeF2lDrill(facelets) {
       case: c,
       hint: hint(
         `${c.id} in`,
-        `Next is ${info.nextId}. It loads on its own.`,
+        `Stay on ${c.id}, or tap Next for ${info.nextId} (Prev goes back).`,
         "",
         c.note
       ),
@@ -329,6 +329,8 @@ export function scrambleF2L(facelets, mode = "next") {
     } else {
       f2lDrillIndex = (f2lDrillIndex + 1) % n;
     }
+  } else if (mode === "prev") {
+    f2lDrillIndex = (f2lDrillIndex - 1 + n) % n;
   }
 
   const c = F2L_DRILL_CASES[((f2lDrillIndex % n) + n) % n];
@@ -720,7 +722,7 @@ function bothOnUHint(facelets, corner, edge) {
 export const F2L_TIPS = [
   {
     title: "How this drill works",
-    body: "Each case is one pair. The other three stay in. Solve it, the next case loads. Again = same ID. Next F2L = next in the list (or random if that toggle is on).",
+    body: "Each case is one pair. The other three stay in. When it’s in, stay on this ID until you tap Next or Prev. Again = same ID. Next F2L = next in the list (or random if that toggle is on).",
   },
   {
     title: "IDs: 1R then 1L",

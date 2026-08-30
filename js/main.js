@@ -108,7 +108,6 @@ let lastSolveReport = "";
 /** First time each F2L slot-count was reached during a timed solve. */
 let f2lPairMarks = [];
 let f2lPairsLogged = 0;
-let f2lNextTimer = 0;
 let solveTimer = createTimer();
 let timerRaf = 0;
 let analysisShownForSolve = false;
@@ -512,6 +511,7 @@ function mountErno() {
 
 function refreshGuide() {
   syncSolveTimer();
+  paintF2lCaseChrome();
 
   if (appMode === "cross") {
     refreshCross();
@@ -571,26 +571,30 @@ function refreshGuide() {
   document.getElementById("btn-apply-alg").hidden = !lastHintAlg;
 }
 
-function cancelF2lNextCase() {
-  if (f2lNextTimer) {
-    window.clearTimeout(f2lNextTimer);
-    f2lNextTimer = 0;
-  }
-}
+function paintF2lCaseChrome() {
+  const overlay = document.getElementById("f2l-case-overlay");
+  const overlayId = document.getElementById("f2l-case-overlay-id");
+  const overlayHand = document.getElementById("f2l-case-overlay-hand");
+  const badge = document.getElementById("f2l-case-badge");
+  const badgeId = document.getElementById("f2l-case-id");
+  const badgeHand = document.getElementById("f2l-case-hand");
+  const on = appMode === "f2l";
+  if (solveTimerEl) solveTimerEl.hidden = on;
+  if (overlay) overlay.hidden = !on;
+  if (badge) badge.hidden = !on;
+  if (!on) return;
 
-function scheduleF2lNextCase() {
-  if (f2lNextTimer || syncingFromUi) return;
-  f2lNextTimer = window.setTimeout(() => {
-    f2lNextTimer = 0;
-    if (appMode !== "f2l") return;
-    const draft = solvedFacelets();
-    const alg = scrambleF2L(draft, "next");
-    playScrambleAlg(alg);
-    setPanelCopy("f2l");
-  }, 850);
+  const d = getF2lDrillInfo();
+  const id = d.started ? d.id : "—";
+  const hand = d.started ? (d.hand === "R" ? "R/U · FR" : "L/U · FL") : "tap Next";
+  if (overlayId) overlayId.textContent = id;
+  if (overlayHand) overlayHand.textContent = hand;
+  if (badgeId) badgeId.textContent = id;
+  if (badgeHand) badgeHand.textContent = hand;
 }
 
 function refreshF2L() {
+  paintF2lCaseChrome();
   const result = analyzeF2lDrill(facelets);
   const d = getF2lDrillInfo();
   const prog = document.getElementById("f2l-progress");
@@ -609,20 +613,18 @@ function refreshF2L() {
   const card = document.getElementById("f2l-hint-card");
   if (result.complete) {
     solvedEl.hidden = false;
-    solvedEl.innerHTML = `<strong>${d.id} in.</strong> Next is ${d.nextId} — it loads on its own. Again = same ID.`;
+    solvedEl.innerHTML = `<strong>${d.id} in.</strong> Stay here, or tap Next F2L (${d.nextId}) / Prev / Again.`;
     card.hidden = false;
     lastF2lAlg = "";
     document.getElementById("btn-f2l-apply").hidden = true;
     document.getElementById("f2l-hint-kicker").textContent = `F2L ${d.id} · ${d.index + 1}/${d.total} · ${d.group}`;
     document.getElementById("f2l-hint-title").textContent = `${d.id} in`;
-    document.getElementById("f2l-hint-copy").textContent = `Next is ${d.nextId}.`;
+    document.getElementById("f2l-hint-copy").textContent = `Stay on ${d.id}. Next is ${d.nextId}.`;
     document.getElementById("f2l-hint-alg").textContent = "";
     document.getElementById("f2l-hint-note").textContent = "";
-    scheduleF2lNextCase();
     return;
   }
 
-  cancelF2lNextCase();
   solvedEl.hidden = true;
   card.hidden = false;
   const h = result.hint;
@@ -846,11 +848,13 @@ function buildF2LTips() {
 }
 
 function setPanelCopy(mode) {
+  paintF2lCaseChrome();
   const title = document.getElementById("panel-title");
   const blurb = document.getElementById("panel-blurb");
   const btnScramble = document.getElementById("btn-scramble");
   const btnCross = document.getElementById("btn-cross-case");
   const btnF2l = document.getElementById("btn-f2l-case");
+  const btnF2lPrev = document.getElementById("btn-f2l-prev");
   const btnF2lAgain = document.getElementById("btn-f2l-again");
   const btnF2lRandom = document.getElementById("btn-f2l-random");
   const btnOll = document.getElementById("btn-oll-case");
@@ -862,6 +866,7 @@ function setPanelCopy(mode) {
   btnScramble.hidden = true;
   btnCross.hidden = true;
   btnF2l.hidden = true;
+  btnF2lPrev.hidden = true;
   btnF2lAgain.hidden = true;
   btnF2lRandom.hidden = true;
   btnOll.hidden = true;
@@ -879,9 +884,10 @@ function setPanelCopy(mode) {
     const d = getF2lDrillInfo();
     title.textContent = "F2L — 41 cases, R then L";
     blurb.innerHTML = d.started
-      ? `Now <strong>${d.id}</strong> · ${d.index + 1}/${d.total} · ${d.group}. <strong>Again</strong> = same ID · <strong>Next F2L</strong> = ${d.random ? "random" : "next in order"}.`
-      : `Practice <strong>1R → 1L → 2R → 2L</strong> … (82 holds). <strong>Again</strong> / <strong>Next F2L</strong>. Toggle <strong>Order / Random</strong>. From <a class="ext-link" href="https://www.youtube.com/watch?v=3tYj-9f4dA0" target="_blank" rel="noopener">CubeHead</a>.`;
+      ? `Now <strong>${d.id}</strong> · ${d.index + 1}/${d.total} · ${d.group}. <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong> (${d.random ? "random" : "next in order"}).`
+      : `Practice <strong>1R → 1L → 2R → 2L</strong> … (82 holds). <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong>. Toggle <strong>Order / Random</strong>. From <a class="ext-link" href="https://www.youtube.com/watch?v=3tYj-9f4dA0" target="_blank" rel="noopener">CubeHead</a>.`;
     btnF2l.hidden = false;
+    btnF2lPrev.hidden = false;
     btnF2lAgain.hidden = false;
     btnF2lRandom.hidden = false;
     btnHint.textContent = "F2L hint";
@@ -1111,8 +1117,14 @@ document.getElementById("btn-cross-case").addEventListener("click", () => {
   playScrambleAlg(alg);
 });
 
+document.getElementById("btn-f2l-prev").addEventListener("click", () => {
+  const draft = solvedFacelets();
+  const alg = scrambleF2L(draft, "prev");
+  playScrambleAlg(alg);
+  setPanelCopy("f2l");
+});
+
 document.getElementById("btn-f2l-again").addEventListener("click", () => {
-  cancelF2lNextCase();
   const draft = solvedFacelets();
   const alg = scrambleF2L(draft, "again");
   playScrambleAlg(alg);
@@ -1120,7 +1132,6 @@ document.getElementById("btn-f2l-again").addEventListener("click", () => {
 });
 
 document.getElementById("btn-f2l-case").addEventListener("click", () => {
-  cancelF2lNextCase();
   const draft = solvedFacelets();
   const alg = scrambleF2L(draft, "next");
   playScrambleAlg(alg);
@@ -1250,7 +1261,6 @@ document.querySelectorAll(".mode-tab").forEach((tab) => {
       t.setAttribute("aria-selected", t === tab ? "true" : "false");
     });
     const mode = tab.dataset.mode;
-    if (mode !== "f2l") cancelF2lNextCase();
     appMode = mode;
     Object.entries(panels).forEach(([key, el]) => {
       el.hidden = key !== mode;

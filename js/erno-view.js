@@ -2,10 +2,12 @@
  * Exact onlinecube.com drag behaviour via vendored ERNO / Cuber.
  * https://onlinecube.com — Chrome Cube Lab (Mark Lundin / Stewart Smith / Google Creative Lab)
  *
- * Drag around the cube is look-only (full trackball). A real y is inferred when
- * you start turning faces from a view that is already a quarter-turn around
- * yellow. Peeking at another side and looking back is not a y.
+ * Orbit is look-only: F/R/L/B are the cube’s faces (green = F with white on
+ * bottom). Dragging around the cube does not remap a flick. Flick the sticker
+ * you mean — that face turns.
  */
+
+import { FLICK_MIN_PX, ORBIT_SPEED, TAP_PX } from "./erno-ux.js";
 
 function moveToErno(move) {
   const m = String(move).trim();
@@ -70,7 +72,6 @@ export function createErnoCube(container, hooks) {
     cube.rotation.z += tilt.z;
   }
   applyHomeTilt();
-  let homeQuat = cube.object3D.quaternion.clone();
 
   try {
     cube.mouseInteraction.dragSpeed = 1.15;
@@ -79,24 +80,16 @@ export function createErnoCube(container, hooks) {
   }
 
   // ERNO.Controls orbits on a miss using pageX * devicePixelRatio (broken on
-  // iPhone). Look-around is ours; y is inferred from that view, not a 2nd gesture.
+  // iPhone). Own look-around here; never rewrite a face flick into y/D.
   cube.controls.update = () => {};
 
-  const TAP_PX = 10;
-  // Finger jitter on a sticker used to lock a slice after ~4px, then a fast
-  // lift counted as a 90° flick. Require a real swipe before a face turn.
-  const FLICK_MIN_PX = 28;
-  const ORBIT_SPEED = 0.008;
-  const Y_QUARTER = Math.PI / 2;
+  // TAP_PX / FLICK_MIN_PX / ORBIT_SPEED come from erno-ux.js (regression-tested).
   let downPt = null;
   let lastPt = null;
   let quatAtDown = null;
   let orbiting = false;
   const orbitAxis = new THREE.Vector3();
   const orbitMatrix = new THREE.Matrix4();
-  const yawTwist = new THREE.Quaternion();
-  const yawRel = new THREE.Quaternion();
-  const yawInv = new THREE.Quaternion();
 
   function midpoint(touches) {
     return {
@@ -141,46 +134,6 @@ export function createErnoCube(container, hooks) {
     } catch {
       /* ignore */
     }
-  }
-
-  function extraYaw() {
-    // Twist of the current view vs home, around world up (yellow).
-    if (!homeQuat || !cube.object3D?.quaternion) return null;
-    yawInv.copy(homeQuat).inverse();
-    yawRel.copy(yawInv).multiply(cube.object3D.quaternion);
-    yawTwist.set(0, yawRel.y, 0, yawRel.w);
-    const len = Math.sqrt(
-      yawTwist.x * yawTwist.x +
-        yawTwist.y * yawTwist.y +
-        yawTwist.z * yawTwist.z +
-        yawTwist.w * yawTwist.w
-    );
-    if (len < 1e-8) return 0;
-    yawTwist.x /= len;
-    yawTwist.y /= len;
-    yawTwist.z /= len;
-    yawTwist.w /= len;
-    let angle = 2 * Math.acos(Math.max(-1, Math.min(1, yawTwist.w)));
-    if (yawTwist.y < 0) angle = -angle;
-    while (angle > Math.PI) angle -= Math.PI * 2;
-    while (angle < -Math.PI) angle += Math.PI * 2;
-    return angle;
-  }
-
-  function absorbViewYawIntoY() {
-    const d = extraYaw();
-    if (d == null) return;
-    const n = Math.max(-2, Math.min(2, Math.round(d / Y_QUARTER)));
-    if (!n) return;
-    cube.object3D.quaternion.copy(homeQuat);
-    // Extra +yaw (R coming toward the camera) is cubing y′.
-    const move = n === 2 || n === -2 ? "y2" : n > 0 ? "y'" : "y";
-    const s = moveToErno(move);
-    if (!s) return;
-    const prev = cube.twistDuration;
-    cube.twistDuration = 1;
-    cube.twist(s);
-    cube.twistDuration = prev;
   }
 
   function snapSlicesHome() {
@@ -234,8 +187,6 @@ export function createErnoCube(container, hooks) {
       orbiting = true;
       e.stopPropagation();
       if (e.cancelable) e.preventDefault();
-    } else if (downPt) {
-      absorbViewYawIntoY();
     }
   };
 
@@ -410,7 +361,7 @@ export function createErnoCube(container, hooks) {
     setViewYaw() {},
     resetViewYaw() {},
     setSuppressOrbitDetect() {},
-    /** Cube-space move. Look-around is not a y until you turn from that view. */
+    /** Cube-space move. Camera orbit does not change F/R. */
     twist(move) {
       const s = moveToErno(move);
       if (s) cube.twist(s);

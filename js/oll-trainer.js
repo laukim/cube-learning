@@ -99,7 +99,7 @@ export const OLL_SUNE = {
 };
 
 const HOLD_NOTE =
-  "White on bottom. Match the picture with U only — looking around is not a y until you turn from that view.";
+  "White on bottom · green = F. Match the picture with U only — don’t orbit to follow F/R.";
 
 function hint(title, copy, alg, note = "", diagram = null) {
   return { title, copy, alg, note, diagram };
@@ -424,8 +424,8 @@ export const OLL_TIPS = [
     body: "Again = same case. Next OLL = next hold in the list. Later you can learn full 2-look OLL (more algs, fewer repeats).",
   },
   {
-    title: "Looking around is not y",
-    body: "Drag around the cube to peek. That only moves the camera. If you start turning faces while another colour is in front, that becomes a real y.",
+    title: "Don’t orbit for the alg",
+    body: "Dragging around only changes the camera. Flick the sticker you mean — F/R/L/B are the cube’s faces, not whatever colour is toward you.",
   },
   {
     title: "Source",

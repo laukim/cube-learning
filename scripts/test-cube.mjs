@@ -1,3 +1,6 @@
+import { readFileSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 globalThis.Cube = require("cubejs");
@@ -17,6 +20,13 @@ const {
   renderAnalysisHtml,
   startTimer,
 } = await import("../js/solve-timer.js");
+const {
+  FLICK_MIN_PX,
+  ORBIT_REMAPS_FLICKS,
+  ORBIT_SPEED,
+  TAP_PX,
+} = await import("../js/erno-ux.js");
+const { moveToErno, twistToMove, Y_CYCLE } = await import("../js/erno-view.js");
 
 function assert(cond, msg) {
   if (!cond) throw new Error(msg);
@@ -175,5 +185,65 @@ armTimer(seeded);
 startTimer(seeded, 0, 0, 2);
 assert(seeded.lastDone === 2 && seeded.splits.length === 2, "seed already-done steps");
 assert(seeded.splits.every((s) => s.ms === 0), "seeded splits are 0");
+
+// Phone UX contracts — 21af0db flick deadzone + look-only orbit (f8630ef).
+// Inferring y on the same touch as a face flick remapped R/L′ into D/D′.
+const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+
+assert(FLICK_MIN_PX === 28, "verified flick deadzone is 28px, not a looser twitch");
+assert(TAP_PX === 10, "tap snap-back stays 10px");
+assert(ORBIT_SPEED === 0.008, "look-around speed matches last good orbit");
+assert(ORBIT_REMAPS_FLICKS === false, "orbit must never rewrite a face flick");
+
+assert(twistToMove({ command: "R", degrees: 90 }) === "R", "R flick logs as R");
+assert(twistToMove({ command: "l", degrees: 90 }) === "L'", "L′ flick logs as L'");
+assert(twistToMove({ command: "D", degrees: 90 }) === "D", "D stays D");
+assert(twistToMove({ command: "d", degrees: 90 }) === "D'", "D′ stays D'");
+assert(twistToMove({ command: "R", degrees: 90 }) !== "D", "R is not D");
+assert(twistToMove({ command: "l", degrees: 90 }) !== "D'", "L′ is not D'");
+assert(moveToErno("R") === "R" && moveToErno("L'") === "l", "ERNO face letters stay cube-fixed");
+assert(Y_CYCLE.join("") === "FRBL", "y cycle is documentation only, not a flick remap");
+
+const afterR = solvedFacelets();
+applyAlg(afterR, "R");
+const afterD = solvedFacelets();
+applyAlg(afterD, "D");
+assert(afterR !== afterD && JSON.stringify(afterR) !== JSON.stringify(afterD), "R and D scramble different stickers");
+
+const afterLprime = solvedFacelets();
+applyAlg(afterLprime, "L'");
+const afterDprime = solvedFacelets();
+applyAlg(afterDprime, "D'");
+assert(
+  JSON.stringify(afterLprime) !== JSON.stringify(afterDprime),
+  "L′ and D′ are different turns"
+);
+
+// The live bug: inferred y under the finger made a spatial R/L′ commit as D/D′.
+const afterYawThenR = solvedFacelets();
+applyAlg(afterYawThenR, "y");
+applyAlg(afterYawThenR, "R");
+assert(
+  JSON.stringify(afterYawThenR) !== JSON.stringify(afterD),
+  "cube-fixed R after a y is not a D — do not snap y under a flick"
+);
+
+const ernoSrc = readFileSync(join(root, "js/erno-view.js"), "utf8");
+assert(!ernoSrc.includes("absorbViewYawIntoY"), "must not infer y on pointer-down");
+assert(!ernoSrc.includes("function extraYaw"), "must not measure orbit as a cube y");
+assert(/getViewYaw:\s*\(\)\s*=>\s*0/.test(ernoSrc), "notation stays cube-fixed");
+assert(
+  ernoSrc.includes("if (!orbiting && dist < FLICK_MIN_PX)") &&
+    ernoSrc.includes("suppressAccidentalFlick()"),
+  "twitch filter still suppresses short sticker drags, not real flicks"
+);
+assert(
+  ernoSrc.includes('import { FLICK_MIN_PX, ORBIT_SPEED, TAP_PX } from "./erno-ux.js"'),
+  "deadzone is the shared tested constant"
+);
+assert(
+  !/else if \(downPt\)\s*\{\s*absorb/.test(ernoSrc),
+  "face-hit pointer-down must not twist the cube before the flick"
+);
 
 console.log("ALL PASS");

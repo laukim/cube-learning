@@ -150,11 +150,18 @@ const report = formatSolveReport(analysis, {
   undos: 1,
   pauses,
 });
-assert(report.includes("Scramble"), "report scramble");
-assert(report.includes("R U F"), "report scramble alg");
+assert(report.includes("Scramble: R U F"), "report scramble");
 assert(report.includes("F' U' R'"), "report solution");
 assert(report.includes("Undos: 1"), "report undos");
 assert(report.includes("before F"), "report pause");
+
+const { countNamedAlgs } = await import("../js/coach-report.js");
+const suneHits = countNamedAlgs("R U R' U R U2 R' U R U R' U R U2 R'");
+assert(suneHits.Sune === 2, "two Sunes");
+assert(!suneHits.righty, "Sune is not counted as righty");
+const tHits = countNamedAlgs("R U R' U' R' F R2 U' R' U' R U R' F'");
+assert(tHits["T-perm"] === 1, "T-perm");
+assert(!tHits.righty, "T-perm is not counted as righty");
 
 const html = renderAnalysisHtml({ ...analysis, report, scramble: "R U F", solution: "F' U' R'" });
 assert(html.includes("solve-report-text"), "report textarea");

@@ -1,4 +1,5 @@
 import { STEPS } from "./solver.js";
+import { countNamedAlgs, countYTurns, formatAlgCounts } from "./coach-report.js";
 
 export const SPLIT_SHORT = {
   "white-cross": "Cross",
@@ -272,12 +273,18 @@ export function findPauses(trace, thresholdMs = 3000) {
 }
 
 export function formatSolveReport(analysis, extra = {}) {
-  const { scramble = "", solution = "", undos = 0, pauses = [], at = null } = extra;
+  const {
+    scramble = "",
+    solution = "",
+    undos = 0,
+    pauses = [],
+    at = null,
+    splits = [],
+    f2lPairs = [],
+  } = extra;
   const tps = analysis.tps > 0 ? analysis.tps.toFixed(2) : "—";
   const lines = [
-    "SOLVE ANALYSIS",
-    formatClock(analysis.totalMs),
-    `${analysis.totalMoves} moves · ${tps} tps · slowest ${analysis.slowest.short}`,
+    `COACH ${formatClock(analysis.totalMs)} · ${analysis.totalMoves} moves · ${tps} tps · slowest ${analysis.slowest.short}`,
   ];
   if (at) {
     const d = new Date(at);
@@ -285,35 +292,54 @@ export function formatSolveReport(analysis, extra = {}) {
       lines.push(d.toISOString().replace("T", " ").slice(0, 16) + " UTC");
     }
   }
-  lines.push("");
-  for (const g of analysis.groups) {
-    lines.push(g.title);
-    lines.push(formatClock(g.ms));
-    lines.push(`${Math.round(g.share * 100)}% · ${g.moves} moves`);
-  }
-  lines.push("");
-  for (const row of analysis.rows) {
-    lines.push(`${row.index + 1}. ${row.title}`);
-    lines.push(`${row.moves} moves`);
-    lines.push(formatClock(row.ms));
-  }
-  lines.push("");
   if (scramble) {
-    lines.push("Scramble");
-    lines.push(scramble);
+    lines.push(`Scramble: ${scramble}`);
+  }
+  lines.push("");
+
+  const splitById = new Map((splits || []).map((s) => [s.id, s]));
+  for (const row of analysis.rows) {
+    const split = splitById.get(row.id) || {};
+    const alg = split.alg || "";
+    const sec = row.ms / 1000;
+    const rowTps = sec > 0 && row.moves ? (row.moves / sec).toFixed(2) : "—";
+    lines.push(
+      `${row.index + 1}. ${row.title} · ${formatClock(row.ms)} · ${row.moves} moves · ${rowTps} tps`
+    );
+    if (row.id === "f2l" && f2lPairs.length) {
+      const pairBits = f2lPairs.map((p, i) => {
+        const prev = i === 0 ? 0 : f2lPairs[i - 1].ms;
+        return `${p.pair} in ${formatClock(p.ms - prev)}`;
+      });
+      lines.push(`   pairs: ${pairBits.join(" · ")}`);
+    }
+    if (alg) {
+      const counts = countNamedAlgs(alg);
+      const yTurns = countYTurns(alg);
+      const label = formatAlgCounts(counts, yTurns);
+      if (label) lines.push(`   algs: ${label}`);
+      lines.push(`   ${alg}`);
+    }
+    const stepPauses = findPauses(split.trace || [], 3000);
+    if (stepPauses.length) {
+      const bits = stepPauses
+        .slice(0, 4)
+        .map((p) => `${formatClock(p.ms)} before ${p.before}`);
+      lines.push(`   pauses: ${bits.join(", ")}`);
+    }
     lines.push("");
   }
-  if (solution) {
-    lines.push(`Solution (${analysis.totalMoves} moves)`);
-    lines.push(solution);
-    lines.push("");
-  }
+
   if (undos > 0) lines.push(`Undos: ${undos}`);
-  if (pauses.length) {
+  if (pauses.length && !splits.some((s) => (s.trace || []).length)) {
     lines.push("Pauses (≥3s)");
     for (const p of pauses.slice(0, 8)) {
       lines.push(`${formatClock(p.ms)} before ${p.before} (after ${p.after})`);
     }
+    lines.push("");
+  }
+  if (solution && !splits.some((s) => s.alg)) {
+    lines.push(`Solution: ${solution}`);
     lines.push("");
   }
   for (const t of analysis.insights) lines.push(t);

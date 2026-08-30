@@ -11,7 +11,7 @@ import {
 import { consumeAlgMove, initAlgProgress, restoreAlgMove } from "./alg-progress.js";
 import { createErnoCube } from "./erno-view.js";
 import { analyzeCross, CROSS_TIPS, scrambleCross } from "./cross-trainer.js";
-import { analyzeF2L, F2L_TIPS, scrambleF2L } from "./f2l-trainer.js";
+import { analyzeF2L, countSlotsSolved, F2L_TIPS, scrambleF2L } from "./f2l-trainer.js";
 import { renderCaseDiagram } from "./case-diagram.js";
 import { analyzeOll, expandWideAlg, getOllDrillInfo, OLL_TIPS, scrambleOll } from "./oll-trainer.js";
 import { analyzePll, getPllDrillInfo, PLL_TIPS, scramblePll } from "./pll-trainer.js";
@@ -105,6 +105,9 @@ let timedScramble = "";
 let solveTrace = [];
 let timedUndos = 0;
 let lastSolveReport = "";
+/** First time each F2L slot-count was reached during a timed solve. */
+let f2lPairMarks = [];
+let f2lPairsLogged = 0;
 let solveTimer = createTimer();
 let timerRaf = 0;
 let analysisShownForSolve = false;
@@ -275,17 +278,25 @@ function showSolveAnalysis() {
     undos: timedUndos,
     pauses,
     at: Date.now(),
+    splits: solveTimer.splits,
+    f2lPairs: f2lPairMarks,
   });
   analysis.report = lastSolveReport;
   recordSolve({
     at: Date.now(),
     totalMs: analysis.totalMs,
     totalMoves: analysis.totalMoves,
-    splits: solveTimer.splits.map((s) => ({ id: s.id, ms: s.ms, moves: s.moves })),
     scramble: timedScramble,
     solution,
     undos: timedUndos,
     pauses: pauses.map((p) => ({ after: p.after, before: p.before, ms: p.ms })),
+    splits: solveTimer.splits.map((s) => ({
+      id: s.id,
+      ms: s.ms,
+      moves: s.moves,
+      alg: s.alg || "",
+    })),
+    f2lPairs: f2lPairMarks.map((p) => ({ pair: p.pair, ms: p.ms })),
   });
   if (solvedBannerTitle) solvedBannerTitle.textContent = `Solved in ${formatClock(analysis.totalMs)}.`;
   if (solvedBannerCopy) solvedBannerCopy.textContent = ` ${analysis.totalMoves} moves · slowest ${analysis.slowest.short}.`;
@@ -385,6 +396,32 @@ function paintTimer(now = performance.now()) {
   paintTimerSplits(now);
 }
 
+function markF2lPairProgress() {
+  if (solveTimer.lastDone < 1) return;
+  const n = countSlotsSolved(facelets);
+  if (n <= f2lPairsLogged) return;
+  f2lPairsLogged = n;
+  f2lPairMarks.push({
+    pair: n,
+    ms: elapsedMs(solveTimer, performance.now()),
+  });
+}
+
+function stampNewSplits() {
+  for (const split of solveTimer.splits) {
+    if (split.alg != null) continue;
+    if (!split.moves) {
+      split.alg = "";
+      split.trace = [];
+      continue;
+    }
+    const start = solveTrace.length - split.moves;
+    const slice = solveTrace.slice(Math.max(0, start));
+    split.alg = slice.map((x) => x.move).join(" ");
+    split.trace = slice.map((x) => ({ move: x.move, ms: x.ms }));
+  }
+}
+
 function syncSolveTimer() {
   if (solveTimer.phase !== "running") {
     paintTimer();
@@ -397,6 +434,8 @@ function syncSolveTimer() {
     stepsDone: result.stepsDone,
     solved: result.solved,
   });
+  stampNewSplits();
+  markF2lPairProgress();
   if (solveTimer.phase === "done") {
     stopTimerTick();
     showSolveAnalysis();
@@ -450,6 +489,7 @@ function handleTwist(payload) {
       advanceStickyOnTwist(cubeMove);
     }
     if (viewMove) recordTwist(viewMove);
+    if (solveTimer.phase === "running") markF2lPairProgress();
     refreshGuide();
   } catch (err) {
     console.warn("twist sync failed", cubeMove ?? viewMove, err);
@@ -862,6 +902,8 @@ function resetCube() {
   lastSolveReport = "";
   stickyOllHint = null;
   stickyPllHint = null;
+  f2lPairMarks = [];
+  f2lPairsLogged = 0;
   clearSolveTimer();
   mountErno();
   refreshGuide();
@@ -878,6 +920,8 @@ function playScrambleAlg(alg, { timeSolve = false } = {}) {
   solveTrace = [];
   timedUndos = 0;
   lastSolveReport = "";
+  f2lPairMarks = [];
+  f2lPairsLogged = 0;
   if (timeSolve) {
     stopTimerTick();
     resetTimer(solveTimer);

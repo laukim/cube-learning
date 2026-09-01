@@ -108,6 +108,7 @@ let lastSolveReport = "";
 /** First time each F2L slot-count was reached during a timed solve. */
 let f2lPairMarks = [];
 let f2lPairsLogged = 0;
+let f2lLocked = false;
 let popFlashTimer = 0;
 let solveTimer = createTimer();
 let timerRaf = 0;
@@ -436,7 +437,9 @@ function noteF2lPop(prevIds, cubeMove) {
   const watchGuide = appMode === "guide" && solveTimer.phase === "running";
   const watchDrill = appMode === "f2l";
   if (!watchGuide && !watchDrill) return;
-  if (watchGuide && prevIds.length === 4) return;
+  if (prevIds.length === 4) f2lLocked = true;
+  if (watchGuide && (f2lLocked || solveTimer.lastDone >= 2)) return;
+  if (watchDrill && prevIds.length === 4) return;
   const popped = poppedSolvedSlots(prevIds, facelets, cubeMove);
   if (!popped.length) return;
   flashF2lPop(popped);
@@ -990,6 +993,7 @@ function resetCube() {
   stickyPllHint = null;
   f2lPairMarks = [];
   f2lPairsLogged = 0;
+  f2lLocked = false;
   clearSolveTimer();
   mountErno();
   refreshGuide();
@@ -1008,6 +1012,7 @@ function playScrambleAlg(alg, { timeSolve = false } = {}) {
   lastSolveReport = "";
   f2lPairMarks = [];
   f2lPairsLogged = 0;
+  f2lLocked = false;
   if (timeSolve) {
     stopTimerTick();
     resetTimer(solveTimer);

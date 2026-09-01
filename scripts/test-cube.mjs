@@ -20,7 +20,7 @@ const {
   renderAnalysisHtml,
   startTimer,
 } = await import("../js/solve-timer.js");
-const { analyzeF2lFlow, formatF2lFlow, scrambleF2L, getF2lDrillInfo, slotSolved, whiteCrossIntact, SLOTS } = await import("../js/f2l-trainer.js");
+const { analyzeF2lFlow, formatF2lFlow, poppedSolvedSlots, scrambleF2L, getF2lDrillInfo, slotSolved, solvedSlotIds, whiteCrossIntact, SLOTS } = await import("../js/f2l-trainer.js");
 const { F2L_DRILL_CASES } = await import("../js/f2l-cases.js");
 const {
   FLICK_MIN_PX,
@@ -229,6 +229,15 @@ const flowReport = formatSolveReport(
 );
 assert(flowReport.includes("first in: FR"), "coach report includes slot replay");
 assert(flowReport.includes("popped solved slots"), "coach report includes pops");
+
+const solvedIds = solvedSlotIds(solvedFacelets());
+assert(solvedIds.join(" ") === "FR BR BL FL", "solved cube has all four slots");
+const afterF = solvedFacelets();
+applyAlg(afterF, "F'");
+const poppedByF = poppedSolvedSlots(solvedIds, afterF, "F'");
+assert(poppedByF.includes("FR") && poppedByF.includes("FL"), "F' pops the two front pairs");
+assert(poppedSolvedSlots(solvedIds, afterF, "U'").length === 0, "U does not count as a pop");
+assert(poppedSolvedSlots(solvedIds, afterF, "y").length === 0, "cube rotation does not count as a pop");
 
 assert(F2L_DRILL_CASES.length === 82, "41 cases × R then L");
 assert(F2L_DRILL_CASES[0].id === "1R" && F2L_DRILL_CASES[1].id === "1L", "order is 1R then 1L");

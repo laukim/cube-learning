@@ -122,8 +122,17 @@ export function f2lComplete(facelets) {
   return whiteCrossIntact(facelets) && countSlotsSolved(facelets) === 4;
 }
 
-function solvedSlotIds(facelets) {
+export function solvedSlotIds(facelets) {
   return SLOTS.filter((s) => slotSolved(facelets, s)).map((s) => s.id);
+}
+
+/** Slots that were solved and are not, after a non-U / non-rotation move. */
+export function poppedSolvedSlots(prevIds, facelets, move) {
+  const m = String(move || "");
+  const face = m[0];
+  if (!face || face === "U" || /^[xyz]/i.test(m)) return [];
+  const now = new Set(solvedSlotIds(facelets));
+  return prevIds.filter((id) => !now.has(id));
 }
 
 function insertTrigger(moves) {

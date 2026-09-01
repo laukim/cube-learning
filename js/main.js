@@ -11,7 +11,7 @@ import {
 import { consumeAlgMove, initAlgProgress, restoreAlgMove } from "./alg-progress.js";
 import { createErnoCube } from "./erno-view.js";
 import { analyzeCross, CROSS_TIPS, scrambleCross } from "./cross-trainer.js";
-import { analyzeF2lDrill, countSlotsSolved, F2L_TIPS, getF2lDrillInfo, scrambleF2L, setF2lRandom } from "./f2l-trainer.js";
+import { analyzeF2lDrill, countSlotsSolved, F2L_TIPS, getF2lDrillInfo, poppedSolvedSlots, scrambleF2L, setF2lRandom, solvedSlotIds } from "./f2l-trainer.js";
 import { renderCaseDiagram } from "./case-diagram.js";
 import { analyzeOll, expandWideAlg, getOllDrillInfo, OLL_TIPS, scrambleOll } from "./oll-trainer.js";
 import { analyzePll, getPllDrillInfo, PLL_TIPS, scramblePll } from "./pll-trainer.js";
@@ -108,6 +108,7 @@ let lastSolveReport = "";
 /** First time each F2L slot-count was reached during a timed solve. */
 let f2lPairMarks = [];
 let f2lPairsLogged = 0;
+let popFlashTimer = 0;
 let solveTimer = createTimer();
 let timerRaf = 0;
 let analysisShownForSolve = false;
@@ -407,6 +408,40 @@ function markF2lPairProgress() {
   });
 }
 
+function flashF2lPop(slots) {
+  const el = document.getElementById("pop-flash");
+  const label = document.getElementById("pop-flash-label");
+  if (label) label.textContent = slots?.length ? `POP ${slots.join(" · ")}` : "POP";
+  if (!el) return;
+  window.clearTimeout(popFlashTimer);
+  document.body.classList.add("is-f2l-pop");
+  el.style.background = "#ff2a2a";
+  el.style.zIndex = "9999";
+  let step = 0;
+  const pulse = () => {
+    el.style.opacity = step % 2 === 0 ? "0.8" : "0.08";
+    step += 1;
+    if (step < 6) {
+      popFlashTimer = window.setTimeout(pulse, 120);
+      return;
+    }
+    el.style.opacity = "0";
+    document.body.classList.remove("is-f2l-pop");
+  };
+  pulse();
+}
+
+function noteF2lPop(prevIds, cubeMove) {
+  if (undoingMove) return;
+  const watchGuide = appMode === "guide" && solveTimer.phase === "running";
+  const watchDrill = appMode === "f2l";
+  if (!watchGuide && !watchDrill) return;
+  if (watchGuide && prevIds.length === 4) return;
+  const popped = poppedSolvedSlots(prevIds, facelets, cubeMove);
+  if (!popped.length) return;
+  flashF2lPop(popped);
+}
+
 function stampNewSplits() {
   for (const split of solveTimer.splits) {
     if (split.alg != null) continue;
@@ -478,6 +513,8 @@ function handleTwist(payload) {
       ? { cubeMove: payload, viewMove: payload, virtual: false }
       : payload;
 
+  const prevSlots = solvedSlotIds(facelets);
+
   try {
     if (solveTimer.phase === "armed") {
       const alreadyDone = analyze(facelets).stepsDone.filter(Boolean).length;
@@ -490,6 +527,7 @@ function handleTwist(payload) {
     }
     if (viewMove) recordTwist(viewMove);
     if (solveTimer.phase === "running") markF2lPairProgress();
+    noteF2lPop(prevSlots, cubeMove);
     refreshGuide();
   } catch (err) {
     console.warn("twist sync failed", cubeMove ?? viewMove, err);

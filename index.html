@@ -12,11 +12,19 @@
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=pop2" />
     <link rel="stylesheet" href="vendor/erno-cube.css" />
   </head>
   <body class="hints-open">
     <div class="ambient" aria-hidden="true"></div>
+    <div
+      class="pop-flash"
+      id="pop-flash"
+      aria-hidden="true"
+      style="position:fixed;inset:0;z-index:9999;pointer-events:none;display:flex;align-items:center;justify-content:center;background:#ff2a2a;opacity:0"
+    >
+      <span class="pop-flash-label" id="pop-flash-label">POP</span>
+    </div>
 
     <header class="topbar">
       <a class="brand" href="#">
@@ -344,6 +352,6 @@
 
     <script src="vendor/cubejs.js"></script>
     <script src="vendor/erno.js"></script>
-    <script type="module" src="js/main.js"></script>
+    <script type="module" src="js/main.js?v=pop2"></script>
   </body>
 </html>

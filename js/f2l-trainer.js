@@ -126,11 +126,29 @@ export function solvedSlotIds(facelets) {
   return SLOTS.filter((s) => slotSolved(facelets, s)).map((s) => s.id);
 }
 
-/** Slots that were solved and are not, after a non-U / non-rotation move. */
+function moveFaceKey(move) {
+  const face = String(move || "")[0];
+  if (!face || /^[Uxyz]/i.test(face)) return "";
+  return face.toUpperCase();
+}
+
+/** True if an unsolved slot uses this face — R/F on FR, L/F on FL, etc. */
+export function openSlotUsesFace(prevIds, move) {
+  const faceKey = moveFaceKey(move);
+  if (!faceKey) return false;
+  const solved = new Set(prevIds);
+  return SLOTS.some((s) => !solved.has(s.id) && (s.f === faceKey || s.r === faceKey));
+}
+
+/**
+ * Solved slots that came out on a face the open pair does not need.
+ * R/L'/F on the empty slot are the insert — a neighbour may leave for a
+ * move and come back. That is not a pop.
+ */
 export function poppedSolvedSlots(prevIds, facelets, move) {
-  const m = String(move || "");
-  const face = m[0];
-  if (!face || face === "U" || /^[xyz]/i.test(m)) return [];
+  if (openSlotUsesFace(prevIds, move)) return [];
+  const faceKey = moveFaceKey(move);
+  if (!faceKey) return [];
   const now = new Set(solvedSlotIds(facelets));
   return prevIds.filter((id) => !now.has(id));
 }
@@ -164,11 +182,11 @@ export function analyzeF2lFlow(scramble, crossAlg, f2lAlg) {
   let prev = new Set(solvedSlotIds(f));
   const seen = new Set(prev);
   for (const m of moves) {
+    const before = [...prev];
     applyMove(f, m);
     buf.push(m);
     const now = new Set(solvedSlotIds(f));
-    for (const id of prev) {
-      if (now.has(id)) continue;
+    for (const id of poppedSolvedSlots(before, f, m)) {
       pops.push({ slot: id, move: m });
     }
     for (const id of now) {
@@ -204,7 +222,7 @@ export function formatF2lFlow(flow) {
     ([slot, cur]) => `${slot}×${cur.n} (${[...cur.faces].join("/")})`
   );
   if (popBits.length) {
-    lines.push(`   popped solved slots: ${popBits.join(" · ")} — put back while working the next pair`);
+    lines.push(`   popped solved slots: ${popBits.join(" · ")} — turned a face the open pair doesn’t use`);
   }
   return lines;
 }
@@ -273,7 +291,8 @@ export function analyzeF2lDrill(facelets) {
   const targetIn = slotSolved(facelets, slot);
   const othersIn = others.every((s) => slotSolved(facelets, s));
   const cross = whiteCrossIntact(facelets);
-  const popped = others.filter((s) => !slotSolved(facelets, s)).map((s) => s.id);
+  const popped = others.filter((s) => !slotSolved(facelets, s));
+  const dumped = popped.filter((s) => s.f !== slot.f && s.f !== slot.r && s.r !== slot.f && s.r !== slot.r);
 
   if (!f2lDrillStarted) {
     return {
@@ -302,13 +321,13 @@ export function analyzeF2lDrill(facelets) {
     };
   }
 
-  if (cross && popped.length && !targetIn) {
+  if (cross && dumped.length && !targetIn) {
     return {
       complete: false,
       case: c,
       hint: hint(
-        `${c.id} · you popped ${popped.join(", ")}`,
-        "Undo. That pair was already solved — you turned a face it sits on. Only turn the slot for this case.",
+        `${c.id} · you popped ${dumped.map((s) => s.id).join(", ")}`,
+        "Undo. That pair was already solved — you turned a face the open slot doesn’t use.",
         "Undo",
         c.note
       ),

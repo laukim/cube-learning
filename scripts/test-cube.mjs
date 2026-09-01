@@ -5,7 +5,7 @@ import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 globalThis.Cube = require("cubejs");
 
-const { applyAlg, scrambleCube, isSolved, solvedFacelets } = await import("../js/cube.js");
+const { applyAlg, applyMove, scrambleCube, isSolved, solvedFacelets } = await import("../js/cube.js");
 const { analyze, RIGHTY } = await import("../js/solver.js");
 const {
   armTimer,
@@ -196,11 +196,8 @@ const f2lFlow = analyzeF2lFlow(
 );
 assert(f2lFlow.inserts.map((x) => x.slot).join(" ") === "FR BL FL BR", "solved FR then BL then FL then BR");
 assert(f2lFlow.inserts[0].trigger.endsWith("F' U F"), "FR insert is F' U F");
-assert(f2lFlow.pops.filter((p) => p.slot === "FR").length >= 3, "R popped FR after it was in");
-assert(f2lFlow.pops.filter((p) => p.slot === "BL").length >= 3, "B popped BL after it was in");
 const flowLines = formatF2lFlow(f2lFlow).join("\n");
 assert(flowLines.includes("first in:"), "report names the slot order");
-assert(flowLines.includes("popped solved slots"), "report flags reinserts");
 
 const flowReport = formatSolveReport(
   {
@@ -228,7 +225,6 @@ const flowReport = formatSolveReport(
   }
 );
 assert(flowReport.includes("first in: FR"), "coach report includes slot replay");
-assert(flowReport.includes("popped solved slots"), "coach report includes pops");
 
 const solvedIds = solvedSlotIds(solvedFacelets());
 assert(solvedIds.join(" ") === "FR BR BL FL", "solved cube has all four slots");
@@ -238,6 +234,22 @@ const poppedByF = poppedSolvedSlots(solvedIds, afterF, "F'");
 assert(poppedByF.includes("FR") && poppedByF.includes("FL"), "F' pops the two front pairs");
 assert(poppedSolvedSlots(solvedIds, afterF, "U'").length === 0, "U does not count as a pop");
 assert(poppedSolvedSlots(solvedIds, afterF, "y").length === 0, "cube rotation does not count as a pop");
+
+const case11R = F2L_DRILL_CASES.find((c) => c.id === "11R");
+const open11 = solvedFacelets();
+applyAlg(open11, case11R.setup);
+const prev11 = solvedSlotIds(open11);
+assert(prev11.length === 3 && !prev11.includes("FR"), "11R leaves only FR open");
+const afterInsertR = solvedFacelets();
+applyAlg(afterInsertR, case11R.setup);
+applyMove(afterInsertR, "R");
+assert(poppedSolvedSlots(prev11, afterInsertR, "R").length === 0, "R on empty FR is the insert, not a pop");
+const afterDumpB = solvedFacelets();
+applyAlg(afterDumpB, case11R.setup);
+applyMove(afterDumpB, "B");
+assert(poppedSolvedSlots(prev11, afterDumpB, "B").includes("BL"), "B on empty FR dumps BL");
+const dumpFlow = analyzeF2lFlow(case11R.setup, "", "B");
+assert(dumpFlow.pops.some((p) => p.slot === "BL"), "coach counts B on 11R as a real pop");
 
 assert(F2L_DRILL_CASES.length === 82, "41 cases × R then L");
 assert(F2L_DRILL_CASES[0].id === "1R" && F2L_DRILL_CASES[1].id === "1L", "order is 1R then 1L");

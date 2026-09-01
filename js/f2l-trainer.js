@@ -726,7 +726,7 @@ export const F2L_TIPS = [
   },
   {
     title: "IDs: 1R then 1L",
-    body: "1R is front-right with R/U. 1L is the same case on the left with L/U. Order matches CubeHead’s newer video, so 11R is still a disconnected pair (white up), not a connected one. Say the ID when you paste a solve if you want coaching on that case.",
+    body: "1R is front-right with R/U. 1L is the same case on the left with L/U. From 21R the order is CubeHead’s academy list: 21R is solved edge, white up (three sexy), not the flipped-edge sledge. Say the ID when you paste a solve if you want coaching on that case.",
   },
   {
     title: "Don’t pop a solved pair",
@@ -734,6 +734,6 @@ export const F2L_TIPS = [
   },
   {
     title: "Source",
-    body: "CubeHead — intuitive solutions for the 41 standard cases: https://www.youtube.com/watch?v=3tYj-9f4dA0",
+    body: "CubeHead — intuitive solutions for the 41 standard cases: https://www.youtube.com/watch?v=3tYj-9f4dA0 — case order from https://www.cube.academy/intuitive-f2l-algs",
   },
 ];

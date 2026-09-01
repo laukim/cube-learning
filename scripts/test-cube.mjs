@@ -238,6 +238,14 @@ assert(F2L_DRILL_CASES.find((c) => c.id === "11R").group === "Disconnected", "11
 assert(F2L_DRILL_CASES.find((c) => c.id === "14R").group === "Disconnected", "disconnected runs through 14");
 assert(F2L_DRILL_CASES.find((c) => c.id === "15R").group === "Corner in slot", "15R is first corner-in-slot");
 assert(F2L_DRILL_CASES.find((c) => c.id === "21R").group === "Edge in slot", "21R is first edge-in-slot");
+assert(
+  F2L_DRILL_CASES.find((c) => c.id === "21R").alg === "U R U' R' U R U' R' U R U' R'",
+  "21R is CubeHead’s first edge-in-slot (solved edge, white up)"
+);
+assert(
+  F2L_DRILL_CASES.find((c) => c.id === "22R").alg === "U' R' F R F' R U' R'",
+  "22R is the flipped-edge sledge, CubeHead’s second edge-in-slot"
+);
 assert(F2L_DRILL_CASES.find((c) => c.id === "27R").group === "Connected", "connected pairs start at 27 after the slot cases");
 for (const c of F2L_DRILL_CASES) {
   const cube = solvedFacelets();

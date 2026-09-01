@@ -233,6 +233,12 @@ assert(flowReport.includes("popped solved slots"), "coach report includes pops")
 assert(F2L_DRILL_CASES.length === 82, "41 cases × R then L");
 assert(F2L_DRILL_CASES[0].id === "1R" && F2L_DRILL_CASES[1].id === "1L", "order is 1R then 1L");
 assert(F2L_DRILL_CASES[2].id === "2R", "then 2R");
+assert(F2L_DRILL_CASES.find((c) => c.id === "10R").group === "Disconnected", "10R is still disconnected");
+assert(F2L_DRILL_CASES.find((c) => c.id === "11R").group === "Disconnected", "11R follows CubeHead: still disconnected (white up)");
+assert(F2L_DRILL_CASES.find((c) => c.id === "14R").group === "Disconnected", "disconnected runs through 14");
+assert(F2L_DRILL_CASES.find((c) => c.id === "15R").group === "Corner in slot", "15R is first corner-in-slot");
+assert(F2L_DRILL_CASES.find((c) => c.id === "21R").group === "Edge in slot", "21R is first edge-in-slot");
+assert(F2L_DRILL_CASES.find((c) => c.id === "27R").group === "Connected", "connected pairs start at 27 after the slot cases");
 for (const c of F2L_DRILL_CASES) {
   const cube = solvedFacelets();
   applyAlg(cube, c.setup);

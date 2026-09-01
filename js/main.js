@@ -885,7 +885,7 @@ function setPanelCopy(mode) {
     title.textContent = "F2L — 41 cases, R then L";
     blurb.innerHTML = d.started
       ? `Now <strong>${d.id}</strong> · ${d.index + 1}/${d.total} · ${d.group}. <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong> (${d.random ? "random" : "next in order"}).`
-      : `Practice <strong>1R → 1L → 2R → 2L</strong> … (82 holds). <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong>. Toggle <strong>Order / Random</strong>. From <a class="ext-link" href="https://www.youtube.com/watch?v=3tYj-9f4dA0" target="_blank" rel="noopener">CubeHead</a>.`;
+      : `CubeHead order: easy inserts → disconnected (1–14) → slot cases → connected → both in. <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong>. Toggle <strong>Order / Random</strong>. From <a class="ext-link" href="https://www.youtube.com/watch?v=3tYj-9f4dA0" target="_blank" rel="noopener">this video</a>.`;
     btnF2l.hidden = false;
     btnF2lPrev.hidden = false;
     btnF2lAgain.hidden = false;

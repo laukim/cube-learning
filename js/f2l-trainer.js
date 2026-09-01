@@ -275,7 +275,7 @@ export function analyzeF2lDrill(facelets) {
         "Standard F2L cases",
         "Prev / Again / Next F2L. Order is 1R then 1L, then 2R…. Toggle Random if you want a mix. One pair only — the other three stay in.",
         "",
-        "From CubeHead’s 41 cases. IDs stick: 1R is always the same insert on the right."
+        "CubeHead’s video order: easy inserts → disconnected (1–14) → corner in slot → edge in slot → connected → both in slot."
       ),
     };
   }
@@ -726,7 +726,7 @@ export const F2L_TIPS = [
   },
   {
     title: "IDs: 1R then 1L",
-    body: "1R is front-right with R/U. 1L is the same case on the left with L/U. Then 2R, 2L, up to 41. Say the ID when you paste a solve if you want coaching on that case.",
+    body: "1R is front-right with R/U. 1L is the same case on the left with L/U. Order matches CubeHead’s newer video, so 11R is still a disconnected pair (white up), not a connected one. Say the ID when you paste a solve if you want coaching on that case.",
   },
   {
     title: "Don’t pop a solved pair",

@@ -20,7 +20,7 @@ const {
   renderAnalysisHtml,
   startTimer,
 } = await import("../js/solve-timer.js");
-const { analyzeF2lFlow, formatF2lFlow, poppedSolvedSlots, scrambleF2L, getF2lDrillInfo, slotSolved, solvedSlotIds, whiteCrossIntact, SLOTS } = await import("../js/f2l-trainer.js");
+const { analyzeF2lFlow, formatF2lFlow, popBaselineIds, poppedSolvedSlots, scrambleF2L, getF2lDrillInfo, slotSolved, solvedSlotIds, stableSolvedSlotIds, whiteCrossIntact, SLOTS } = await import("../js/f2l-trainer.js");
 const { F2L_DRILL_CASES } = await import("../js/f2l-cases.js");
 const {
   FLICK_MIN_PX,
@@ -250,6 +250,31 @@ applyMove(afterDumpB, "B");
 assert(poppedSolvedSlots(prev11, afterDumpB, "B").includes("BL"), "B on empty FR dumps BL");
 const dumpFlow = analyzeF2lFlow(case11R.setup, "", "B");
 assert(dumpFlow.pops.some((p) => p.slot === "BL"), "coach counts B on 11R as a real pop");
+
+// Sledge / white-up algs briefly look solved mid-move while the cross is broken.
+// That phantom must not close the open slot or the next R' flashes a false pop.
+const case2R = F2L_DRILL_CASES.find((c) => c.id === "2R");
+const midSledge = solvedFacelets();
+applyAlg(midSledge, case2R.setup);
+applyMove(midSledge, "F");
+assert(!whiteCrossIntact(midSledge), "sledge F breaks the cross");
+assert(slotSolved(midSledge, SLOTS.find((s) => s.id === "FR")), "sledge F can make FR look solved");
+assert(stableSolvedSlotIds(midSledge) === null, "phantom solve is not stable");
+const sledgeFlow = analyzeF2lFlow(case2R.setup, "", case2R.alg);
+assert(sledgeFlow.pops.length === 0, "official 2R sledge does not count as popping");
+assert(sledgeFlow.inserts.map((x) => x.slot).join(" ") === "FR", "2R inserts FR once at the end");
+let falsePopAlgs = 0;
+for (const c of F2L_DRILL_CASES) {
+  if (analyzeF2lFlow(c.setup, "", c.alg).pops.length) falsePopAlgs += 1;
+}
+assert(falsePopAlgs === 0, "no official F2L alg should flash a pop");
+const baseline = popBaselineIds(midSledge, ["BR", "BL", "FL"]);
+assert(baseline.join(" ") === "BR BL FL", "mid-alg baseline keeps FR open from last stable");
+const afterSledgeR = solvedFacelets();
+applyAlg(afterSledgeR, case2R.setup);
+applyMove(afterSledgeR, "F");
+applyMove(afterSledgeR, "R'");
+assert(poppedSolvedSlots(baseline, afterSledgeR, "R'").length === 0, "sledge R' after phantom F is not a pop");
 
 assert(F2L_DRILL_CASES.length === 82, "41 cases × R then L");
 assert(F2L_DRILL_CASES[0].id === "1R" && F2L_DRILL_CASES[1].id === "1L", "order is 1R then 1L");

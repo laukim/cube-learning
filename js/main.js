@@ -11,7 +11,7 @@ import {
 import { consumeAlgMove, initAlgProgress, restoreAlgMove } from "./alg-progress.js";
 import { createErnoCube } from "./erno-view.js";
 import { analyzeCross, CROSS_TIPS, scrambleCross } from "./cross-trainer.js";
-import { analyzeF2lDrill, countSlotsSolved, F2L_TIPS, getF2lDrillInfo, poppedSolvedSlots, scrambleF2L, setF2lRandom, solvedSlotIds } from "./f2l-trainer.js";
+import { analyzeF2lDrill, countSlotsSolved, F2L_TIPS, getF2lDrillInfo, popBaselineIds, poppedSolvedSlots, scrambleF2L, setF2lRandom, solvedSlotIds, stableSolvedSlotIds } from "./f2l-trainer.js";
 import { renderCaseDiagram } from "./case-diagram.js";
 import { analyzeOll, expandWideAlg, getOllDrillInfo, OLL_TIPS, scrambleOll } from "./oll-trainer.js";
 import { analyzePll, getPllDrillInfo, PLL_TIPS, scramblePll } from "./pll-trainer.js";
@@ -109,6 +109,8 @@ let lastSolveReport = "";
 let f2lPairMarks = [];
 let f2lPairsLogged = 0;
 let f2lLocked = false;
+/** Last cross-intact solved F2L slots — ignores mid-alg phantom solves. */
+let f2lStableSlots = [];
 let popFlashTimer = 0;
 let solveTimer = createTimer();
 let timerRaf = 0;
@@ -409,6 +411,11 @@ function markF2lPairProgress() {
   });
 }
 
+function syncF2lStableSlots() {
+  const stable = stableSolvedSlotIds(facelets);
+  if (stable) f2lStableSlots = stable;
+}
+
 function flashF2lPop(slots) {
   const el = document.getElementById("pop-flash");
   const label = document.getElementById("pop-flash-label");
@@ -516,7 +523,7 @@ function handleTwist(payload) {
       ? { cubeMove: payload, viewMove: payload, virtual: false }
       : payload;
 
-  const prevSlots = solvedSlotIds(facelets);
+  const prevSlots = popBaselineIds(facelets, f2lStableSlots);
 
   try {
     if (solveTimer.phase === "armed") {
@@ -531,6 +538,7 @@ function handleTwist(payload) {
     if (viewMove) recordTwist(viewMove);
     if (solveTimer.phase === "running") markF2lPairProgress();
     noteF2lPop(prevSlots, cubeMove);
+    syncF2lStableSlots();
     refreshGuide();
   } catch (err) {
     console.warn("twist sync failed", cubeMove ?? viewMove, err);
@@ -994,9 +1002,11 @@ function resetCube() {
   f2lPairMarks = [];
   f2lPairsLogged = 0;
   f2lLocked = false;
+  f2lStableSlots = [];
   clearSolveTimer();
   mountErno();
   refreshGuide();
+  syncF2lStableSlots();
 }
 
 function playScrambleAlg(alg, { timeSolve = false } = {}) {
@@ -1013,6 +1023,7 @@ function playScrambleAlg(alg, { timeSolve = false } = {}) {
   f2lPairMarks = [];
   f2lPairsLogged = 0;
   f2lLocked = false;
+  f2lStableSlots = [];
   if (timeSolve) {
     stopTimerTick();
     resetTimer(solveTimer);
@@ -1034,12 +1045,14 @@ function playScrambleAlg(alg, { timeSolve = false } = {}) {
       erno.setSuppressOrbitDetect(false);
       updateMoveTrace();
       erno.healVisual();
+      syncF2lStableSlots();
       if (timeSolve) readyFullSolveTimer();
     });
   } else if (timeSolve) {
     readyFullSolveTimer();
   }
   refreshGuide();
+  syncF2lStableSlots();
 }
 
 function undoLastMove() {

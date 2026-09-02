@@ -126,6 +126,25 @@ export function solvedSlotIds(facelets) {
   return SLOTS.filter((s) => slotSolved(facelets, s)).map((s) => s.id);
 }
 
+/**
+ * Solved slot ids only while the white cross is intact.
+ * Mid-alg turns (sledge F, sexy R, …) can make a slot look solved while the
+ * cross is broken — those phantoms must not count for pop tracking.
+ * @returns {string[] | null}
+ */
+export function stableSolvedSlotIds(facelets) {
+  if (!whiteCrossIntact(facelets)) return null;
+  return solvedSlotIds(facelets);
+}
+
+/**
+ * Baseline for pop judgement: live ids when the cross is intact, otherwise the
+ * last cross-intact snapshot so mid-alg phantoms do not close the open slot.
+ */
+export function popBaselineIds(facelets, lastStableIds = []) {
+  return stableSolvedSlotIds(facelets) ?? lastStableIds ?? [];
+}
+
 function moveFaceKey(move) {
   const face = String(move || "")[0];
   if (!face || /^[Uxyz]/i.test(face)) return "";
@@ -144,6 +163,10 @@ export function openSlotUsesFace(prevIds, move) {
  * Solved slots that came out on a face the open pair does not need.
  * R/L'/F on the empty slot are the insert — a neighbour may leave for a
  * move and come back. That is not a pop.
+ *
+ * `prevIds` must be from {@link popBaselineIds} / last cross-intact state.
+ * Using raw mid-alg ids (sledge after F) falsely closes the open slot, so the
+ * next R' looks like a dump.
  */
 export function poppedSolvedSlots(prevIds, facelets, move) {
   if (openSlotUsesFace(prevIds, move)) return [];
@@ -179,17 +202,19 @@ export function analyzeF2lFlow(scramble, crossAlg, f2lAlg) {
   const inserts = [];
   const pops = [];
   let buf = [];
-  let prev = new Set(solvedSlotIds(f));
-  const seen = new Set(prev);
+  let lastStable = stableSolvedSlotIds(f) ?? [];
+  const seen = new Set(lastStable);
   for (const m of moves) {
-    const before = [...prev];
+    const before = popBaselineIds(f, lastStable);
     applyMove(f, m);
     buf.push(m);
-    const now = new Set(solvedSlotIds(f));
     for (const id of poppedSolvedSlots(before, f, m)) {
       pops.push({ slot: id, move: m });
     }
-    for (const id of now) {
+    const stable = stableSolvedSlotIds(f);
+    if (!stable) continue;
+    lastStable = stable;
+    for (const id of stable) {
       if (seen.has(id)) continue;
       seen.add(id);
       inserts.push({
@@ -199,7 +224,6 @@ export function analyzeF2lFlow(scramble, crossAlg, f2lAlg) {
       });
       buf = [];
     }
-    prev = now;
   }
   return { inserts, pops, leftover: buf };
 }

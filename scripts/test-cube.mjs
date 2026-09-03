@@ -203,6 +203,36 @@ assert(f2lFlow.inserts.map((x) => x.slot).join(" ") === "FR BL FL BR", "solved F
 assert(f2lFlow.inserts[0].trigger.endsWith("F' U F"), "FR insert is F' U F");
 const flowLines = formatF2lFlow(f2lFlow).join("\n");
 assert(flowLines.includes("first in:"), "report names the slot order");
+assert(flowLines.includes("no pops") || flowLines.includes("popped"), "report always states pops or no pops");
+
+// Timed 2:09 — short closing triggers looked like all connected; most were long setups.
+const easySolve = analyzeF2lFlow(
+  "R L F B D' U D B F' R2 F2 L2 F U2 R2 L2 U' F' R' U' D2 R2 D U' L'",
+  "L L F' B U2 U' R B' L U2 U' L' U' L' L U B L' B'",
+  "U U U R' U' U' R U' U' R' U R U' U' R U U R' U U R U' R' L U L' U' U L' U U' U' L U' L' U L U' U' L U L'"
+);
+assert(easySolve.pops.length === 0, "2:09 F2L had no pops");
+assert(easySolve.inserts.map((x) => x.slot).join(" ") === "BR FR FL BL", "2:09 slot order");
+assert(easySolve.inserts.filter((x) => x.easy).length === 1, "only BL was a clean easy insert");
+assert(easySolve.inserts.filter((x) => x.setup).length === 3, "three pairs had longer setup");
+const easyLines = formatF2lFlow(easySolve).join("\n");
+assert(easyLines.includes("setup →"), "long setups are labeled, not shown as pure easy inserts");
+assert(easyLines.includes("no pops"), "coach says no pops when none");
+assert(easyLines.includes("1/4 easy insert"), "coach counts clean connected inserts");
+
+// Official easy-insert cases stay tagged connected; disconnected do not.
+assert(
+  F2L_DRILL_CASES.filter((c) => c.group === "Easy insert").every(
+    (c) => analyzeF2lFlow(c.setup, "", c.alg).inserts[0]?.easy
+  ),
+  "1R–4L count as easy connected inserts"
+);
+assert(
+  F2L_DRILL_CASES.filter((c) => c.group === "Disconnected").every(
+    (c) => !analyzeF2lFlow(c.setup, "", c.alg).inserts[0]?.easy
+  ),
+  "disconnected cases are not easy inserts"
+);
 
 const flowReport = formatSolveReport(
   {

@@ -1,5 +1,5 @@
 /**
- * Standard F2L cases (1R, 1L, … 41L). Cross stays; three pairs stay; one slot is the case.
+ * Standard F2L cases (CubeHead’s 41: 1R, 1L, 2R…). Cross stays; three pairs stay; one slot is the case.
  * https://www.youtube.com/watch?v=3tYj-9f4dA0
  */
 
@@ -409,9 +409,9 @@ export function analyzeF2lDrill(facelets) {
       case: c,
       hint: hint(
         "Standard F2L cases",
-        "Prev / Again / Next F2L. Order is 1R then 1L, then 2R…. Random jumps once — Next stays in list order. One pair only — the other three stay in.",
+        "Prev / Again / Next F2L. Twins share a number: 1R then 1L, then 2R…. No L twin → just 11, 12…. Random jumps once — Next stays in list order. One pair only — the other three stay in.",
         "",
-        "CubeHead’s video order: easy inserts → disconnected (1–14) → corner in slot → edge in slot → connected → both in slot."
+        "CubeHead’s 41: easy inserts → disconnected → corner in slot → edge in slot → connected → both in slot. Sledge is another way on 1R, not its own case."
       ),
     };
   }
@@ -463,7 +463,7 @@ export function scrambleF2L(facelets, mode = "next") {
     // Always CubeHead list order. Random is a one-shot jump, never a Next mode.
     f2lDrillIndex = (f2lDrillIndex + 1) % n;
   } else if (mode === "prev") {
-    // Do not wrap past 1R — that jumped to 41L and made later Next look shuffled.
+    // Do not wrap past 1R — that jumped to the last case and made later Next look shuffled.
     if (f2lDrillIndex > 0) f2lDrillIndex -= 1;
   } else if (mode === "random") {
     let i = f2lDrillIndex;
@@ -862,11 +862,11 @@ function bothOnUHint(facelets, corner, edge) {
 export const F2L_TIPS = [
   {
     title: "How this drill works",
-    body: "Each case is one pair. The other three stay in. When it’s in, stay on this ID until you tap Next or Prev. Again = same ID. Next F2L always follows 1R, 1L, 2R…. Random jumps once; Next stays in order after that.",
+    body: "Each case is one pair. The other three stay in. When it’s in, stay on this ID until you tap Next or Prev. Again = same ID. Next F2L follows 1R, 1L, 2R, 2L… then 11, 12… when there is no left twin. Random jumps once; Next stays in order after that.",
   },
   {
-    title: "IDs: 1R then 1L",
-    body: "1R is the green–red pair at front-right (R/U). 1L is the same case for the orange–green pair at front-left (L/U). From 21R the order is CubeHead’s academy list: 21R is solved edge, white up (three sexy), not the flipped-edge sledge.",
+    title: "IDs: R and L share a number",
+    body: "R is red–green (front-right). L is green–orange (front-left). Same case → 1R and 1L. No left version → just 11. Sledge is another way for 1R, not a second exercise.",
   },
   {
     title: "Don’t pop a solved pair",

@@ -1,73 +1,71 @@
 /**
- * Standard F2L cases in CubeHead’s academy/video order, practised as R then L.
- * IDs: 1R, 1L, … 41L. R = green–red at front-right. L = the same case,
- * orange–green at front-left. 41 cases × 2 slots, no crossed duplicates.
+ * CubeHead’s 41 filmed cases (academy order). Twins share a number:
+ * nR = red–green front-right, nL = green–orange front-left. If he only
+ * filmed the right slot, the ID is just n. Sledge is an extra alg on 1R,
+ * not its own ID.
  * Video: https://www.youtube.com/watch?v=3tYj-9f4dA0
- * Checklist: https://www.cube.academy/intuitive-f2l-algs
+ * List: https://www.cube.academy/intuitive-f2l-algs
  */
 
-import { invertAlg, mirrorLRAlg } from "./alg.js";
+import { invertAlg } from "./alg.js";
 
-/** [n, group, short name, FR alg] */
-const FR = [
-  [1, "Easy insert", "Pair on the right", "U R U' R'"],
-  [2, "Easy insert", "Sledge", "F R' F' R"],
-  [3, "Easy insert", "Pair on the left (from FR)", "F' U' F"],
-  [4, "Easy insert", "Split insert", "R U R'"],
-  [5, "Disconnected", "Same colours up", "U' R U R' U2 R U' R'"],
-  [6, "Disconnected", "Same colours up (mirror shape)", "U F' U' F U2 F' U F"],
-  [7, "Disconnected", "Same colours, other edge", "U' R U2 R' U' R U2 R'"],
-  [8, "Disconnected", "Same colours, other edge (mirror)", "r' U2 R2 U R2 U r"],
-  [9, "Disconnected", "Different colours up", "U' R U' R' U F' U' F"],
-  [10, "Disconnected", "Different colours up (far)", "U' R U R' U R U R'"],
-  [11, "Disconnected", "White up, edge left", "U R U2 R' U R U' R'"],
-  [12, "Disconnected", "White up, edge right", "U' R U' R2 F R F' R U' R'"],
-  [13, "Disconnected", "White up, edge back", "U2 R U R' U R U' R'"],
-  [14, "Disconnected", "White up, edge back (mirror)", "r U' r' U2 r U r'"],
-  [15, "Corner in slot", "Solved corner, edge oriented", "U' R' F R F' R U R'"],
-  [16, "Corner in slot", "Solved corner, edge flipped", "U R U' R' F R' F' R"],
-  [17, "Corner in slot", "White left, edge on U", "R U' R' U R U' R'"],
-  [18, "Corner in slot", "White right, edge on U", "R U R' U' F R' F' R"],
-  [19, "Corner in slot", "White front, edge on U", "R' F R F' U R U' R'"],
-  [20, "Corner in slot", "White right, sexy insert", "R U R' U' R U R'"],
-  [21, "Edge in slot", "Solved edge, white up", "U R U' R' U R U' R' U R U' R'"],
-  [22, "Edge in slot", "Flipped edge, white up", "U' R' F R F' R U' R'"],
-  [23, "Edge in slot", "Solved edge, white left", "U' R U' R' U2 R U' R'"],
-  [24, "Edge in slot", "Solved edge, white right", "U R U R' U2 R U R'"],
-  [25, "Edge in slot", "Flipped edge, white left", "U2 R U R' F R' F' R"],
-  [26, "Edge in slot", "Flipped edge, white right", "U2 F' U' F U R U' R'"],
-  [27, "Connected", "White up, edge flipped", "R U' R' U R U' R' U2 R U' R'"],
-  [28, "Connected", "White right, edge front", "U' R U' R' U R U R'"],
-  [29, "Connected", "White up, matching", "R U R' U2 R U' R' U R U' R'"],
-  [30, "Connected", "White right, edge back", "R U2 R' U' R U R'"],
-  [31, "Connected", "White up, edge right", "U R U' R' U' R U' R' U R U' R'"],
-  [32, "Connected", "Flipped edge pair", "U' R U2 R' U F' U' F"],
-  [33, "Connected", "White front, edge left", "R U' R' U R' F R F' R U' R'"],
-  [34, "Connected", "White up, matching (other)", "R U' R' U2 F' U' F"],
-  [35, "Connected", "White front, edge back", "F' U2 F U F' U' F"],
-  [36, "Connected", "White up, edge left", "F U R U' R' F' R U' R'"],
-  [37, "Both in slot", "Good edge, white front", "R U' R' U' R U R' U2 R U' R'"],
-  [38, "Both in slot", "Good edge, white right", "R U' R' U R U2 R' U R U' R'"],
-  [39, "Both in slot", "Flipped edge, white front", "r U' r' U2 r U r' R U R'"],
-  [40, "Both in slot", "Flipped edge, white right", "R U' R' r U' r' U2 r U r'"],
-  [41, "Both in slot", "Solved corner, flipped edge", "R2 U2 F R2 F' U2 R' U R'"],
+/** [n, hand, group, short name, alg] — 41 rows, CubeHead 1–41. */
+const ROWS = [
+  [1, "R", "Easy insert", "Pair on the right", "U R U' R'"],
+  [1, "L", "Easy insert", "Pair on the left", "U' L' U L"],
+  [2, "R", "Easy insert", "Split insert", "R U R'"],
+  [2, "L", "Easy insert", "Split insert", "L' U' L"],
+  [3, "R", "Disconnected", "Same colours up", "U' R U R' U2 R U' R'"],
+  [3, "L", "Disconnected", "Same colours up", "U L' U' L U2 L' U L"],
+  [4, "R", "Disconnected", "Same colours, other edge", "U' R U2 R' U2 R U' R'"],
+  [4, "L", "Disconnected", "Same colours, other edge", "U L' U2 L U2 L' U L"],
+  [5, "R", "Disconnected", "Different colours up", "U' R U R' U R U R'"],
+  [5, "L", "Disconnected", "Different colours up", "U L' U' L U' L' U' L"],
+  [6, "R", "Disconnected", "White up, edge left", "U R U2 R' U R U' R'"],
+  [6, "L", "Disconnected", "White up, edge left", "U' L' U2 L U' L' U L"],
+  [7, "R", "Disconnected", "White up, edge back", "U2 R U R' U R U' R'"],
+  [7, "L", "Disconnected", "White up, edge back", "U2 L' U' L U' L' U L"],
+  [8, "R", "Corner in slot", "Solved corner, edge oriented", "U' R' F R F' R U R'"],
+  [8, "L", "Corner in slot", "Solved corner, edge oriented", "U L F' L' F L' U' L"],
+  [9, "R", "Corner in slot", "White left, edge on U", "R U' R' U R U' R'"],
+  [9, "L", "Corner in slot", "White left, edge on U", "L' U L U' L' U L"],
+  [10, "R", "Corner in slot", "White right, sexy insert", "R U R' U' R U R'"],
+  [10, "L", "Corner in slot", "White right, sexy insert", "L' U' L U L' U' L"],
+  [11, "R", "Edge in slot", "Solved edge, white up", "U R U' R' U R U' R' U R U' R'"],
+  [12, "R", "Edge in slot", "Flipped edge, white up", "U' R' F R F' R U' R'"],
+  [13, "R", "Edge in slot", "Solved edge, white left", "U' R U' R' U2 R U' R'"],
+  [14, "R", "Edge in slot", "Solved edge, white right", "U R U R' U2 R U R'"],
+  [15, "R", "Edge in slot", "Flipped edge, white left", "U2 R U R' F R' F' R"],
+  [16, "R", "Edge in slot", "Flipped edge, white right", "U2 F' U' F U R U' R'"],
+  [17, "R", "Connected", "White up, edge flipped", "R U' R' U R U' R' U2 R U' R'"],
+  [17, "L", "Connected", "White up, edge flipped", "L' U L U' L' U L U2 L' U L"],
+  [18, "R", "Connected", "White right, edge front", "U' R U' R' U R U R'"],
+  [18, "L", "Connected", "White right, edge front", "U L' U L U' L' U' L"],
+  [19, "R", "Connected", "White up, matching", "R U R' U2 R U' R' U R U' R'"],
+  [19, "L", "Connected", "White up, matching", "L' U' L U2 L' U L U' L' U L"],
+  [20, "R", "Connected", "White right, edge back", "R U2 R' U' R U R'"],
+  [20, "L", "Connected", "White right, edge back", "L' U2 L U L' U' L"],
+  [21, "R", "Connected", "White up, edge right", "U R U' R' U' R U' R' U R U' R'"],
+  [21, "L", "Connected", "White up, edge right", "U' L' U L U L' U L U' L' U L"],
+  [22, "R", "Both in slot", "Good edge, white front", "R U' R' U' R U R' U2 R U' R'"],
+  [23, "R", "Both in slot", "Good edge, white right", "R U' R' U R U2 R' U R U' R'"],
+  [24, "R", "Both in slot", "Flipped edge, white front", "r U' r' U2 r U r' R U R'"],
+  [25, "R", "Both in slot", "Flipped edge, white right", "R U' R' r U' r' U2 r U r'"],
+  [26, "R", "Both in slot", "Solved corner, flipped edge", "R2 U2 F R2 F' U2 R' U R'"],
 ];
 
-/**
- * Naive LR-mirror of wide r breaks the white cross. These keep the same
- * case as nR, in the FL slot (orange–green), without dumping other pairs.
- */
-const L_OVERRIDE = {
-  8: "l U2 L2 U' L2 U' l'",
-  14: "l' U l U2 l' U' l",
-  39: "l' U l U2 l' U' l L' U' L",
-  40: "L' U L l' U l U2 l' U' l",
-};
+const HAS_L = new Set(ROWS.filter((row) => row[1] === "L").map((row) => row[0]));
 
-function makeDrill(n, group, name, hand, alg) {
-  const id = `${n}${hand}`;
+function makeDrill(n, hand, group, name, alg) {
+  const id = HAS_L.has(n) ? `${n}${hand}` : String(n);
   const slot = hand === "R" ? "FR" : "FL";
-  const useAlg = hand === "L" && L_OVERRIDE[n] ? L_OVERRIDE[n] : alg;
+  let note = "White on bottom · green = F. One pair only. Stay on this ID until you tap Next or Prev.";
+  if (id === "1R") {
+    note = "Sledge R' F R F' is another way for this case — not a separate exercise. " + note;
+  }
+  if (id === "1L") {
+    note = "L F' L' F is another way for this case — not a separate exercise. " + note;
+  }
   return {
     id,
     n,
@@ -75,17 +73,14 @@ function makeDrill(n, group, name, hand, alg) {
     slot,
     group,
     name: `${id} · ${name}`,
-    alg: useAlg,
-    setup: invertAlg(useAlg),
+    alg,
+    setup: invertAlg(alg),
     copy:
       hand === "R"
-        ? "Slot is front-right (green–red). Use R and U (F if the alg has it). Don’t turn L or B — other pairs stay in."
-        : "Same case, front-left (orange–green). Use L and U. Don’t turn R or B.",
-    note: "White on bottom · green = F. One pair only. Stay on this ID until you tap Next or Prev.",
+        ? "Slot is front-right (red–green). Use R and U (F if the alg has it). Don’t turn L or B — other pairs stay in."
+        : "Slot is front-left (green–orange). Use L and U. Don’t turn R or B.",
+    note,
   };
 }
 
-export const F2L_DRILL_CASES = FR.flatMap(([n, group, name, alg]) => [
-  makeDrill(n, group, name, "R", alg),
-  makeDrill(n, group, name, "L", mirrorLRAlg(alg)),
-]);
+export const F2L_DRILL_CASES = ROWS.map((row) => makeDrill(...row));

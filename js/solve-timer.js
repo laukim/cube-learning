@@ -25,7 +25,7 @@ const STEP_COACHING = [
   },
   {
     tab: "F2L",
-    tip: "F2L: pair each white corner with its edge and insert together. The F2L tab drills the 41 standard cases as 1R, 1L, 2R…",
+    tip: "F2L: pair each white corner with its edge and insert together. The F2L tab drills CubeHead’s 41 (1R / 1L twins; no L → just 11).",
   },
   {
     tab: "OLL",

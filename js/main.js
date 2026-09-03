@@ -676,7 +676,7 @@ function refreshF2L() {
   const h = result.hint;
   document.getElementById("f2l-hint-kicker").textContent = d.started
     ? `F2L ${d.id} · ${d.index + 1}/${d.total} · ${d.group}`
-    : "F2L · 82 cases";
+    : "F2L · 41 cases";
   document.getElementById("f2l-hint-title").textContent = h.title;
   document.getElementById("f2l-hint-copy").textContent = h.copy;
   document.getElementById("f2l-hint-alg").textContent = h.alg || "—";
@@ -928,10 +928,10 @@ function setPanelCopy(mode) {
     btnHint.textContent = "Cross hint";
   } else if (mode === "f2l") {
     const d = getF2lDrillInfo();
-    title.textContent = "F2L — 41 cases, R then L";
+    title.textContent = "F2L — CubeHead’s 41";
     blurb.innerHTML = d.started
       ? `Now <strong>${d.id}</strong> · ${d.index + 1}/${d.total} · ${d.group}. <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong> (CubeHead order).`
-      : `CubeHead order: easy inserts → disconnected (1–14) → slot cases → connected → both in. <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong> stay in that list. <strong>Random</strong> jumps once. From <a class="ext-link" href="https://www.youtube.com/watch?v=3tYj-9f4dA0" target="_blank" rel="noopener">this video</a>.`;
+      : `Twins share a number: 1R (red–green) then 1L (green–orange). No left twin → just 11. 2R is R U R′, not sledge. <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong> stay in that list. <strong>Random</strong> jumps once. From <a class="ext-link" href="https://www.youtube.com/watch?v=3tYj-9f4dA0" target="_blank" rel="noopener">this video</a>.`;
     btnF2l.hidden = false;
     btnF2lPrev.hidden = false;
     btnF2lAgain.hidden = false;

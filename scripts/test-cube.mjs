@@ -22,6 +22,7 @@ const {
 } = await import("../js/solve-timer.js");
 const { analyzeF2lFlow, formatF2lFlow, popBaselineIds, poppedSolvedSlots, scrambleF2L, getF2lDrillInfo, resetF2lDrill, shouldFlashPop, slotSolved, solvedSlotIds, stableSolvedSlotIds, whiteCrossIntact, SLOTS } = await import("../js/f2l-trainer.js");
 const { F2L_DRILL_CASES } = await import("../js/f2l-cases.js");
+const { invertAlg } = await import("../js/alg.js");
 const {
   FLICK_HALF_TURN_DEG,
   FLICK_MIN_PX,
@@ -225,7 +226,7 @@ assert(
   F2L_DRILL_CASES.filter((c) => c.group === "Easy insert").every(
     (c) => analyzeF2lFlow(c.setup, "", c.alg).inserts[0]?.easy
   ),
-  "1R–4L count as easy connected inserts"
+  "1R–2L count as easy connected inserts"
 );
 assert(
   F2L_DRILL_CASES.filter((c) => c.group === "Disconnected").every(
@@ -270,34 +271,36 @@ assert(poppedByF.includes("FR") && poppedByF.includes("FL"), "F' pops the two fr
 assert(poppedSolvedSlots(solvedIds, afterF, "U'").length === 0, "U does not count as a pop");
 assert(poppedSolvedSlots(solvedIds, afterF, "y").length === 0, "cube rotation does not count as a pop");
 
-const case11R = F2L_DRILL_CASES.find((c) => c.id === "11R");
+const case11 = F2L_DRILL_CASES.find((c) => c.id === "11");
 const open11 = solvedFacelets();
-applyAlg(open11, case11R.setup);
+applyAlg(open11, case11.setup);
 const prev11 = solvedSlotIds(open11);
-assert(prev11.length === 3 && !prev11.includes("FR"), "11R leaves only FR open");
+assert(prev11.length === 3 && !prev11.includes("FR"), "11 leaves only FR open");
 const afterInsertR = solvedFacelets();
-applyAlg(afterInsertR, case11R.setup);
+applyAlg(afterInsertR, case11.setup);
 applyMove(afterInsertR, "R");
 assert(poppedSolvedSlots(prev11, afterInsertR, "R").length === 0, "R on empty FR is the insert, not a pop");
 const afterDumpB = solvedFacelets();
-applyAlg(afterDumpB, case11R.setup);
+applyAlg(afterDumpB, case11.setup);
 applyMove(afterDumpB, "B");
 assert(poppedSolvedSlots(prev11, afterDumpB, "B").includes("BL"), "B on empty FR dumps BL");
-const dumpFlow = analyzeF2lFlow(case11R.setup, "", "B");
-assert(dumpFlow.pops.some((p) => p.slot === "BL"), "coach counts B on 11R as a real pop");
+const dumpFlow = analyzeF2lFlow(case11.setup, "", "B");
+assert(dumpFlow.pops.some((p) => p.slot === "BL"), "coach counts B on 11 as a real pop");
 
 // Sledge / white-up algs briefly look solved mid-move while the cross is broken.
 // That phantom must not close the open slot or the next R' flashes a false pop.
-const case2R = F2L_DRILL_CASES.find((c) => c.id === "2R");
+// Sledge is an extra way on case 1, not its own drill ID.
+const sledgeAlg = "F R' F' R";
+const sledgeSetup = invertAlg(sledgeAlg);
 const midSledge = solvedFacelets();
-applyAlg(midSledge, case2R.setup);
+applyAlg(midSledge, sledgeSetup);
 applyMove(midSledge, "F");
 assert(!whiteCrossIntact(midSledge), "sledge F breaks the cross");
 assert(slotSolved(midSledge, SLOTS.find((s) => s.id === "FR")), "sledge F can make FR look solved");
 assert(stableSolvedSlotIds(midSledge) === null, "phantom solve is not stable");
-const sledgeFlow = analyzeF2lFlow(case2R.setup, "", case2R.alg);
-assert(sledgeFlow.pops.length === 0, "official 2R sledge does not count as popping");
-assert(sledgeFlow.inserts.map((x) => x.slot).join(" ") === "FR", "2R inserts FR once at the end");
+const sledgeFlow = analyzeF2lFlow(sledgeSetup, "", sledgeAlg);
+assert(sledgeFlow.pops.length === 0, "sledge does not count as popping");
+assert(sledgeFlow.inserts.map((x) => x.slot).join(" ") === "FR", "sledge inserts FR once at the end");
 let falsePopAlgs = 0;
 for (const c of F2L_DRILL_CASES) {
   if (analyzeF2lFlow(c.setup, "", c.alg).pops.length) falsePopAlgs += 1;
@@ -306,28 +309,40 @@ assert(falsePopAlgs === 0, "no official F2L alg should flash a pop");
 const baseline = popBaselineIds(midSledge, ["BR", "BL", "FL"]);
 assert(baseline.join(" ") === "BR BL FL", "mid-alg baseline keeps FR open from last stable");
 const afterSledgeR = solvedFacelets();
-applyAlg(afterSledgeR, case2R.setup);
+applyAlg(afterSledgeR, sledgeSetup);
 applyMove(afterSledgeR, "F");
 applyMove(afterSledgeR, "R'");
 assert(poppedSolvedSlots(baseline, afterSledgeR, "R'").length === 0, "sledge R' after phantom F is not a pop");
 
-assert(F2L_DRILL_CASES.length === 82, "41 cases × R then L");
+assert(F2L_DRILL_CASES.length === 41, "CubeHead’s 41 filmed cases");
 assert(F2L_DRILL_CASES[0].id === "1R" && F2L_DRILL_CASES[1].id === "1L", "order is 1R then 1L");
-assert(F2L_DRILL_CASES[2].id === "2R", "then 2R");
-assert(F2L_DRILL_CASES.find((c) => c.id === "10R").group === "Disconnected", "10R is still disconnected");
-assert(F2L_DRILL_CASES.find((c) => c.id === "11R").group === "Disconnected", "11R follows CubeHead: still disconnected (white up)");
-assert(F2L_DRILL_CASES.find((c) => c.id === "14R").group === "Disconnected", "disconnected runs through 14");
-assert(F2L_DRILL_CASES.find((c) => c.id === "15R").group === "Corner in slot", "15R is first corner-in-slot");
-assert(F2L_DRILL_CASES.find((c) => c.id === "21R").group === "Edge in slot", "21R is first edge-in-slot");
+assert(F2L_DRILL_CASES[2].id === "2R" && F2L_DRILL_CASES[3].id === "2L", "then 2R / 2L");
+assert(F2L_DRILL_CASES.find((c) => c.id === "1R").alg === "U R U' R'", "1R is CubeHead 1 (sexy), not sledge");
+assert(F2L_DRILL_CASES.find((c) => c.id === "1L").alg === "U' L' U L", "1L is CubeHead 2");
+assert(F2L_DRILL_CASES.find((c) => c.id === "2R").alg === "R U R'", "2R is CubeHead 3 (split insert)");
+assert(F2L_DRILL_CASES.find((c) => c.id === "2L").alg === "L' U' L", "2L is CubeHead 4");
+assert(F2L_DRILL_CASES.find((c) => c.id === "3R").group === "Disconnected", "disconnected starts at 3R");
+assert(F2L_DRILL_CASES.find((c) => c.id === "7R").group === "Disconnected", "disconnected runs through 7");
+assert(F2L_DRILL_CASES.find((c) => c.id === "8R").group === "Corner in slot", "8R is first corner-in-slot");
+assert(F2L_DRILL_CASES.find((c) => c.id === "11").group === "Edge in slot", "11 is first edge-in-slot (no L twin)");
 assert(
-  F2L_DRILL_CASES.find((c) => c.id === "21R").alg === "U R U' R' U R U' R' U R U' R'",
-  "21R is CubeHead’s first edge-in-slot (solved edge, white up)"
+  F2L_DRILL_CASES.find((c) => c.id === "11").alg === "U R U' R' U R U' R' U R U' R'",
+  "11 is CubeHead’s first edge-in-slot (solved edge, white up)"
 );
 assert(
-  F2L_DRILL_CASES.find((c) => c.id === "22R").alg === "U' R' F R F' R U' R'",
-  "22R is the flipped-edge sledge, CubeHead’s second edge-in-slot"
+  F2L_DRILL_CASES.find((c) => c.id === "12").alg === "U' R' F R F' R U' R'",
+  "12 is the flipped-edge sledge, CubeHead’s second edge-in-slot"
 );
-assert(F2L_DRILL_CASES.find((c) => c.id === "27R").group === "Connected", "connected pairs start at 27 after the slot cases");
+assert(!F2L_DRILL_CASES.some((c) => c.id === "11R" || c.id === "11L"), "no L twin → ID is 11, not 11R");
+assert(F2L_DRILL_CASES.find((c) => c.id === "17R").group === "Connected", "connected pairs start at 17");
+assert(F2L_DRILL_CASES.find((c) => c.id === "22").group === "Both in slot", "both-in-slot starts at 22");
+assert(!F2L_DRILL_CASES.some((c) => c.id === "22R" || c.id === "22L"), "both-in-slot has no L twin");
+assert(F2L_DRILL_CASES.at(-1).id === "26", "last case is 26");
+for (const c of F2L_DRILL_CASES) {
+  const twin = F2L_DRILL_CASES.some((o) => o.n === c.n && o.hand !== c.hand);
+  if (twin) assert(/^\d+[RL]$/.test(c.id), `${c.id} is a twin so it keeps R/L`);
+  else assert(c.id === String(c.n), `${c.n} has no L twin so the ID is just ${c.n}`);
+}
 for (const c of F2L_DRILL_CASES) {
   const cube = solvedFacelets();
   applyAlg(cube, c.setup);
@@ -406,10 +421,10 @@ for (const c of F2L_DRILL_CASES) {
   applyAlg(cube, c.setup);
   const key = relativeF2lKey(cube, c.slot);
   if (c.hand === "R") {
-    assert(c.slot === "FR", `${c.id} is green-red front-right`);
+    assert(c.slot === "FR", `${c.id} is red-green front-right`);
     relByN.set(c.n, key);
   } else {
-    assert(c.slot === "FL", `${c.id} is orange-green front-left`);
+    assert(c.slot === "FL", `${c.id} is green-orange front-left`);
     assert(key === relByN.get(c.n), `${c.id} is the same case as ${c.n}R, not a different hold`);
   }
 }
@@ -418,7 +433,7 @@ for (const [n, key] of relByN) {
   assert(!seenRel.has(key), `case ${n} duplicates case ${seenRel.get(key)} (${key})`);
   seenRel.set(key, n);
 }
-assert(relByN.size === 41, "41 distinct R cases");
+assert(relByN.size === 26, "26 distinct R shapes (some CubeHead numbers are L-only twins)");
 
 const drill = solvedFacelets();
 scrambleF2L(drill, "next");
@@ -445,7 +460,7 @@ scrambleF2L(drill, "next");
 scrambleF2L(drill, "prev");
 scrambleF2L(drill, "prev");
 scrambleF2L(drill, "prev");
-assert(getF2lDrillInfo().id === "1R", "Prev does not wrap from 1R to 41L");
+assert(getF2lDrillInfo().id === "1R", "Prev does not wrap from 1R to 26");
 scrambleF2L(drill, "next");
 assert(getF2lDrillInfo().id === "1L", "Next after extra Prevs is still 1L, not a wrap jump");
 

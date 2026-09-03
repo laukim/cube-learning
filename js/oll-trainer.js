@@ -14,7 +14,7 @@ import {
   solvedFacelets,
   sticker,
 } from "./cube.js";
-import { f2lComplete } from "./f2l-trainer.js";
+import { f2lComplete } from "./f2l-trainer.js?v=ord2";
 import { ollTopDiagram } from "./case-diagram.js";
 
 /** Expand WCA wide moves so ERNO (which uses lowercase for CCW) can animate them. */

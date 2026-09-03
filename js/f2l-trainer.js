@@ -176,13 +176,63 @@ export function poppedSolvedSlots(prevIds, facelets, move) {
   return prevIds.filter((id) => !now.has(id));
 }
 
-function insertTrigger(moves) {
+/** Moves after leading U setup — the real work for that pair. */
+function insertRest(moves) {
   let i = 0;
   while (i < moves.length && /^U/i.test(moves[i])) i += 1;
-  const rest = moves.slice(i);
+  return moves.slice(i);
+}
+
+/**
+ * CubeHead easy insert (1–4): short connected-pair insert on one side face,
+ * or a 4-move sledge/hedge on two side faces. Longer buffers are setup, not
+ * a clean easy insert — even if they end in U R U' R'.
+ */
+export function isEasyConnectedInsert(moves) {
+  const rest = insertRest(moves);
+  if (rest.length < 3 || rest.length > 4) return false;
+  const faces = new Set();
+  let sideCount = 0;
+  for (const m of rest) {
+    const f = String(m)[0]?.toUpperCase();
+    if (!f || f === "U") continue;
+    if (!/^[FRLB]$/.test(f)) return false;
+    faces.add(f);
+    sideCount += 1;
+  }
+  if (faces.size === 1) return true;
+  return faces.size === 2 && sideCount === 4 && rest.length === 4;
+}
+
+function insertClosing(rest) {
+  if (rest.length <= 4) return rest;
+  return rest.slice(-4);
+}
+
+function insertTrigger(moves) {
+  const rest = insertRest(moves);
   if (!rest.length) return moves.join(" ");
+  if (isEasyConnectedInsert(moves)) return rest.join(" ");
+  // Longer buffer that still finishes with an easy-looking insert — say so.
+  const closing = insertClosing(rest);
+  if (rest.length > 4 && isEasyConnectedInsert(closing)) {
+    return `setup → ${closing.join(" ")}`;
+  }
   if (rest.length <= 8) return rest.join(" ");
-  return rest.slice(-4).join(" ");
+  return closing.join(" ");
+}
+
+function describeInsert(moves) {
+  const rest = insertRest(moves);
+  const easy = isEasyConnectedInsert(moves);
+  const closing = insertClosing(rest);
+  const closingEasy = !easy && rest.length > 4 && isEasyConnectedInsert(closing);
+  return {
+    trigger: insertTrigger(moves),
+    easy,
+    setup: !easy && rest.length > 4,
+    closingEasy,
+  };
 }
 
 /**
@@ -217,10 +267,14 @@ export function analyzeF2lFlow(scramble, crossAlg, f2lAlg) {
     for (const id of stable) {
       if (seen.has(id)) continue;
       seen.add(id);
+      const info = describeInsert(buf);
       inserts.push({
         slot: id,
         moves: buf.slice(),
-        trigger: insertTrigger(buf),
+        trigger: info.trigger,
+        easy: info.easy,
+        setup: info.setup,
+        closingEasy: info.closingEasy,
       });
       buf = [];
     }
@@ -228,13 +282,10 @@ export function analyzeF2lFlow(scramble, crossAlg, f2lAlg) {
   return { inserts, pops, leftover: buf };
 }
 
-export function formatF2lFlow(flow) {
-  if (!flow?.inserts?.length) return [];
-  const inBits = flow.inserts.map((x) => `${x.slot} (${x.trigger})`);
-  const lines = [`   first in: ${inBits.join(" · ")}`];
-  if (!flow.pops?.length) return lines;
+function formatPopLine(pops) {
+  if (!pops?.length) return "no pops";
   const bySlot = new Map();
-  for (const p of flow.pops) {
+  for (const p of pops) {
     const face = String(p.move)[0];
     if (!face || face === "U") continue;
     const cur = bySlot.get(p.slot) || { n: 0, faces: new Set() };
@@ -245,10 +296,34 @@ export function formatF2lFlow(flow) {
   const popBits = [...bySlot.entries()].map(
     ([slot, cur]) => `${slot}×${cur.n} (${[...cur.faces].join("/")})`
   );
-  if (popBits.length) {
-    lines.push(`   popped solved slots: ${popBits.join(" · ")} — turned a face the open pair doesn’t use`);
+  if (!popBits.length) return "no pops";
+  return `popped ${popBits.join(" · ")} — turned a face the open pair doesn’t use`;
+}
+
+function formatInsertKindLine(flow) {
+  const n = flow.inserts.length;
+  const easyN = flow.inserts.filter((x) => x.easy).length;
+  const setupN = flow.inserts.filter((x) => x.setup).length;
+  const bits = [];
+  if (easyN === n && n >= 4) {
+    bits.push(`all ${n} easy inserts (connected pairs)`);
+  } else if (easyN > 0) {
+    bits.push(`${easyN}/${n} easy insert${easyN === 1 ? "" : "s"} (connected)`);
   }
-  return lines;
+  if (setupN > 0) {
+    bits.push(`${setupN} with longer setup`);
+  }
+  if (!bits.length) {
+    bits.push("no clean easy inserts");
+  }
+  bits.push(formatPopLine(flow.pops));
+  return `   inserts: ${bits.join(" · ")}`;
+}
+
+export function formatF2lFlow(flow) {
+  if (!flow?.inserts?.length) return [];
+  const inBits = flow.inserts.map((x) => `${x.slot} (${x.trigger})`);
+  return [`   first in: ${inBits.join(" · ")}`, formatInsertKindLine(flow)];
 }
 
 /** How many y turns bring this slot to front-right. */

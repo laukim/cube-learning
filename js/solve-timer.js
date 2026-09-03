@@ -1,6 +1,6 @@
 import { STEPS } from "./solver.js";
 import { countNamedAlgs, countYTurns, formatAlgCounts } from "./coach-report.js";
-import { analyzeF2lFlow, formatF2lFlow } from "./f2l-trainer.js?v=ord2";
+import { analyzeF2lFlow, formatF2lFlow } from "./f2l-trainer.js?v=conn1";
 
 export const SPLIT_SHORT = {
   "white-cross": "Cross",

@@ -23,6 +23,7 @@ const {
 const { analyzeF2lFlow, formatF2lFlow, popBaselineIds, poppedSolvedSlots, scrambleF2L, getF2lDrillInfo, resetF2lDrill, shouldFlashPop, slotSolved, solvedSlotIds, stableSolvedSlotIds, whiteCrossIntact, SLOTS } = await import("../js/f2l-trainer.js");
 const { F2L_DRILL_CASES } = await import("../js/f2l-cases.js");
 const {
+  FLICK_HALF_TURN_DEG,
   FLICK_MIN_PX,
   FLICK_MOMENTUM_IDLE_MS,
   FLICK_MOMENTUM_MIN_ANGLE,
@@ -371,6 +372,7 @@ assert(ORBIT_REMAPS_FLICKS === false, "orbit must never rewrite a face flick");
 assert(FLICK_MOMENTUM_IDLE_MS === 150, "paused finger must drop flick momentum");
 assert(FLICK_MOMENTUM_MIN_VELOCITY === 0.55, "momentum velocity floor stays ERNO's");
 assert(FLICK_MOMENTUM_MIN_ANGLE === 0.2, "momentum still ignores tiny twists");
+assert(FLICK_HALF_TURN_DEG === 150, "half turns need a clear ~150° drag, not Math.round’s 135°");
 
 const q = Math.PI / 2;
 // Slow intentional R (~90°) must stay R even if avg velocity looks "fast".
@@ -395,12 +397,28 @@ assert(
   "incomplete flick after a pause cancels instead of forcing a turn"
 );
 assert(
-  Math.abs(snapFlickAngle(q * 1.6, { velocity: 0.2, idleMs: 400 }) - Math.PI) < 1e-9,
-  "real overshoot past 135° still snaps to R2"
+  Math.abs(snapFlickAngle(q * 1.5, { velocity: 1.5, idleMs: 0 }) - q) < 1e-9,
+  "quick flick past Math.round’s 135° cliff still stays a single turn"
+);
+assert(
+  Math.abs(snapFlickAngle(q * 1.6, { velocity: 1.5, idleMs: 0 }) - q) < 1e-9,
+  "quick ~144° overshoot (common U→U2 false positive) stays U, not U2"
+);
+assert(
+  Math.abs(snapFlickAngle(q * (150 / 90), { velocity: 0.2, idleMs: 0 }) - Math.PI) < 1e-9,
+  "clear 150° drag still snaps to a half turn"
+);
+assert(
+  Math.abs(snapFlickAngle(q * 1.8, { velocity: 0.2, idleMs: 400 }) - Math.PI) < 1e-9,
+  "real overshoot well past 150° still snaps to R2"
 );
 assert(
   Math.abs(snapFlickAngle(-q * 1.05, { velocity: 0.9, idleMs: 0 }) + q) < 1e-9,
   "CCW near-90° stays a single prime turn"
+);
+assert(
+  Math.abs(snapFlickAngle(-q * 1.6, { velocity: 1.5, idleMs: 0 }) + q) < 1e-9,
+  "quick CCW overshoot stays a single prime turn"
 );
 
 assert(twistToMove({ command: "R", degrees: 90 }) === "R", "R flick logs as R");
@@ -457,13 +475,19 @@ assert(
 
 // Vendored ERNO used to momentum-boost any high avg-velocity drag by +90°, so a
 // slow R that already sat near 90° became R2 on lift. Momentum must only promote
-// an incomplete flick (round === 0), and only if the finger was still moving.
+// an incomplete flick (snap === 0), and only if the finger was still moving.
+// Half turns also used Math.round’s 135° cliff — prefer 90° until ~150°.
 const vendorSrc = readFileSync(join(root, "vendor/erno.js"), "utf8");
 assert(
   vendorSrc.includes("0===d&&150>G-B") &&
     vendorSrc.includes("d=0<C?0.5*Math.PI:-0.5*Math.PI") &&
     !vendorSrc.includes("d=Math.floor(C/Math.PI*2)*Math.PI*0.5,d+=0<w.dot(v.normalize())?0.5*Math.PI:0"),
   "ERNO release must not boost an already-rounded quarter turn into a half turn"
+);
+assert(
+  vendorSrc.includes("H<J*150/90") &&
+    !vendorSrc.includes("d=Math.round(C/Math.PI*2)*Math.PI*0.5"),
+  "ERNO release must prefer 90° until a clear 150° drag (quick U→U2 fix)"
 );
 assert(
   vendorSrc.includes("B=z,y.active=!0") && vendorSrc.includes(",B="),

@@ -23,6 +23,14 @@ export const FLICK_MOMENTUM_MIN_ANGLE = 0.2;
 export const FLICK_MOMENTUM_IDLE_MS = 150;
 
 /**
+ * Prefer a single quarter turn unless the drag is clearly a half turn.
+ * Math.round’s 135° cliff was too eager: a quick U aiming for 90° that
+ * overshoots to ~140° (easy with dragSpeed > 1) logged as U2.
+ * Mirrored in vendor/erno.js; keep both in sync.
+ */
+export const FLICK_HALF_TURN_DEG = 150;
+
+/**
  * Snap a live drag angle (radians) to the twist that should commit on lift.
  * @param {number} angleRad live slice rotation
  * @param {{ velocity?: number, idleMs?: number }} motion
@@ -32,8 +40,21 @@ export function snapFlickAngle(angleRad, motion = {}) {
   const velocity = motion.velocity ?? 0;
   const idleMs = motion.idleMs ?? 0;
   const quarter = Math.PI * 0.5;
-  let snapped = Math.round(angleRad / quarter) * quarter;
-  // Momentum only when round would cancel — never turns R into R2.
+  const abs = Math.abs(angleRad);
+  const sign = angleRad >= 0 ? 1 : -1;
+  const halfMin = (FLICK_HALF_TURN_DEG / 90) * quarter;
+
+  let snapped;
+  if (abs < quarter * 0.5) {
+    snapped = 0;
+  } else if (abs < halfMin) {
+    // 45° … just-under-150° → one quarter (not Math.round’s 135° → 180°)
+    snapped = sign * quarter;
+  } else {
+    snapped = sign * Math.round(abs / quarter) * quarter;
+  }
+
+  // Momentum only when snap would cancel — never turns R into R2.
   if (
     velocity > FLICK_MOMENTUM_MIN_VELOCITY &&
     Math.abs(angleRad) > FLICK_MOMENTUM_MIN_ANGLE &&

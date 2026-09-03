@@ -76,7 +76,8 @@ export function createErnoCube(container, hooks) {
   try {
     // Slightly slower than stock ERNO so a careful 90° is easier to land.
     // Quarter vs half-turn snap (R vs R2) is patched in vendor/erno.js — momentum
-    // must not boost an already-rounded quarter into a half turn after a pause.
+    // must not boost an already-rounded quarter into a half turn after a pause,
+    // and a quick overshoot must clear ~150° before logging R2 (not Math.round’s 135°).
     cube.mouseInteraction.dragSpeed = 1.15;
   } catch {
     /* ignore */

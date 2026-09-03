@@ -275,14 +275,29 @@ function ejectSlotAlg(slotId) {
 
 let f2lDrillIndex = 0;
 let f2lDrillStarted = false;
-let f2lRandom = false;
+
+/**
+ * Red POP flash is for timed full-cube Guide solves only.
+ * Cross / F2L / OLL / PLL drills must never trigger it.
+ */
+export function shouldFlashPop(appMode, { timerPhase, lastDone = 0, f2lLocked = false } = {}) {
+  if (appMode !== "guide") return false;
+  if (timerPhase !== "running") return false;
+  if (f2lLocked || lastDone >= 2) return false;
+  return true;
+}
+
+export function resetF2lDrill() {
+  f2lDrillIndex = 0;
+  f2lDrillStarted = false;
+}
 
 export function getF2lDrillInfo() {
   const n = F2L_DRILL_CASES.length;
   const i = ((f2lDrillIndex % n) + n) % n;
   const c = F2L_DRILL_CASES[i];
   const next = F2L_DRILL_CASES[(i + 1) % n];
-  const prev = F2L_DRILL_CASES[(i - 1 + n) % n];
+  const prev = i > 0 ? F2L_DRILL_CASES[i - 1] : null;
   return {
     index: i,
     total: n,
@@ -292,18 +307,12 @@ export function getF2lDrillInfo() {
     hand: c.hand,
     slot: c.slot,
     started: f2lDrillStarted,
-    random: f2lRandom,
+    random: false,
     nextId: next.id,
-    prevId: prev.id,
+    prevId: prev?.id || "",
+    atStart: i === 0,
+    atEnd: i === n - 1,
   };
-}
-
-export function setF2lRandom(on) {
-  f2lRandom = !!on;
-}
-
-export function isF2lRandom() {
-  return f2lRandom;
 }
 
 /** Live hint for the F2L tab case drill (not the full-solve guide). */
@@ -325,7 +334,7 @@ export function analyzeF2lDrill(facelets) {
       case: c,
       hint: hint(
         "Standard F2L cases",
-        "Prev / Again / Next F2L. Order is 1R then 1L, then 2R…. Toggle Random if you want a mix. One pair only — the other three stay in.",
+        "Prev / Again / Next F2L. Order is 1R then 1L, then 2R…. Random jumps once — Next stays in list order. One pair only — the other three stay in.",
         "",
         "CubeHead’s video order: easy inserts → disconnected (1–14) → corner in slot → edge in slot → connected → both in slot."
       ),
@@ -370,19 +379,23 @@ export function scrambleF2L(facelets, mode = "next") {
   const n = F2L_DRILL_CASES.length;
   if (!f2lDrillStarted) {
     f2lDrillStarted = true;
-    f2lDrillIndex = 0;
-  } else if (mode === "next") {
-    if (f2lRandom) {
-      let i = f2lDrillIndex;
-      if (n > 1) {
-        while (i === f2lDrillIndex) i = Math.floor(Math.random() * n);
-      }
-      f2lDrillIndex = i;
+    if (mode === "random") {
+      f2lDrillIndex = Math.floor(Math.random() * n);
     } else {
-      f2lDrillIndex = (f2lDrillIndex + 1) % n;
+      f2lDrillIndex = 0;
     }
+  } else if (mode === "next") {
+    // Always CubeHead list order. Random is a one-shot jump, never a Next mode.
+    f2lDrillIndex = (f2lDrillIndex + 1) % n;
   } else if (mode === "prev") {
-    f2lDrillIndex = (f2lDrillIndex - 1 + n) % n;
+    // Do not wrap past 1R — that jumped to 41L and made later Next look shuffled.
+    if (f2lDrillIndex > 0) f2lDrillIndex -= 1;
+  } else if (mode === "random") {
+    let i = f2lDrillIndex;
+    if (n > 1) {
+      while (i === f2lDrillIndex) i = Math.floor(Math.random() * n);
+    }
+    f2lDrillIndex = i;
   }
 
   const c = F2L_DRILL_CASES[((f2lDrillIndex % n) + n) % n];
@@ -774,7 +787,7 @@ function bothOnUHint(facelets, corner, edge) {
 export const F2L_TIPS = [
   {
     title: "How this drill works",
-    body: "Each case is one pair. The other three stay in. When it’s in, stay on this ID until you tap Next or Prev. Again = same ID. Next F2L = next in the list (or random if that toggle is on).",
+    body: "Each case is one pair. The other three stay in. When it’s in, stay on this ID until you tap Next or Prev. Again = same ID. Next F2L always follows 1R, 1L, 2R…. Random jumps once; Next stays in order after that.",
   },
   {
     title: "IDs: 1R then 1L",

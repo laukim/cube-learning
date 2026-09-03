@@ -866,7 +866,7 @@ export const F2L_TIPS = [
   },
   {
     title: "IDs: 1R then 1L",
-    body: "1R is front-right with R/U. 1L is the same case on the left with L/U. From 21R the order is CubeHead’s academy list: 21R is solved edge, white up (three sexy), not the flipped-edge sledge. Say the ID when you paste a solve if you want coaching on that case.",
+    body: "1R is the green–red pair at front-right (R/U). 1L is the same case for the orange–green pair at front-left (L/U). From 21R the order is CubeHead’s academy list: 21R is solved edge, white up (three sexy), not the flipped-edge sledge.",
   },
   {
     title: "Don’t pop a solved pair",

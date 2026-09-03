@@ -1,11 +1,9 @@
 /**
  * Standard F2L cases in CubeHead’s academy/video order, practised as R then L.
- * IDs: 1R, 1L, … 41L. R = front-right (R/U). L = front-left (L/U).
+ * IDs: 1R, 1L, … 41L. R = green–red at front-right. L = the same case,
+ * orange–green at front-left. 41 cases × 2 slots, no crossed duplicates.
  * Video: https://www.youtube.com/watch?v=3tYj-9f4dA0
  * Checklist: https://www.cube.academy/intuitive-f2l-algs
- *
- * 1–20 stay as confirmed on the cube (easy → disconnected → corner in slot).
- * From 21, FR order matches academy (edge in slot → connected → both in slot).
  */
 
 import { invertAlg, mirrorLRAlg } from "./alg.js";
@@ -55,17 +53,20 @@ const FR = [
   [41, "Both in slot", "Solved corner, flipped edge", "R2 U2 F R2 F' U2 R' U R'"],
 ];
 
+/**
+ * Naive LR-mirror of wide r breaks the white cross. These keep the same
+ * case as nR, in the FL slot (orange–green), without dumping other pairs.
+ */
+const L_OVERRIDE = {
+  8: "l U2 L2 U' L2 U' l'",
+  14: "l' U l U2 l' U' l",
+  39: "l' U l U2 l' U' l L' U' L",
+  40: "L' U L l' U l U2 l' U' l",
+};
+
 function makeDrill(n, group, name, hand, alg) {
   const id = `${n}${hand}`;
   const slot = hand === "R" ? "FR" : "FL";
-  const slotName = hand === "R" ? "front-right" : "front-left";
-  const L_OVERRIDE = {
-    6: "U L' U' L U2 L' U L",
-    8: "U L' U2 L U L' U2 L",
-    14: "L' U L U2 L' U' L",
-    39: "L' U L l' U l U2 l' U' l",
-    40: "l' U l U2 l' U' l L' U' L",
-  };
   const useAlg = hand === "L" && L_OVERRIDE[n] ? L_OVERRIDE[n] : alg;
   return {
     id,
@@ -78,8 +79,8 @@ function makeDrill(n, group, name, hand, alg) {
     setup: invertAlg(useAlg),
     copy:
       hand === "R"
-        ? `Slot is ${slotName}. Use R and U (F if the alg has it). Don’t turn L or B — other pairs stay in.`
-        : `Same case on the left. Slot is ${slotName}. Use L and U. Don’t turn R or B.`,
+        ? "Slot is front-right (green–red). Use R and U (F if the alg has it). Don’t turn L or B — other pairs stay in."
+        : "Same case, front-left (orange–green). Use L and U. Don’t turn R or B.",
     note: "White on bottom · green = F. One pair only. Stay on this ID until you tap Next or Prev.",
   };
 }

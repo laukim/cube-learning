@@ -5,7 +5,7 @@ import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 globalThis.Cube = require("cubejs");
 
-const { applyAlg, applyMove, scrambleCube, isSolved, solvedFacelets } = await import("../js/cube.js");
+const { applyAlg, applyMove, scrambleCube, isSolved, solvedFacelets, sticker } = await import("../js/cube.js");
 const { analyze, RIGHTY } = await import("../js/solver.js");
 const {
   armTimer,
@@ -337,6 +337,89 @@ for (const c of F2L_DRILL_CASES) {
   applyAlg(cube, c.alg);
   assert(SLOTS.every((s) => slotSolved(cube, s)), `${c.id} alg inserts the pair`);
 }
+
+function setEq(a, b) {
+  return a.size === b.size && [...a].every((x) => b.has(x));
+}
+function relativeF2lKey(facelets, slot) {
+  const side = slot === "FR" ? "R" : "L";
+  const fc = sticker(facelets, "F", 4);
+  const rc = sticker(facelets, side, 4);
+  const corners =
+    slot === "FR"
+      ? [
+          ["slot", ["D", 2], ["F", 8], ["R", 6]],
+          ["U-slot", ["U", 8], ["R", 0], ["F", 2]],
+          ["U-right", ["U", 2], ["B", 0], ["R", 2]],
+          ["U-back", ["U", 0], ["L", 0], ["B", 2]],
+          ["U-left", ["U", 6], ["F", 0], ["L", 2]],
+        ]
+      : [
+          ["slot", ["D", 0], ["F", 6], ["L", 8]],
+          ["U-slot", ["U", 6], ["F", 0], ["L", 2]],
+          ["U-right", ["U", 0], ["L", 0], ["B", 2]],
+          ["U-back", ["U", 2], ["B", 0], ["R", 2]],
+          ["U-left", ["U", 8], ["R", 0], ["F", 2]],
+        ];
+  const edges =
+    slot === "FR"
+      ? [
+          ["slot", ["F", 5], ["R", 3]],
+          ["UF", ["U", 7], ["F", 1]],
+          ["UR", ["U", 5], ["R", 1]],
+          ["UB", ["U", 1], ["B", 1]],
+          ["UL", ["U", 3], ["L", 1]],
+        ]
+      : [
+          ["slot", ["F", 3], ["L", 5]],
+          ["UF", ["U", 7], ["F", 1]],
+          ["UR", ["U", 3], ["L", 1]],
+          ["UB", ["U", 1], ["B", 1]],
+          ["UL", ["U", 5], ["R", 1]],
+        ];
+  const ct = new Set(["white", fc, rc]);
+  const et = new Set([fc, rc]);
+  const corner = corners.find((c) => setEq(new Set(c.slice(1).map(([a, i]) => sticker(facelets, a, i))), ct));
+  const edge = edges.find((c) => setEq(new Set(c.slice(1).map(([a, i]) => sticker(facelets, a, i))), et));
+  let cOri = "?";
+  if (corner) {
+    for (const [a, i] of corner.slice(1)) {
+      if (sticker(facelets, a, i) === "white") {
+        cOri = a === "D" || a === "U" || a === "F" ? a : "S";
+        break;
+      }
+    }
+  }
+  let eOri = "?";
+  if (edge) {
+    const [a, i] = edge[1];
+    const col = sticker(facelets, a, i);
+    if (edge[0] === "slot") eOri = col === fc ? "F" : "S";
+    else if (a === "U") eOri = col === fc ? "U" : "S";
+    else eOri = col === fc ? "F" : "S";
+  }
+  return `${corner?.[0]}:${cOri}|${edge?.[0]}:${eOri}`;
+}
+const relByN = new Map();
+for (const c of F2L_DRILL_CASES) {
+  const cube = solvedFacelets();
+  applyAlg(cube, c.setup);
+  const key = relativeF2lKey(cube, c.slot);
+  if (c.hand === "R") {
+    assert(c.slot === "FR", `${c.id} is green-red front-right`);
+    relByN.set(c.n, key);
+  } else {
+    assert(c.slot === "FL", `${c.id} is orange-green front-left`);
+    assert(key === relByN.get(c.n), `${c.id} is the same case as ${c.n}R, not a different hold`);
+  }
+}
+const seenRel = new Map();
+for (const [n, key] of relByN) {
+  assert(!seenRel.has(key), `case ${n} duplicates case ${seenRel.get(key)} (${key})`);
+  seenRel.set(key, n);
+}
+assert(relByN.size === 41, "41 distinct R cases");
+
 const drill = solvedFacelets();
 scrambleF2L(drill, "next");
 assert(getF2lDrillInfo().id === "1R", "first Next F2L is 1R");

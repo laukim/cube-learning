@@ -74,6 +74,9 @@ export function createErnoCube(container, hooks) {
   applyHomeTilt();
 
   try {
+    // Slightly slower than stock ERNO so a careful 90° is easier to land.
+    // Quarter vs half-turn snap (R vs R2) is patched in vendor/erno.js — momentum
+    // must not boost an already-rounded quarter into a half turn after a pause.
     cube.mouseInteraction.dragSpeed = 1.15;
   } catch {
     /* ignore */

@@ -24,9 +24,13 @@ const { analyzeF2lFlow, formatF2lFlow, popBaselineIds, poppedSolvedSlots, scramb
 const { F2L_DRILL_CASES } = await import("../js/f2l-cases.js");
 const {
   FLICK_MIN_PX,
+  FLICK_MOMENTUM_IDLE_MS,
+  FLICK_MOMENTUM_MIN_ANGLE,
+  FLICK_MOMENTUM_MIN_VELOCITY,
   ORBIT_REMAPS_FLICKS,
   ORBIT_SPEED,
   TAP_PX,
+  snapFlickAngle,
 } = await import("../js/erno-ux.js");
 const { moveToErno, twistToMove, Y_CYCLE } = await import("../js/erno-view.js");
 
@@ -364,8 +368,43 @@ assert(FLICK_MIN_PX === 28, "verified flick deadzone is 28px, not a looser twitc
 assert(TAP_PX === 10, "tap snap-back stays 10px");
 assert(ORBIT_SPEED === 0.008, "look-around speed matches last good orbit");
 assert(ORBIT_REMAPS_FLICKS === false, "orbit must never rewrite a face flick");
+assert(FLICK_MOMENTUM_IDLE_MS === 150, "paused finger must drop flick momentum");
+assert(FLICK_MOMENTUM_MIN_VELOCITY === 0.55, "momentum velocity floor stays ERNO's");
+assert(FLICK_MOMENTUM_MIN_ANGLE === 0.2, "momentum still ignores tiny twists");
+
+const q = Math.PI / 2;
+// Slow intentional R (~90°) must stay R even if avg velocity looks "fast".
+assert(
+  Math.abs(snapFlickAngle(q * 1.05, { velocity: 0.9, idleMs: 0 }) - q) < 1e-9,
+  "near-90° drag snaps to 90°, not momentum-boosted 180° (R→R2 bug)"
+);
+assert(
+  Math.abs(snapFlickAngle(q * 0.95, { velocity: 0.9, idleMs: 40 }) - q) < 1e-9,
+  "just-under-90° still rounds to R, never R2"
+);
+assert(
+  Math.abs(snapFlickAngle(q, { velocity: 0.9, idleMs: 400 }) - q) < 1e-9,
+  "lift after a long pause at ~90° stays a single turn"
+);
+assert(
+  Math.abs(snapFlickAngle(q * 0.35, { velocity: 0.9, idleMs: 20 }) - q) < 1e-9,
+  "fast incomplete flick still commits one quarter turn"
+);
+assert(
+  Math.abs(snapFlickAngle(q * 0.35, { velocity: 0.9, idleMs: 400 })) < 1e-9,
+  "incomplete flick after a pause cancels instead of forcing a turn"
+);
+assert(
+  Math.abs(snapFlickAngle(q * 1.6, { velocity: 0.2, idleMs: 400 }) - Math.PI) < 1e-9,
+  "real overshoot past 135° still snaps to R2"
+);
+assert(
+  Math.abs(snapFlickAngle(-q * 1.05, { velocity: 0.9, idleMs: 0 }) + q) < 1e-9,
+  "CCW near-90° stays a single prime turn"
+);
 
 assert(twistToMove({ command: "R", degrees: 90 }) === "R", "R flick logs as R");
+assert(twistToMove({ command: "R", degrees: 180 }) === "R2", "180° flick logs as R2");
 assert(twistToMove({ command: "l", degrees: 90 }) === "L'", "L′ flick logs as L'");
 assert(twistToMove({ command: "D", degrees: 90 }) === "D", "D stays D");
 assert(twistToMove({ command: "d", degrees: 90 }) === "D'", "D′ stays D'");
@@ -414,6 +453,21 @@ assert(
 assert(
   !/else if \(downPt\)\s*\{\s*absorb/.test(ernoSrc),
   "face-hit pointer-down must not twist the cube before the flick"
+);
+
+// Vendored ERNO used to momentum-boost any high avg-velocity drag by +90°, so a
+// slow R that already sat near 90° became R2 on lift. Momentum must only promote
+// an incomplete flick (round === 0), and only if the finger was still moving.
+const vendorSrc = readFileSync(join(root, "vendor/erno.js"), "utf8");
+assert(
+  vendorSrc.includes("0===d&&150>G-B") &&
+    vendorSrc.includes("d=0<C?0.5*Math.PI:-0.5*Math.PI") &&
+    !vendorSrc.includes("d=Math.floor(C/Math.PI*2)*Math.PI*0.5,d+=0<w.dot(v.normalize())?0.5*Math.PI:0"),
+  "ERNO release must not boost an already-rounded quarter turn into a half turn"
+);
+assert(
+  vendorSrc.includes("B=z,y.active=!0") && vendorSrc.includes(",B="),
+  "ERNO tracks last pointer-move time so a pause before lift drops momentum"
 );
 
 console.log("ALL PASS");

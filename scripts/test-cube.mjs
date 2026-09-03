@@ -20,7 +20,7 @@ const {
   renderAnalysisHtml,
   startTimer,
 } = await import("../js/solve-timer.js");
-const { analyzeF2lFlow, formatF2lFlow, popBaselineIds, poppedSolvedSlots, scrambleF2L, getF2lDrillInfo, slotSolved, solvedSlotIds, stableSolvedSlotIds, whiteCrossIntact, SLOTS } = await import("../js/f2l-trainer.js");
+const { analyzeF2lFlow, formatF2lFlow, popBaselineIds, poppedSolvedSlots, scrambleF2L, getF2lDrillInfo, resetF2lDrill, shouldFlashPop, slotSolved, solvedSlotIds, stableSolvedSlotIds, whiteCrossIntact, SLOTS } = await import("../js/f2l-trainer.js");
 const { F2L_DRILL_CASES } = await import("../js/f2l-cases.js");
 const {
   FLICK_MIN_PX,
@@ -314,9 +314,51 @@ assert(getF2lDrillInfo().id === "1R", "Prev from 1L returns to 1R");
 scrambleF2L(drill, "again");
 assert(getF2lDrillInfo().id === "1R", "Again stays on 1R after Prev");
 
+resetF2lDrill();
+const ids = [];
+for (const mode of ["next", "next", "next", "prev", "prev", "next", "next"]) {
+  scrambleF2L(drill, mode);
+  ids.push(getF2lDrillInfo().id);
+}
+assert(ids.join(" ") === "1R 1L 2R 1L 1R 1L 2R", `Prev/Next stay in CubeHead order, got ${ids.join(" ")}`);
+
+resetF2lDrill();
+scrambleF2L(drill, "next");
+scrambleF2L(drill, "prev");
+scrambleF2L(drill, "prev");
+scrambleF2L(drill, "prev");
+assert(getF2lDrillInfo().id === "1R", "Prev does not wrap from 1R to 41L");
+scrambleF2L(drill, "next");
+assert(getF2lDrillInfo().id === "1L", "Next after extra Prevs is still 1L, not a wrap jump");
+
+resetF2lDrill();
+scrambleF2L(drill, "random");
+const afterRandom = getF2lDrillInfo();
+scrambleF2L(drill, "next");
+const afterRandomNext = getF2lDrillInfo();
+const expectNext = F2L_DRILL_CASES[(afterRandom.index + 1) % F2L_DRILL_CASES.length].id;
+assert(afterRandomNext.id === expectNext, `Next after Random stays list order (${afterRandom.id} → ${expectNext}), got ${afterRandomNext.id}`);
+scrambleF2L(drill, "prev");
+if (afterRandom.index < F2L_DRILL_CASES.length - 1) {
+  assert(getF2lDrillInfo().id === afterRandom.id, "Prev after that Random+Next returns to the random case, not a shuffle");
+}
+
+assert(shouldFlashPop("guide", { timerPhase: "running", lastDone: 1 }) === true, "POP flash during timed full-cube F2L");
+assert(shouldFlashPop("guide", { timerPhase: "idle", lastDone: 1 }) === false, "no POP flash until the full-cube timer runs");
+assert(shouldFlashPop("guide", { timerPhase: "running", lastDone: 2 }) === false, "no POP flash after F2L is done on a full solve");
+assert(shouldFlashPop("guide", { timerPhase: "running", lastDone: 1, f2lLocked: true }) === false, "no POP flash once all four pairs have been in");
+for (const mode of ["f2l", "cross", "oll", "pll", "match", "algs"]) {
+  assert(shouldFlashPop(mode, { timerPhase: "running", lastDone: 1 }) === false, `no POP flash in ${mode} training`);
+}
+
 // Phone UX contracts — 21af0db flick deadzone + look-only orbit (f8630ef).
 // Inferring y on the same touch as a face flick remapped R/L′ into D/D′.
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+const mainSrc = readFileSync(join(root, "js/main.js"), "utf8");
+assert(mainSrc.includes("shouldFlashPop(appMode"), "live POP flash uses the Guide-only gate");
+assert(!mainSrc.includes('watchDrill = appMode === "f2l"'), "F2L drill must not subscribe to the POP overlay");
+assert(!mainSrc.includes("setF2lRandom"), "Next F2L is not a sticky random mode");
+assert(mainSrc.includes('scrambleF2L(draft, "random")'), "Random is a one-shot jump");
 
 assert(FLICK_MIN_PX === 28, "verified flick deadzone is 28px, not a looser twitch");
 assert(TAP_PX === 10, "tap snap-back stays 10px");

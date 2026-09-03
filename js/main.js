@@ -11,7 +11,7 @@ import {
 import { consumeAlgMove, initAlgProgress, restoreAlgMove } from "./alg-progress.js";
 import { createErnoCube } from "./erno-view.js";
 import { analyzeCross, CROSS_TIPS, scrambleCross } from "./cross-trainer.js";
-import { analyzeF2lDrill, countSlotsSolved, F2L_TIPS, getF2lDrillInfo, popBaselineIds, poppedSolvedSlots, scrambleF2L, setF2lRandom, solvedSlotIds, stableSolvedSlotIds } from "./f2l-trainer.js";
+import { analyzeF2lDrill, countSlotsSolved, F2L_TIPS, getF2lDrillInfo, popBaselineIds, poppedSolvedSlots, scrambleF2L, shouldFlashPop, solvedSlotIds, stableSolvedSlotIds } from "./f2l-trainer.js?v=ord1";
 import { renderCaseDiagram } from "./case-diagram.js";
 import { analyzeOll, expandWideAlg, getOllDrillInfo, OLL_TIPS, scrambleOll } from "./oll-trainer.js";
 import { analyzePll, getPllDrillInfo, PLL_TIPS, scramblePll } from "./pll-trainer.js";
@@ -441,12 +441,9 @@ function flashF2lPop(slots) {
 
 function noteF2lPop(prevIds, cubeMove) {
   if (undoingMove) return;
-  const watchGuide = appMode === "guide" && solveTimer.phase === "running";
-  const watchDrill = appMode === "f2l";
-  if (!watchGuide && !watchDrill) return;
+  if (!shouldFlashPop(appMode, { timerPhase: solveTimer.phase, lastDone: solveTimer.lastDone, f2lLocked })) return;
   if (prevIds.length === 4) f2lLocked = true;
-  if (watchGuide && (f2lLocked || solveTimer.lastDone >= 2)) return;
-  if (watchDrill && prevIds.length === 4) return;
+  if (f2lLocked || solveTimer.lastDone >= 2) return;
   const popped = poppedSolvedSlots(prevIds, facelets, cubeMove);
   if (!popped.length) return;
   flashF2lPop(popped);
@@ -933,14 +930,13 @@ function setPanelCopy(mode) {
     const d = getF2lDrillInfo();
     title.textContent = "F2L — 41 cases, R then L";
     blurb.innerHTML = d.started
-      ? `Now <strong>${d.id}</strong> · ${d.index + 1}/${d.total} · ${d.group}. <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong> (${d.random ? "random" : "next in order"}).`
-      : `CubeHead order: easy inserts → disconnected (1–14) → slot cases → connected → both in. <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong>. Toggle <strong>Order / Random</strong>. From <a class="ext-link" href="https://www.youtube.com/watch?v=3tYj-9f4dA0" target="_blank" rel="noopener">this video</a>.`;
+      ? `Now <strong>${d.id}</strong> · ${d.index + 1}/${d.total} · ${d.group}. <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong> (CubeHead order).`
+      : `CubeHead order: easy inserts → disconnected (1–14) → slot cases → connected → both in. <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong> stay in that list. <strong>Random</strong> jumps once. From <a class="ext-link" href="https://www.youtube.com/watch?v=3tYj-9f4dA0" target="_blank" rel="noopener">this video</a>.`;
     btnF2l.hidden = false;
     btnF2lPrev.hidden = false;
     btnF2lAgain.hidden = false;
     btnF2lRandom.hidden = false;
     btnHint.textContent = "F2L hint";
-    syncF2lRandomButton();
   } else if (mode === "oll") {
     const d = getOllDrillInfo();
     title.textContent = "Beginner OLL — only 2 algs";
@@ -1009,7 +1005,10 @@ function resetCube() {
   syncF2lStableSlots();
 }
 
+let scrambleGen = 0;
+
 function playScrambleAlg(alg, { timeSolve = false } = {}) {
+  const gen = ++scrambleGen;
   facelets = solvedFacelets();
   if (alg) applyAlg(facelets, alg);
   undoingMove = false;
@@ -1040,6 +1039,7 @@ function playScrambleAlg(alg, { timeSolve = false } = {}) {
     // Scramble is cube-space; temporarily clear viewer yaw (fresh mount is 0)
     erno.twistAlg(alg);
     erno.whenIdle(() => {
+      if (gen !== scrambleGen) return;
       erno.clearHistory();
       syncingFromUi = false;
       erno.setSuppressOrbitDetect(false);
@@ -1194,25 +1194,10 @@ document.getElementById("btn-f2l-case").addEventListener("click", () => {
   setPanelCopy("f2l");
 });
 
-function syncF2lRandomButton() {
-  const btn = document.getElementById("btn-f2l-random");
-  if (!btn) return;
-  const on = btn.getAttribute("aria-pressed") === "true";
-  btn.textContent = on ? "Random" : "Order";
-  btn.title = on ? "Next case is random" : "Next case follows 1R, 1L, 2R…";
-  setF2lRandom(on);
-}
-
 document.getElementById("btn-f2l-random").addEventListener("click", () => {
-  const btn = document.getElementById("btn-f2l-random");
-  const on = btn.getAttribute("aria-pressed") !== "true";
-  btn.setAttribute("aria-pressed", on ? "true" : "false");
-  try {
-    localStorage.setItem("f2l-drill-random", on ? "1" : "0");
-  } catch {
-    /* ignore */
-  }
-  syncF2lRandomButton();
+  const draft = solvedFacelets();
+  const alg = scrambleF2L(draft, "random");
+  playScrambleAlg(alg);
   setPanelCopy("f2l");
 });
 
@@ -1508,10 +1493,7 @@ buildPllTips();
 buildAlgList();
 buildF2LTips();
 try {
-  if (localStorage.getItem("f2l-drill-random") === "1") {
-    document.getElementById("btn-f2l-random")?.setAttribute("aria-pressed", "true");
-    setF2lRandom(true);
-  }
+  localStorage.removeItem("f2l-drill-random");
 } catch {
   /* ignore */
 }

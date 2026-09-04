@@ -283,9 +283,13 @@ export function formatSolveReport(analysis, extra = {}) {
     splits = [],
     f2lPairs = [],
   } = extra;
-  const tps = analysis.tps > 0 ? analysis.tps.toFixed(2) : "—";
+  // Analyst report counts undos as moves (20 moves + 10 undos → 30). UI analysis stays net-only.
+  const reportMoves = analysis.totalMoves + Math.max(0, Number(undos) || 0);
+  const seconds = analysis.totalMs / 1000;
+  const reportTps = seconds > 0 && reportMoves ? reportMoves / seconds : 0;
+  const tps = reportTps > 0 ? reportTps.toFixed(2) : "—";
   const lines = [
-    `COACH ${formatClock(analysis.totalMs)} · ${analysis.totalMoves} moves · ${tps} tps · slowest ${analysis.slowest.short}`,
+    `COACH ${formatClock(analysis.totalMs)} · ${reportMoves} moves · ${tps} tps · slowest ${analysis.slowest.short}`,
   ];
   if (at) {
     const d = new Date(at);

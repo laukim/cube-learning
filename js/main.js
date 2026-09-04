@@ -138,7 +138,7 @@ function setHintsOpen(open) {
   if (guidePanel) guidePanel.setAttribute("aria-hidden", open ? "false" : "true");
   if (btnHints) {
     btnHints.setAttribute("aria-pressed", open ? "true" : "false");
-    btnHints.textContent = open ? "Hide hints" : "Hints";
+    btnHints.textContent = open ? "Hide guide" : "Guide";
   }
 }
 
@@ -150,7 +150,7 @@ function enterPlayFocus() {
 }
 
 function scheduleRestoreHints() {
-  // Stay in play until Hints is tapped. Auto-opening the sheet after every
+  // Stay in play until Guide is tapped. Auto-opening the sheet after every
   // flick made the guide cover the cube again.
   window.clearTimeout(restoreHintsTimer);
 }
@@ -256,7 +256,7 @@ function hideSolveAnalysis() {
     solveAnalysisEl.innerHTML = "";
   }
   if (solvedBannerTitle) solvedBannerTitle.textContent = "Solved.";
-  if (solvedBannerCopy) solvedBannerCopy.textContent = " All layers done.";
+  if (solvedBannerCopy) solvedBannerCopy.textContent = " Full CFOP solve done.";
 }
 
 function showSolveAnalysis() {
@@ -923,15 +923,15 @@ function setPanelCopy(mode) {
   if (mode === "cross") {
     title.textContent = "White cross drill";
     blurb.innerHTML =
-      "White on the bottom. Build the <strong>+</strong> — four edges, each side colour matching its centre. Tap <strong>New cross</strong>, then solve one edge at a time.";
+      "White on the bottom. Build the <strong>+</strong> — four edges, each side colour matching its centre. Tap <strong>New cross</strong>, then solve one edge at a time with <strong>Cross hint</strong>.";
     btnCross.hidden = false;
     btnHint.textContent = "Cross hint";
   } else if (mode === "f2l") {
     const d = getF2lDrillInfo();
-    title.textContent = "F2L — CubeHead’s 41";
+    title.textContent = "F2L — 41 standard cases";
     blurb.innerHTML = d.started
-      ? `Now <strong>${d.id}</strong> · ${d.index + 1}/${d.total} · ${d.group}. <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong> (CubeHead order).`
-      : `Twins share a number: 1R (red–green) then 1L (green–orange). No left twin → just 11. 2R is R U R′, not sledge. <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong> stay in that list. <strong>Random</strong> jumps once. From <a class="ext-link" href="https://www.youtube.com/watch?v=3tYj-9f4dA0" target="_blank" rel="noopener">this video</a>.`;
+      ? `Now <strong>${d.id}</strong> · ${d.index + 1}/${d.total} · ${d.group}. <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong> follow CubeHead’s list order.`
+      : `Drill the <strong>41 standard F2L cases</strong> (CubeHead order). Twins share a number: 1R then 1L. No left twin → just 11. <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong> walk the list; <strong>Random</strong> jumps once. Reference: <a class="ext-link" href="https://www.youtube.com/watch?v=3tYj-9f4dA0" target="_blank" rel="noopener">CubeHead F2L</a>.`;
     btnF2l.hidden = false;
     btnF2lPrev.hidden = false;
     btnF2lAgain.hidden = false;
@@ -939,22 +939,22 @@ function setPanelCopy(mode) {
     btnHint.textContent = "F2L hint";
   } else if (mode === "oll") {
     const d = getOllDrillInfo();
-    title.textContent = "Beginner OLL — only 2 algs";
-    blurb.innerHTML = `Now <strong>${d.name}</strong> · ${d.index + 1}/${d.total}. Cross = <code class="inline-alg">F R U R' U' F'</code> · Finish = Sune. <strong>Again</strong> / <strong>Next OLL</strong>. From <a class="ext-link" href="https://www.youtube.com/watch?v=x6EoaxxbImI" target="_blank" rel="noopener">CFOP Cubing</a>.`;
+    title.textContent = "2-look OLL — 2 algs";
+    blurb.innerHTML = `Now <strong>${d.name}</strong> · ${d.index + 1}/${d.total}. Cross = <code class="inline-alg">F R U R' U' F'</code> · Finish = Sune. <strong>Again</strong> / <strong>Next OLL</strong>. Reference: <a class="ext-link" href="https://www.youtube.com/watch?v=x6EoaxxbImI" target="_blank" rel="noopener">CFOP Cubing OLL</a>.`;
     btnOll.hidden = false;
     btnOllAgain.hidden = false;
     btnHint.textContent = "OLL hint";
   } else if (mode === "pll") {
     const d = getPllDrillInfo();
-    title.textContent = "Beginner PLL — fixed case order";
-    blurb.innerHTML = `Practice in order (now <strong>${d.name}</strong> · ${d.index + 1}/${d.total}). <strong>Again</strong> = same case · <strong>Next PLL</strong> = next in the list.`;
+    title.textContent = "2-look PLL — case order";
+    blurb.innerHTML = `Practice in order (now <strong>${d.name}</strong> · ${d.index + 1}/${d.total}). <strong>Again</strong> = same case · <strong>Next PLL</strong> = next in the list. T-perm + U-perm only.`;
     btnPll.hidden = false;
     btnPllAgain.hidden = false;
     btnHint.textContent = "PLL hint";
   } else {
-    title.textContent = "White on bottom. Yellow on top. Six steps you already do.";
+    title.textContent = "CFOP drills. White bottom, yellow top.";
     blurb.innerHTML =
-      "Cross → F2L pairs → yellow cross → yellow face (Sune) → headlights (T-perm) → edges (U-perm). First turn starts the timer.";
+      "Scramble a timed solve, or open a tab to drill one stage. Cross → F2L → 2-look OLL → 2-look PLL. First turn starts the timer.";
     btnScramble.hidden = false;
     btnHint.textContent = "Next hint";
   }
@@ -1111,7 +1111,7 @@ solveAnalysisEl?.addEventListener("click", (e) => {
   if (!text) return;
 
   if (shareBtn && typeof navigator.share === "function") {
-    navigator.share({ title: "BY LAYER solve", text }).catch(() => {
+    navigator.share({ title: "3×3 Coach solve", text }).catch(() => {
       selectReportField();
     });
     return;

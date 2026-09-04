@@ -1,5 +1,5 @@
 /**
- * Beginner PLL — only 2 algorithms (T-perm + U-perm)
+ * 2-look PLL — only 2 algorithms (T-perm + U-perm)
  * Method from: https://www.youtube.com/watch?v=RCPVu112HKg
  *
  * Step 1: corners with T-perm (headlights on LEFT)
@@ -30,7 +30,7 @@ export const PLL_T = {
   howHeadlights:
     "1) Find headlights (two matching colours on one side).\n2) Turn only U until that pair sits on the LEFT (see picture).\n3) Do the full T-perm — mid-way F2L looks broken; finish every move.",
   howNone:
-    "1) No headlights on any side.\n2) Hold any way and do T-perm once.\n3) Re-hint — you should get headlights; put them on the LEFT and T-perm again.",
+    "1) No headlights on any side.\n2) Hold any way and do T-perm once.\n3) Tap PLL hint — you should get headlights; put them on the LEFT and T-perm again.",
 };
 
 /**
@@ -44,7 +44,7 @@ export const PLL_U = {
   howBar:
     "1) One side already solved (full bar).\n2) Turn only U so that bar sits at the BACK.\n3) Do U-perm. If still wrong, Undo and try the mirror (other direction).",
   howNone:
-    "1) No solid bar yet.\n2) Do U-perm once from any angle.\n3) Re-hint — put the new bar at the BACK and U-perm again.",
+    "1) No solid bar yet.\n2) Do U-perm once from any angle.\n3) Tap PLL hint — put the new bar at the BACK and U-perm again.",
 };
 
 /** Y-perm — setup only (creates no-headlights for T-perm practice). */
@@ -202,7 +202,7 @@ function anyFullBar(facelets) {
  */
 function edgesHint(facelets) {
   if (edgesSolved(facelets)) {
-    return hint("PLL done", "Cube solved (or AUF only).", "", "Beginner PLL · T-perm + U-perm");
+    return hint("PLL done", "Cube solved (or AUF only).", "", "2-look PLL · T-perm + U-perm");
   }
 
   // Prefer: U until a full bar is on BACK, then U-perm
@@ -258,7 +258,7 @@ export function analyzePll(facelets) {
       stage: "need-f2l",
       hint: hint(
         "F2L first",
-        "Beginner PLL needs F2L done and a full yellow face (OLL). Tap Again / Next case for a scramble that keeps F2L + OLL solved.",
+        "2-look PLL needs F2L done and a full yellow face (OLL). Tap Again / Next case for a scramble that keeps F2L + OLL solved.",
         "",
         ""
       ),
@@ -292,7 +292,7 @@ export function analyzePll(facelets) {
         "PLL done",
         "Cube solved. New PLL to drill again.",
         "",
-        "Beginner PLL · T-perm + U-perm"
+        "2-look PLL · T-perm + U-perm"
       ),
     };
   }
@@ -375,11 +375,11 @@ export function scramblePll(facelets, mode = "next") {
 export const PLL_TIPS = [
   {
     title: "Practice order",
-    body: "Fixed list: T (headlights) → T (none) → U (bar) → U (mirror) → U (no bar). Again = same case. Next case = move on.",
+    body: "Fixed list: T (headlights) → T (none) → U (bar) → U (mirror) → U (no bar). Again = same case. Next PLL = move on.",
   },
   {
     title: "Only 2 algorithms",
-    body: "T-perm for corners, U-perm for edges. You may need each more than once — that’s the beginner method.",
+    body: "T-perm for corners, U-perm for edges. You may need each more than once — that’s 2-look PLL.",
   },
   {
     title: "Step 1 — Corners (T-perm)",
@@ -391,7 +391,7 @@ export const PLL_TIPS = [
   },
   {
     title: "Algs break F2L mid-way",
-    body: "The first R or F messes up the first two layers on purpose. Finish every move — F2L comes back. Or use Apply / Undo.",
+    body: "The first R or F messes up F2L on purpose. Finish every move — F2L comes back. Or use Apply / Undo.",
   },
   {
     title: "Don’t orbit for the alg",
@@ -399,7 +399,7 @@ export const PLL_TIPS = [
   },
   {
     title: "Source",
-    body: "Beginner PLL (2 algs) — https://www.youtube.com/watch?v=RCPVu112HKg",
+    body: "2-look PLL (2 algs) — https://www.youtube.com/watch?v=RCPVu112HKg",
   },
 ];
 

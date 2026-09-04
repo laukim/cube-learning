@@ -1,5 +1,5 @@
 /**
- * Standard F2L cases (CubeHead’s 41: 1R, 1L, 2R…). Cross stays; three pairs stay; one slot is the case.
+ * 41 standard F2L cases (CubeHead order: 1R, 1L, 2R…). Cross stays; three pairs stay; one slot is the case.
  * https://www.youtube.com/watch?v=3tYj-9f4dA0
  */
 
@@ -408,10 +408,10 @@ export function analyzeF2lDrill(facelets) {
       ready: true,
       case: c,
       hint: hint(
-        "Standard F2L cases",
+        "41 standard F2L cases",
         "Prev / Again / Next F2L. Twins share a number: 1R then 1L, then 2R…. No L twin → just 11, 12…. Random jumps once — Next stays in list order. One pair only — the other three stay in.",
         "",
-        "CubeHead’s 41: easy inserts → disconnected → corner in slot → edge in slot → connected → both in slot. Sledge is another way on 1R, not its own case."
+        "CubeHead order: easy inserts → disconnected → corner in slot → edge in slot → connected → both in slot. Sledge is another way on 1R, not its own case."
       ),
     };
   }
@@ -703,7 +703,7 @@ function frCaseHint(facelets, corner, edge) {
       "Pair in the slot but wrong",
       "Both pieces are in FR but twisted or flipped. Righty once to take them out, then re-pair on U.",
       RIGHTY,
-      "Same as beginner: if it’s wrong in the slot, eject first."
+      "If it’s wrong in the slot, eject first."
     );
   }
 
@@ -817,7 +817,7 @@ function bothOnUHint(facelets, corner, edge) {
 
     return hint(
       "Case 1 / 2 · White faces right",
-      "White is on the right face of the corner. If the edge’s top colour matches the corner’s top → Case 1 (matching). If not → put edge at UB for Case 2. Use the hiding trick to move the edge, then re-hint.",
+      "White is on the right face of the corner. If the edge’s top colour matches the corner’s top → Case 1 (matching). If not → put edge at UB for Case 2. Use the hiding trick to move the edge, then tap F2L hint.",
       "R' U R",
       "Matching → hide, edge to front, unhide, insert. Non-matching → R U R′."
     );
@@ -845,7 +845,7 @@ function bothOnUHint(facelets, corner, edge) {
 
     return hint(
       "Case 4 / 5 · White faces front",
-      "White is on the front of the corner. Matching tops → Case 4. Different tops → Case 5 (edge at UL or UB). Split with the hiding trick if the edge is touching, then re-hint.",
+      "White is on the front of the corner. Matching tops → Case 4. Different tops → Case 5 (edge at UL or UB). Split with the hiding trick if the edge is touching, then tap F2L hint.",
       "U' R U R'",
       "Case 4 insert ends with U R U′ R′. Case 5 is y′ L′ U′ L."
     );
@@ -853,7 +853,7 @@ function bothOnUHint(facelets, corner, edge) {
 
   return hint(
     "Pair on top",
-    "Both pieces are on U. U-spin the corner to UFR above FR, make sure the edge isn’t touching it, then re-hint for Case 1–5.",
+    "Both pieces are on U. U-spin the corner to UFR above FR, make sure the edge isn’t touching it, then tap F2L hint for Case 1–5.",
     "U",
     "The five cases only apply once the corner is above the slot and separated from the edge."
   );
@@ -862,18 +862,18 @@ function bothOnUHint(facelets, corner, edge) {
 export const F2L_TIPS = [
   {
     title: "How this drill works",
-    body: "Each case is one pair. The other three stay in. When it’s in, stay on this ID until you tap Next or Prev. Again = same ID. Next F2L follows 1R, 1L, 2R, 2L… then 11, 12… when there is no left twin. Random jumps once; Next stays in order after that.",
+    body: "Each case is one pair. The other three stay in. When it’s in, stay on this ID until you tap Next or Prev. Again = same ID. Next F2L follows the 41-case list (1R, 1L, 2R…). Random jumps once; Next stays in order after that.",
   },
   {
     title: "IDs: R and L share a number",
-    body: "R is red–green (front-right). L is green–orange (front-left). Same case → 1R and 1L. No left version → just 11. Sledge is another way for 1R, not a second exercise.",
+    body: "R is red–green (front-right). L is green–orange (front-left). Same shape → 1R and 1L. No left version → just 11. Sledge is another way for 1R, not a second exercise.",
   },
   {
     title: "Don’t pop a solved pair",
-    body: "If a pair is already in, don’t turn the two faces it sits on. That’s the whole F2L leak from your timed solves.",
+    body: "If a pair is already in, don’t turn the two faces it sits on. That’s the usual F2L leak on timed solves.",
   },
   {
     title: "Source",
-    body: "CubeHead — intuitive solutions for the 41 standard cases: https://www.youtube.com/watch?v=3tYj-9f4dA0 — case order from https://www.cube.academy/intuitive-f2l-algs",
+    body: "41 standard F2L cases — CubeHead (intuitive solutions): https://www.youtube.com/watch?v=3tYj-9f4dA0 — case order from https://www.cube.academy/intuitive-f2l-algs",
   },
 ];

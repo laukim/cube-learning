@@ -427,7 +427,7 @@ export function renderAnalysisHtml(analysis) {
       ${shareBtn}
       <button type="button" class="btn btn-small ${shareBtn ? "" : "btn-primary"}" id="btn-copy-solve">Copy</button>
     </div>
-    <p class="analysis-share-hint">On iPhone: Share → Copy, or long-press the report. Then paste into the Cursor chat on your Mac.</p>`;
+    <p class="analysis-share-hint">Copy or share the report, then paste it into your own AI chat for analysis.</p>`;
 }
 
 function escapeHtml(value) {

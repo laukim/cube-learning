@@ -172,6 +172,14 @@ assert(report.includes("Scramble: R U F"), "report scramble");
 assert(report.includes("F' U' R'"), "report solution");
 assert(report.includes("Undos: 1"), "report undos");
 assert(report.includes("before F"), "report pause");
+// Analyst report: net moves + undos (UI analysis stays net-only).
+const undoReport = formatSolveReport(
+  { ...analysis, totalMoves: 20, totalMs: 10000, tps: 2 },
+  { undos: 10 }
+);
+assert(undoReport.includes("30 moves"), "report total includes undos");
+assert(undoReport.includes("Undos: 10"), "report still lists undo count");
+assert(analysis.totalMoves === 40, "buildAnalysis totalMoves stays net");
 
 const { countNamedAlgs, countYTurns } = await import("../js/coach-report.js");
 const suneHits = countNamedAlgs("R U R' U R U2 R' U R U R' U R U2 R'");

@@ -1,5 +1,5 @@
 /**
- * Beginner OLL — only 2 algorithms
+ * 2-look OLL — only 2 algorithms
  * https://www.youtube.com/watch?v=x6EoaxxbImI
  *
  * Step 1: yellow cross with F R U R' U' F' (dot / L / line holds)
@@ -77,7 +77,7 @@ export const OLL_CROSS_ALG = {
   name: "Cross",
   alg: "F R U R' U' F'",
   howDot:
-    "1) No yellow edges on top (only centre).\n2) Do the cross alg once from any angle.\n3) Re-hint — you’ll get an L or a line.",
+    "1) No yellow edges on top (only centre).\n2) Do the cross alg once from any angle.\n3) Tap OLL hint — you’ll get an L or a line.",
   howL:
     "1) Yellow L on top — turn U until the L sits back + left (see picture).\n2) Do the cross alg.\n3) You should get the yellow cross.",
   howLine:
@@ -89,13 +89,13 @@ export const OLL_SUNE = {
   name: "Sune",
   alg: "R U R' U R U2 R'",
   howOne:
-    "1) Exactly one yellow corner on top.\n2) Turn U so that corner sits at bottom-left (see picture).\n3) Do Sune. If yellow isn’t done, re-hint and Sune again.",
+    "1) Exactly one yellow corner on top.\n2) Turn U so that corner sits at bottom-left (see picture).\n3) Do Sune. If yellow isn’t done, tap OLL hint and Sune again.",
   howNone:
-    "1) No yellow corners on top.\n2) Turn U so no yellow faces you on FRONT.\n3) Do Sune once → you’ll get one yellow corner. Re-hint.",
+    "1) No yellow corners on top.\n2) Turn U so no yellow faces you on FRONT.\n3) Do Sune once → you’ll get one yellow corner. Tap OLL hint.",
   howAdj:
-    "1) Two adjacent yellow corners on top.\n2) Turn U so both sit on the RIGHT.\n3) Do Sune once → reduces to a 1-corner (or 0) case. Re-hint.",
+    "1) Two adjacent yellow corners on top.\n2) Turn U so both sit on the RIGHT.\n3) Do Sune once → reduces to a 1-corner (or 0) case. Tap OLL hint.",
   howOpp:
-    "1) Two opposite yellow corners on top.\n2) Turn U so they sit top-left + bottom-right (see picture).\n3) Do Sune once → reduces. Re-hint.",
+    "1) Two opposite yellow corners on top.\n2) Turn U so they sit top-left + bottom-right (see picture).\n3) Do Sune once → reduces. Tap OLL hint.",
 };
 
 const HOLD_NOTE =
@@ -188,7 +188,7 @@ function noYellowFacingFront(facelets) {
 }
 
 /**
- * Beginner finish: only Sune, with holds from the video.
+ * 2-look finish: only Sune, with holds from the video.
  * corners: [UBL, UBR, UFR, UFL]
  */
 function finishHint(facelets) {
@@ -285,7 +285,7 @@ function finishHint(facelets) {
   // n === 3 — rare mid-path; treat like keep Suning from a 1-corner style hold
   return hint(
     `Step 2 · ${s.name}`,
-    "Three yellow corners up — turn U so the unoriented corner’s tips look familiar, then Sune (or Undo and re-hint).",
+    "Three yellow corners up — turn U so the unoriented corner’s tips look familiar, then Sune (or Undo and tap OLL hint).",
     s.alg,
     HOLD_NOTE,
     ollTopDiagram({ edges, corners })
@@ -301,7 +301,7 @@ export function analyzeOll(facelets) {
       stage: "need-f2l",
       hint: hint(
         "F2L first",
-        "Beginner OLL needs F2L done. Tap Again / Next case for a scramble that keeps F2L solved.",
+        "2-look OLL needs F2L done. Tap Again / Next case for a scramble that keeps F2L solved.",
         "",
         ""
       ),
@@ -321,7 +321,7 @@ export function analyzeOll(facelets) {
         "OLL done",
         "Full yellow face. Open the PLL tab — T-perm then U-perm.",
         "",
-        "Beginner OLL · 2 algs"
+        "2-look OLL · 2 algs"
       ),
     };
   }
@@ -346,7 +346,7 @@ export function analyzeOll(facelets) {
 }
 
 /**
- * Fixed beginner OLL practice order — not random.
+ * Fixed 2-look OLL practice order — not random.
  * Cross shapes, then Sune reduction holds.
  */
 export const OLL_DRILL_CASES = [
@@ -409,7 +409,7 @@ export function scrambleOll(facelets, mode = "next") {
 export const OLL_TIPS = [
   {
     title: "Only 2 algorithms",
-    body: "Cross = F R U R' U' F'. Finish = Sune (R U R' U R U2 R'). Hold correctly and repeat — same idea as beginner PLL.",
+    body: "Cross = F R U R' U' F'. Finish = Sune (R U R' U R U2 R'). Hold correctly and repeat — same idea as 2-look PLL.",
   },
   {
     title: "Step 1 — Cross",
@@ -417,11 +417,11 @@ export const OLL_TIPS = [
   },
   {
     title: "Step 2 — Sune only",
-    body: "1 corner → bottom-left. 0 corners → no yellow on front. 2 adjacent → on the right. 2 opposite → top-left + bottom-right. Then Sune; re-hint until done.",
+    body: "1 corner → bottom-left. 0 corners → no yellow on front. 2 adjacent → on the right. 2 opposite → top-left + bottom-right. Then Sune; use OLL hint until done.",
   },
   {
     title: "Practice order",
-    body: "Again = same case. Next OLL = next hold in the list. Later you can learn full 2-look OLL (more algs, fewer repeats).",
+    body: "Again = same case. Next OLL = next hold in the list. Later you can learn full OLL (more algs, fewer repeats).",
   },
   {
     title: "Don’t orbit for the alg",
@@ -429,7 +429,7 @@ export const OLL_TIPS = [
   },
   {
     title: "Source",
-    body: "Beginner OLL (2 algs) — https://www.youtube.com/watch?v=x6EoaxxbImI",
+    body: "2-look OLL (2 algs) — https://www.youtube.com/watch?v=x6EoaxxbImI",
   },
 ];
 

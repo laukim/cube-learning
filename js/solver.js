@@ -18,7 +18,7 @@ export const STEPS = [
   {
     id: "f2l",
     title: "F2L pairs",
-    blurb: "Each white corner goes in with its edge — four pairs, first two layers done.",
+    blurb: "Each white corner goes in with its edge — four pairs. First two layers done.",
   },
   {
     id: "yellow-cross",
@@ -37,8 +37,8 @@ export const STEPS = [
   },
   {
     id: "yellow-edges",
-    title: "Orient edges",
-    blurb: "U-perm: bar at the back, then the edge alg until the last layer is solved.",
+    title: "Last edges",
+    blurb: "U-perm: bar at the back, then the edge alg until the cube is solved.",
   },
 ];
 
@@ -49,7 +49,7 @@ export const ALG_LIBRARY = [
   {
     group: "OLL",
     name: "Sune",
-    when: "Yellow cross done — finish corners (beginner OLL)",
+    when: "Yellow cross done — finish corners (2-look OLL)",
     alg: "R U R' U R U2 R'",
     tip: "1 corner → bottom-left. 0 → no yellow on front. 2 adj → on right. 2 opp → top-left + bottom-right. Repeat with holds.",
   },

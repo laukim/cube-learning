@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0b1210" />
-    <meta name="description" content="Solve a 3×3: white cross, F2L pairs, yellow face, headlights, then edges — with live hints." />
-    <title>BY LAYER — 3×3 beginner solver</title>
+    <meta name="description" content="3×3 CFOP coach: scramble a solve or drill Cross, F2L, 2-look OLL, and 2-look PLL with live hints." />
+    <title>3×3 Coach — CFOP drills</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -29,7 +29,7 @@
     <header class="topbar">
       <a class="brand" href="#">
         <span class="brand-mark" aria-hidden="true"></span>
-        <span class="brand-name">BY LAYER</span>
+        <span class="brand-name">3×3 Coach</span>
       </a>
       <p class="brand-tag">Cross · F2L · OLL · PLL</p>
     </header>
@@ -118,22 +118,22 @@
             <button type="button" class="btn btn-ghost" id="btn-f2l-prev" hidden>Prev</button>
             <button type="button" class="btn btn-ghost" id="btn-f2l-again" hidden>Again</button>
             <button type="button" class="btn btn-ghost" id="btn-f2l-case" hidden>Next F2L</button>
-            <button type="button" class="btn btn-ghost" id="btn-f2l-random" hidden title="Jump to a random case. Prev and Next stay in CubeHead order.">
+            <button type="button" class="btn btn-ghost" id="btn-f2l-random" hidden title="Jump to a random case. Prev and Next stay in the 41-case order (CubeHead).">
               Random
             </button>
             <button type="button" class="btn btn-ghost" id="btn-oll-again" hidden>Again</button>
             <button type="button" class="btn btn-ghost" id="btn-oll-case" hidden>Next OLL</button>
             <button type="button" class="btn btn-ghost" id="btn-pll-again" hidden>Again</button>
             <button type="button" class="btn btn-ghost" id="btn-pll-case" hidden>Next PLL</button>
-            <button type="button" class="btn btn-ghost" id="btn-hints" aria-pressed="false" title="Show or hide the guide">
-              Hints
+            <button type="button" class="btn btn-ghost" id="btn-hints" aria-pressed="false" title="Show or hide the guide panel">
+              Guide
             </button>
-            <button type="button" class="btn btn-primary" id="btn-hint">Next hint</button>
+            <button type="button" class="btn btn-primary" id="btn-hint" title="Show the next coaching step for this stage">Next hint</button>
           </div>
         </div>
       </section>
 
-      <aside class="panel" id="guide-panel" aria-label="Layer-by-layer guide">
+      <aside class="panel" id="guide-panel" aria-label="CFOP guide and drills">
         <div class="hints-sheet-bar">
           <span class="hints-sheet-label">Guide</span>
           <button type="button" class="btn btn-ghost hints-sheet-close" id="btn-close-hints">
@@ -141,14 +141,14 @@
           </button>
         </div>
         <div class="panel-intro" id="panel-intro">
-          <h1 id="panel-title">White on bottom. Yellow on top. Six steps you already do.</h1>
+          <h1 id="panel-title">CFOP drills. White bottom, yellow top.</h1>
           <p id="panel-blurb">
-            Cross → F2L pairs → yellow cross → yellow face (Sune) → headlights (T-perm) → edges (U-perm). First turn
+            Scramble a timed solve, or open a tab to drill one stage. Cross → F2L → 2-look OLL → 2-look PLL. First turn
             starts the timer.
           </p>
         </div>
 
-        <div class="mode-tabs" role="tablist" aria-label="Input mode">
+        <div class="mode-tabs" role="tablist" aria-label="Practice mode">
           <button type="button" class="mode-tab is-active" role="tab" aria-selected="true" data-mode="guide" id="tab-guide">
             Guide
           </button>
@@ -188,7 +188,7 @@
 
           <div class="solved-banner" id="solved-banner" hidden>
             <strong id="solved-banner-title">Solved.</strong>
-            <span id="solved-banner-copy"> All layers done.</span>
+            <span id="solved-banner-copy"> Full CFOP solve done.</span>
           </div>
 
           <div class="solve-analysis" id="solve-analysis" hidden></div>
@@ -202,7 +202,7 @@
             <h2 class="hint-title" id="cross-hint-title">Ready</h2>
             <p class="hint-copy" id="cross-hint-copy">
               Tap <strong>New cross</strong>. White stays on the bottom. Build the white + — each edge matching its
-              centre — then tap <strong>Cross hint</strong> for the next edge.
+              centre — then tap <strong>Cross hint</strong> for the next edge to solve.
             </p>
             <div class="alg-block">
               <code class="alg" id="cross-hint-alg"></code>
@@ -225,20 +225,17 @@
             <div class="hint-kicker" id="f2l-hint-kicker">F2L</div>
             <h2 class="hint-title" id="f2l-hint-title">Ready</h2>
             <p class="hint-copy" id="f2l-hint-copy">
-              Tap <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong>. Order follows
-              CubeHead’s 41: easy inserts → disconnected → corner in slot → edge in slot →
-              connected → both in slot. <strong>R</strong> is red–green (front-right);
-              <strong>L</strong> is green–orange (front-left). Twins share a number
-              (<strong>1R</strong> / <strong>1L</strong>). No left twin → just
-              <strong>11</strong>. Sledge is another way on 1R, not its own case.
-              Next always walks that list. <strong>Random</strong> jumps once. One pair only — stay on this ID until you tap Next or Prev.
-              From
+              Drill the <strong>41 standard F2L cases</strong> (CubeHead order).
+              Tap <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong>.
+              Twins share a number (<strong>1R</strong> / <strong>1L</strong>); no left twin → just
+              <strong>11</strong>. One pair per case — stay on this ID until Next or Prev.
+              <strong>Random</strong> jumps once; Next stays in list order. Reference:
               <a
                 class="ext-link"
                 href="https://www.youtube.com/watch?v=3tYj-9f4dA0"
                 target="_blank"
                 rel="noopener"
-                >this video</a
+                >CubeHead F2L</a
               >.
             </p>
             <div class="alg-block">
@@ -265,15 +262,15 @@
               <div class="hint-diagram" id="oll-hint-diagram" hidden></div>
               <div class="hint-text">
                 <p class="hint-copy" id="oll-hint-copy">
-                  Tap <strong>Again</strong> / <strong>Next OLL</strong>. Only <strong>2 algs</strong>:
-                  <strong>F R U R' U' F'</strong> (cross) then <strong>Sune</strong> for corners — hold correctly and
-                  repeat. From
+                  Tap <strong>Again</strong> / <strong>Next OLL</strong>. 2-look OLL uses
+                  <strong>2 algs</strong>: <strong>F R U R' U' F'</strong> (yellow cross) then
+                  <strong>Sune</strong> for corners — hold correctly and repeat. Reference:
                   <a
                     class="ext-link"
                     href="https://www.youtube.com/watch?v=x6EoaxxbImI"
                     target="_blank"
                     rel="noopener"
-                    >this video</a
+                    >CFOP Cubing OLL</a
                   >.
                 </p>
                 <div class="alg-block">
@@ -303,14 +300,14 @@
               <div class="hint-text">
                 <p class="hint-copy" id="pll-hint-copy">
                   Tap <strong>Again</strong> for the same case or <strong>Next PLL</strong> for the next in order
-                  (T headlights → T none → U bar → U mirror → U no bar). Only <strong>2 algs</strong>: T-perm +
-                  U-perm. From
+                  (T headlights → T none → U bar → U mirror → U no bar). 2-look PLL uses
+                  <strong>2 algs</strong>: T-perm + U-perm. Reference:
                   <a
                     class="ext-link"
                     href="https://www.youtube.com/watch?v=RCPVu112HKg"
                     target="_blank"
                     rel="noopener"
-                    >this video</a
+                    >CFOP Cubing PLL</a
                   >.
                 </p>
                 <div class="alg-block">
@@ -331,8 +328,8 @@
 
         <div class="panel-body" id="panel-match" data-panel="match" hidden>
           <p class="match-help">
-            Paint every sticker to match your real cube. Centres are fixed (yellow opposite white, green opposite blue, orange
-            opposite red). Hold white on bottom / yellow on top when you’re done.
+            Paint every sticker to match a real scramble. Centres are fixed (yellow opposite white, green opposite blue,
+            orange opposite red). When you’re done, hold white on bottom / yellow on top, then Use this state.
           </p>
           <div class="palette" id="palette" role="listbox" aria-label="Sticker colors"></div>
           <div class="net net-full" id="color-net" aria-label="Full cube color net"></div>
@@ -349,7 +346,7 @@
     </main>
 
     <footer class="foot">
-      <span>Offline-friendly · open this folder anytime</span>
+      <span>Works offline · no account</span>
       <kbd>Pieces</kbd> turn · <kbd>Around</kbd> look · <kbd>Z</kbd> undo
     </footer>
 

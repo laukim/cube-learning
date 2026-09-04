@@ -13,9 +13,9 @@ export const SPLIT_SHORT = {
 
 export const SPLIT_GROUPS = [
   { id: "cross", title: "White cross", indices: [0] },
-  { id: "f2l", title: "First two layers", indices: [1] },
-  { id: "oll", title: "Yellow face (OLL)", indices: [2, 3] },
-  { id: "pll", title: "Perm (PLL)", indices: [4, 5] },
+  { id: "f2l", title: "F2L", indices: [1] },
+  { id: "oll", title: "OLL (2-look)", indices: [2, 3] },
+  { id: "pll", title: "PLL (2-look)", indices: [4, 5] },
 ];
 
 const STEP_COACHING = [
@@ -25,7 +25,7 @@ const STEP_COACHING = [
   },
   {
     tab: "F2L",
-    tip: "F2L: pair each white corner with its edge and insert together. The F2L tab drills CubeHead’s 41 (1R / 1L twins; no L → just 11).",
+    tip: "F2L: pair each white corner with its edge and insert together. The F2L tab drills the 41 standard cases in CubeHead order (1R / 1L twins; no L → just 11).",
   },
   {
     tab: "OLL",
@@ -229,7 +229,7 @@ export function buildAnalysis({ totalMs, splits, totalMoves, previousTotalMs = n
     );
   } else if (slowestGroup.id === "f2l" && slowestGroup.share >= 0.4) {
     insights.push(
-      `First two layers were ${Math.round(slowestGroup.share * 100)}% of the solve. Pairing on the F2L tab is the usual next leap.`
+      `F2L was ${Math.round(slowestGroup.share * 100)}% of the solve. Pairing on the F2L tab is the usual next leap.`
     );
   }
 

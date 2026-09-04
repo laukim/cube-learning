@@ -7,7 +7,7 @@
  * you mean — that face turns.
  */
 
-import { FLICK_MIN_PX, ORBIT_SPEED, TAP_PX } from "./erno-ux.js";
+import { FLICK_MIN_PX, ORBIT_SPEED, TAP_PX } from "./erno-ux.js?v=flick1";
 
 function moveToErno(move) {
   const m = String(move).trim();
@@ -75,9 +75,8 @@ export function createErnoCube(container, hooks) {
 
   try {
     // Slightly slower than stock ERNO so a careful 90° is easier to land.
-    // Quarter vs half-turn snap (R vs R2) is patched in vendor/erno.js — momentum
-    // must not boost an already-rounded quarter into a half turn after a pause,
-    // and a quick overshoot must clear ~150° before logging R2 (not Math.round’s 135°).
+    // Flick snap is patched in vendor/erno.js: momentum never promotes R→R2, and
+    // a single drag never commits a half turn (intentional doubles are U U).
     cube.mouseInteraction.dragSpeed = 1.15;
   } catch {
     /* ignore */

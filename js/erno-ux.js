@@ -23,18 +23,19 @@ export const FLICK_MOMENTUM_MIN_ANGLE = 0.2;
 export const FLICK_MOMENTUM_IDLE_MS = 150;
 
 /**
- * Prefer a single quarter turn unless the drag is clearly a half turn.
- * Math.round’s 135° cliff was too eager: a quick U aiming for 90° that
- * overshoots to ~140° (easy with dragSpeed > 1) logged as U2.
+ * Phone flicks never commit a half turn. Intentional doubles are two quarter
+ * flicks (U U), so a single drag past 135°/150° must still log U — not U2.
+ * Kept as Infinity so older tests/docs can still import the name.
  * Mirrored in vendor/erno.js; keep both in sync.
  */
-export const FLICK_HALF_TURN_DEG = 150;
+export const FLICK_HALF_TURN_DEG = Infinity;
 
 /**
  * Snap a live drag angle (radians) to the twist that should commit on lift.
+ * Phone drags cap at one quarter turn; half turns are never emitted.
  * @param {number} angleRad live slice rotation
  * @param {{ velocity?: number, idleMs?: number }} motion
- * @returns {number} snapped angle in radians (0, ±π/2, ±π, …)
+ * @returns {number} snapped angle in radians (0 or ±π/2)
  */
 export function snapFlickAngle(angleRad, motion = {}) {
   const velocity = motion.velocity ?? 0;
@@ -42,17 +43,9 @@ export function snapFlickAngle(angleRad, motion = {}) {
   const quarter = Math.PI * 0.5;
   const abs = Math.abs(angleRad);
   const sign = angleRad >= 0 ? 1 : -1;
-  const halfMin = (FLICK_HALF_TURN_DEG / 90) * quarter;
 
-  let snapped;
-  if (abs < quarter * 0.5) {
-    snapped = 0;
-  } else if (abs < halfMin) {
-    // 45° … just-under-150° → one quarter (not Math.round’s 135° → 180°)
-    snapped = sign * quarter;
-  } else {
-    snapped = sign * Math.round(abs / quarter) * quarter;
-  }
+  // Below 45° cancel; anything further is one quarter — never 180°.
+  let snapped = abs < quarter * 0.5 ? 0 : sign * quarter;
 
   // Momentum only when snap would cancel — never turns R into R2.
   if (

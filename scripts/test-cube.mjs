@@ -500,7 +500,10 @@ assert(ORBIT_REMAPS_FLICKS === false, "orbit must never rewrite a face flick");
 assert(FLICK_MOMENTUM_IDLE_MS === 150, "paused finger must drop flick momentum");
 assert(FLICK_MOMENTUM_MIN_VELOCITY === 0.55, "momentum velocity floor stays ERNO's");
 assert(FLICK_MOMENTUM_MIN_ANGLE === 0.2, "momentum still ignores tiny twists");
-assert(FLICK_HALF_TURN_DEG === 150, "half turns need a clear ~150° drag, not Math.round’s 135°");
+assert(
+  !Number.isFinite(FLICK_HALF_TURN_DEG),
+  "phone flicks never commit a half turn (intentional doubles are U U)"
+);
 
 const q = Math.PI / 2;
 // Slow intentional R (~90°) must stay R even if avg velocity looks "fast".
@@ -533,12 +536,16 @@ assert(
   "quick ~144° overshoot (common U→U2 false positive) stays U, not U2"
 );
 assert(
-  Math.abs(snapFlickAngle(q * (150 / 90), { velocity: 0.2, idleMs: 0 }) - Math.PI) < 1e-9,
-  "clear 150° drag still snaps to a half turn"
+  Math.abs(snapFlickAngle(q * (150 / 90), { velocity: 0.2, idleMs: 0 }) - q) < 1e-9,
+  "even a clear 150° drag stays a quarter turn (no single-flick U2)"
 );
 assert(
-  Math.abs(snapFlickAngle(q * 1.8, { velocity: 0.2, idleMs: 400 }) - Math.PI) < 1e-9,
-  "real overshoot well past 150° still snaps to R2"
+  Math.abs(snapFlickAngle(q * 1.8, { velocity: 0.2, idleMs: 400 }) - q) < 1e-9,
+  "deep overshoot still caps at one quarter turn"
+);
+assert(
+  Math.abs(snapFlickAngle(q * 2.2, { velocity: 1.5, idleMs: 0 }) - q) < 1e-9,
+  "past 180° of live drag still commits U, not U2"
 );
 assert(
   Math.abs(snapFlickAngle(-q * 1.05, { velocity: 0.9, idleMs: 0 }) + q) < 1e-9,
@@ -593,7 +600,7 @@ assert(
   "twitch filter still suppresses short sticker drags, not real flicks"
 );
 assert(
-  ernoSrc.includes('import { FLICK_MIN_PX, ORBIT_SPEED, TAP_PX } from "./erno-ux.js"'),
+  ernoSrc.includes('import { FLICK_MIN_PX, ORBIT_SPEED, TAP_PX } from "./erno-ux.js?v=flick1"'),
   "deadzone is the shared tested constant"
 );
 assert(
@@ -604,7 +611,7 @@ assert(
 // Vendored ERNO used to momentum-boost any high avg-velocity drag by +90°, so a
 // slow R that already sat near 90° became R2 on lift. Momentum must only promote
 // an incomplete flick (snap === 0), and only if the finger was still moving.
-// Half turns also used Math.round’s 135° cliff — prefer 90° until ~150°.
+// Single drags must also never commit 180° — intentional doubles are U U / R R.
 const vendorSrc = readFileSync(join(root, "vendor/erno.js"), "utf8");
 assert(
   vendorSrc.includes("0===d&&150>G-B") &&
@@ -613,13 +620,29 @@ assert(
   "ERNO release must not boost an already-rounded quarter turn into a half turn"
 );
 assert(
-  vendorSrc.includes("H<J*150/90") &&
+  vendorSrc.includes("d=H<0.5*J?0:I*J") &&
+    !vendorSrc.includes("H<J*150/90") &&
     !vendorSrc.includes("d=Math.round(C/Math.PI*2)*Math.PI*0.5"),
-  "ERNO release must prefer 90° until a clear 150° drag (quick U→U2 fix)"
+  "ERNO release must cap every flick at one quarter turn (no single-flick U2)"
 );
 assert(
   vendorSrc.includes("B=z,y.active=!0") && vendorSrc.includes(",B="),
   "ERNO tracks last pointer-move time so a pause before lift drops momentum"
+);
+
+const htmlSrc = readFileSync(join(root, "index.html"), "utf8");
+assert(
+  htmlSrc.includes('src="vendor/erno.js?v=flick1"') &&
+    htmlSrc.includes('src="js/main.js?v=flick1"'),
+  "phone must cache-bust vendored ERNO snap + main entry together"
+);
+assert(
+  mainSrc.includes('from "./erno-view.js?v=flick1"'),
+  "erno-view import is versioned so Safari does not keep a stale flick wrapper"
+);
+assert(
+  ernoSrc.includes('from "./erno-ux.js?v=flick1"'),
+  "erno-ux import is versioned with the flick contract"
 );
 
 console.log("ALL PASS");

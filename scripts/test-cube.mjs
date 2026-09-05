@@ -608,7 +608,7 @@ assert(
   "twitch filter still suppresses short sticker drags, not real flicks"
 );
 assert(
-  ernoSrc.includes('import { FLICK_MIN_PX, ORBIT_SPEED, TAP_PX } from "./erno-ux.js?v=flick1"'),
+  /import \{\s*FLICK_MIN_PX,\s*ORBIT_SPEED,\s*TAP_PX\s*\} from "\.\/erno-ux\.js\?v=[^"]+"/.test(ernoSrc),
   "deadzone is the shared tested constant"
 );
 assert(
@@ -639,17 +639,15 @@ assert(
 );
 
 const htmlSrc = readFileSync(join(root, "index.html"), "utf8");
+const erNoVer = htmlSrc.match(/src="vendor\/erno\.js\?v=([^"]+)"/)?.[1];
+const mainVer = htmlSrc.match(/src="js\/main\.js\?v=([^"]+)"/)?.[1];
+assert(erNoVer && erNoVer === mainVer, "phone must cache-bust vendored ERNO snap + main entry together");
 assert(
-  htmlSrc.includes('src="vendor/erno.js?v=flick1"') &&
-    htmlSrc.includes('src="js/main.js?v=flick1"'),
-  "phone must cache-bust vendored ERNO snap + main entry together"
-);
-assert(
-  mainSrc.includes('from "./erno-view.js?v=flick1"'),
+  mainSrc.includes(`from "./erno-view.js?v=${erNoVer}"`),
   "erno-view import is versioned so Safari does not keep a stale flick wrapper"
 );
 assert(
-  ernoSrc.includes('from "./erno-ux.js?v=flick1"'),
+  ernoSrc.includes(`from "./erno-ux.js?v=${erNoVer}"`),
   "erno-ux import is versioned with the flick contract"
 );
 

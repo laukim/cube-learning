@@ -99,7 +99,7 @@ export const OLL_SUNE = {
 };
 
 const HOLD_NOTE =
-  "White on bottom · green = F. Match the picture with U only — don’t orbit to follow F/R.";
+  "White on bottom · blue = F. Match the picture with U only — don’t orbit to follow F/R.";
 
 function hint(title, copy, alg, note = "", diagram = null) {
   return { title, copy, alg, note, diagram };

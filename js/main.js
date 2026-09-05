@@ -166,8 +166,8 @@ let flickToastTimer = 0;
 const CENTER_COLOR = {
   U: "yellow",
   D: "white",
-  F: "green",
-  B: "blue",
+  F: "blue",
+  B: "green",
   L: "orange",
   R: "red",
 };

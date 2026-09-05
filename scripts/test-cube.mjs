@@ -429,10 +429,10 @@ for (const c of F2L_DRILL_CASES) {
   applyAlg(cube, c.setup);
   const key = relativeF2lKey(cube, c.slot);
   if (c.hand === "R") {
-    assert(c.slot === "FR", `${c.id} is red-green front-right`);
+    assert(c.slot === "FR", `${c.id} is red-blue front-right`);
     relByN.set(c.n, key);
   } else {
-    assert(c.slot === "FL", `${c.id} is green-orange front-left`);
+    assert(c.slot === "FL", `${c.id} is blue-orange front-left`);
     assert(key === relByN.get(c.n), `${c.id} is the same case as ${c.n}R, not a different hold`);
   }
 }

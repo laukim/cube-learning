@@ -3,8 +3,8 @@
 export const COLORS = {
   U: "yellow",
   D: "white",
-  F: "green",
-  B: "blue",
+  F: "blue",
+  B: "green",
   L: "orange",
   R: "red",
 };
@@ -23,8 +23,8 @@ export const FACES = ["U", "R", "F", "D", "L", "B"];
 const LETTER_FROM_COLOR = {
   yellow: "U",
   white: "D",
-  green: "F",
-  blue: "B",
+  blue: "F",
+  green: "B",
   orange: "L",
   red: "R",
 };
@@ -32,8 +32,8 @@ const LETTER_FROM_COLOR = {
 const COLOR_FROM_LETTER = {
   U: "yellow",
   D: "white",
-  F: "green",
-  B: "blue",
+  F: "blue",
+  B: "green",
   L: "orange",
   R: "red",
 };

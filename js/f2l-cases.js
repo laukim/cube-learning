@@ -1,6 +1,6 @@
 /**
  * CubeHead’s 41 filmed cases (academy order). Twins share a number:
- * nR = red–green front-right, nL = green–orange front-left. If he only
+ * nR = red–blue front-right, nL = blue–orange front-left. If he only
  * filmed the right slot, the ID is just n. Sledge is an extra alg on 1R,
  * not its own ID.
  * Video: https://www.youtube.com/watch?v=3tYj-9f4dA0
@@ -59,7 +59,7 @@ const HAS_L = new Set(ROWS.filter((row) => row[1] === "L").map((row) => row[0]))
 function makeDrill(n, hand, group, name, alg) {
   const id = HAS_L.has(n) ? `${n}${hand}` : String(n);
   const slot = hand === "R" ? "FR" : "FL";
-  let note = "White on bottom · green = F. One pair only. Stay on this ID until you tap Next or Prev.";
+  let note = "White on bottom · blue = F. One pair only. Stay on this ID until you tap Next or Prev.";
   if (id === "1R") {
     note = "Sledge R' F R F' is another way for this case — not a separate exercise. " + note;
   }
@@ -77,8 +77,8 @@ function makeDrill(n, hand, group, name, alg) {
     setup: invertAlg(alg),
     copy:
       hand === "R"
-        ? "Slot is front-right (red–green). Use R and U (F if the alg has it). Don’t turn L or B — other pairs stay in."
-        : "Slot is front-left (green–orange). Use L and U. Don’t turn R or B.",
+        ? "Slot is front-right (red–blue). Use R and U (F if the alg has it). Don’t turn L or B — other pairs stay in."
+        : "Slot is front-left (blue–orange). Use L and U. Don’t turn R or B.",
     note,
   };
 }

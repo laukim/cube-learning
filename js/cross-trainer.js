@@ -5,9 +5,9 @@
 import { applyAlg, solvedFacelets, sticker } from "./cube.js";
 
 export const CROSS_EDGES = [
-  { id: "DF", name: "Front · green", dIdx: 1, sideFace: "F", sideIdx: 7, sideColor: "green" },
+  { id: "DF", name: "Front · blue", dIdx: 1, sideFace: "F", sideIdx: 7, sideColor: "blue" },
   { id: "DR", name: "Right · red", dIdx: 5, sideFace: "R", sideIdx: 7, sideColor: "red" },
-  { id: "DB", name: "Back · blue", dIdx: 7, sideFace: "B", sideIdx: 7, sideColor: "blue" },
+  { id: "DB", name: "Back · green", dIdx: 7, sideFace: "B", sideIdx: 7, sideColor: "green" },
   { id: "DL", name: "Left · orange", dIdx: 3, sideFace: "L", sideIdx: 7, sideColor: "orange" },
 ];
 

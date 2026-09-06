@@ -4,16 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0b1210" />
-    <meta name="description" content="3×3 CFOP coach: scramble a solve or drill Cross, F2L, 2-look OLL, and 2-look PLL with live hints." />
-    <title>3×3 Coach — CFOP drills</title>
+    <meta name="description" content="3×3 coach: CFOP and Roux — scramble a solve or drill stages with live hints." />
+    <title>3×3 Coach — CFOP & Roux</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=boy1" />
-    <link rel="stylesheet" href="vendor/erno-cube.css?v=boy1" />
+    <link rel="stylesheet" href="styles.css?v=roux1" />
+    <link rel="stylesheet" href="vendor/erno-cube.css?v=roux1" />
   </head>
   <body class="hints-open">
     <div class="ambient" aria-hidden="true"></div>
@@ -31,7 +31,15 @@
         <span class="brand-mark" aria-hidden="true"></span>
         <span class="brand-name">3×3 Coach</span>
       </a>
-      <p class="brand-tag">Cross · F2L · OLL · PLL</p>
+      <p class="brand-tag" id="brand-tag">Cross · F2L · OLL · PLL</p>
+      <div class="method-switch" role="group" aria-label="Solving method">
+        <button type="button" class="method-btn is-active" data-method="cfop" id="method-cfop" aria-pressed="true">
+          CFOP
+        </button>
+        <button type="button" class="method-btn" data-method="roux" id="method-roux" aria-pressed="false">
+          Roux
+        </button>
+      </div>
     </header>
 
     <main class="layout">
@@ -81,6 +89,11 @@
               <button type="button" class="move-btn" data-move="y'">y'</button>
               <button type="button" class="move-btn" data-move="x2">x2</button>
             </div>
+            <div class="move-row move-row-slice" id="move-row-slice" hidden>
+              <button type="button" class="move-btn" data-move="M">M</button>
+              <button type="button" class="move-btn" data-move="M'">M'</button>
+              <button type="button" class="move-btn" data-move="M2">M2</button>
+            </div>
           </div>
         </div>
 
@@ -115,6 +128,8 @@
             <button type="button" class="btn btn-ghost" id="btn-reset">Reset</button>
             <button type="button" class="btn btn-ghost" id="btn-scramble">Scramble</button>
             <button type="button" class="btn btn-ghost" id="btn-cross-case" hidden>New cross</button>
+            <button type="button" class="btn btn-ghost" id="btn-fb-case" hidden>New FB</button>
+            <button type="button" class="btn btn-ghost" id="btn-sb-case" hidden>New SB</button>
             <button type="button" class="btn btn-ghost" id="btn-f2l-prev" hidden>Prev</button>
             <button type="button" class="btn btn-ghost" id="btn-f2l-again" hidden>Again</button>
             <button type="button" class="btn btn-ghost" id="btn-f2l-case" hidden>Next F2L</button>
@@ -125,6 +140,10 @@
             <button type="button" class="btn btn-ghost" id="btn-oll-case" hidden>Next OLL</button>
             <button type="button" class="btn btn-ghost" id="btn-pll-again" hidden>Again</button>
             <button type="button" class="btn btn-ghost" id="btn-pll-case" hidden>Next PLL</button>
+            <button type="button" class="btn btn-ghost" id="btn-cmll-again" hidden>Again</button>
+            <button type="button" class="btn btn-ghost" id="btn-cmll-case" hidden>Next CMLL</button>
+            <button type="button" class="btn btn-ghost" id="btn-lse-again" hidden>Again</button>
+            <button type="button" class="btn btn-ghost" id="btn-lse-case" hidden>Next LSE</button>
             <button type="button" class="btn btn-ghost" id="btn-hints" aria-pressed="false" title="Show or hide the guide panel">
               Guide
             </button>
@@ -133,7 +152,7 @@
         </div>
       </section>
 
-      <aside class="panel" id="guide-panel" aria-label="CFOP guide and drills">
+      <aside class="panel" id="guide-panel" aria-label="Method guide and drills">
         <div class="hints-sheet-bar">
           <span class="hints-sheet-label">Guide</span>
           <button type="button" class="btn btn-ghost hints-sheet-close" id="btn-close-hints">
@@ -152,17 +171,29 @@
           <button type="button" class="mode-tab is-active" role="tab" aria-selected="true" data-mode="guide" id="tab-guide">
             Guide
           </button>
-          <button type="button" class="mode-tab" role="tab" aria-selected="false" data-mode="cross" id="tab-cross">
+          <button type="button" class="mode-tab" role="tab" aria-selected="false" data-mode="cross" id="tab-cross" data-methods="cfop">
             Cross
           </button>
-          <button type="button" class="mode-tab" role="tab" aria-selected="false" data-mode="f2l" id="tab-f2l">
+          <button type="button" class="mode-tab" role="tab" aria-selected="false" data-mode="f2l" id="tab-f2l" data-methods="cfop">
             F2L
           </button>
-          <button type="button" class="mode-tab" role="tab" aria-selected="false" data-mode="oll" id="tab-oll">
+          <button type="button" class="mode-tab" role="tab" aria-selected="false" data-mode="oll" id="tab-oll" data-methods="cfop">
             OLL
           </button>
-          <button type="button" class="mode-tab" role="tab" aria-selected="false" data-mode="pll" id="tab-pll">
+          <button type="button" class="mode-tab" role="tab" aria-selected="false" data-mode="pll" id="tab-pll" data-methods="cfop">
             PLL
+          </button>
+          <button type="button" class="mode-tab" role="tab" aria-selected="false" data-mode="fb" id="tab-fb" data-methods="roux" hidden>
+            FB
+          </button>
+          <button type="button" class="mode-tab" role="tab" aria-selected="false" data-mode="sb" id="tab-sb" data-methods="roux" hidden>
+            SB
+          </button>
+          <button type="button" class="mode-tab" role="tab" aria-selected="false" data-mode="cmll" id="tab-cmll" data-methods="roux" hidden>
+            CMLL
+          </button>
+          <button type="button" class="mode-tab" role="tab" aria-selected="false" data-mode="lse" id="tab-lse" data-methods="roux" hidden>
+            LSE
           </button>
           <button type="button" class="mode-tab" role="tab" aria-selected="false" data-mode="match" id="tab-match">
             Match
@@ -188,7 +219,7 @@
 
           <div class="solved-banner" id="solved-banner" hidden>
             <strong id="solved-banner-title">Solved.</strong>
-            <span id="solved-banner-copy"> Full CFOP solve done.</span>
+            <span id="solved-banner-copy"> Full solve done.</span>
           </div>
 
           <div class="solve-analysis" id="solve-analysis" hidden></div>
@@ -326,6 +357,107 @@
           <div class="f2l-tips" id="pll-tips"></div>
         </div>
 
+        <div class="panel-body" id="panel-fb" data-panel="fb" hidden>
+          <div class="f2l-progress" id="fb-progress" aria-label="First block pieces"></div>
+
+          <div class="hint-card" id="fb-hint-card">
+            <div class="hint-kicker" id="fb-hint-kicker">First block</div>
+            <h2 class="hint-title" id="fb-hint-title">Ready</h2>
+            <p class="hint-copy" id="fb-hint-copy">
+              Tap <strong>New FB</strong>. Build the left <strong>1×2×3</strong> — orange centre, DL edge, FL/BL, and
+              the two white–orange corners on D. Then tap <strong>FB hint</strong>.
+            </p>
+            <div class="alg-block">
+              <code class="alg" id="fb-hint-alg"></code>
+              <button type="button" class="btn btn-small" id="btn-fb-apply" hidden>Apply on cube</button>
+            </div>
+            <p class="hint-note" id="fb-hint-note"></p>
+          </div>
+
+          <div class="solved-banner" id="fb-solved-banner" hidden>
+            <strong>First block done.</strong> New FB to drill again, or open SB.
+          </div>
+
+          <div class="f2l-tips" id="fb-tips"></div>
+        </div>
+
+        <div class="panel-body" id="panel-sb" data-panel="sb" hidden>
+          <div class="f2l-progress" id="sb-progress" aria-label="Second block pieces"></div>
+
+          <div class="hint-card" id="sb-hint-card">
+            <div class="hint-kicker" id="sb-hint-kicker">Second block</div>
+            <h2 class="hint-title" id="sb-hint-title">Ready</h2>
+            <p class="hint-copy" id="sb-hint-copy">
+              Tap <strong>New SB</strong>. Mirror FB on the <strong>right</strong> (red) without breaking the left
+              block. Leave the M-slice free for LSE.
+            </p>
+            <div class="alg-block">
+              <code class="alg" id="sb-hint-alg"></code>
+              <button type="button" class="btn btn-small" id="btn-sb-apply" hidden>Apply on cube</button>
+            </div>
+            <p class="hint-note" id="sb-hint-note"></p>
+          </div>
+
+          <div class="solved-banner" id="sb-solved-banner" hidden>
+            <strong>Second block done.</strong> New SB again, or open CMLL.
+          </div>
+
+          <div class="f2l-tips" id="sb-tips"></div>
+        </div>
+
+        <div class="panel-body" id="panel-cmll" data-panel="cmll" hidden>
+          <div class="f2l-progress" id="cmll-progress" aria-label="CMLL steps"></div>
+
+          <div class="hint-card" id="cmll-hint-card">
+            <div class="hint-kicker" id="cmll-hint-kicker">2-look CMLL</div>
+            <h2 class="hint-title" id="cmll-hint-title">Ready</h2>
+            <div class="hint-layout">
+              <div class="hint-diagram" id="cmll-hint-diagram" hidden></div>
+              <div class="hint-text">
+                <p class="hint-copy" id="cmll-hint-copy">
+                  Tap <strong>Again</strong> / <strong>Next CMLL</strong>. Orient with <strong>Sune</strong>, then
+                  permute: headlights at back → <strong>Niklas</strong>; no headlights → diagonal alg.
+                </p>
+                <div class="alg-block">
+                  <code class="alg" id="cmll-hint-alg"></code>
+                  <button type="button" class="btn btn-small" id="btn-cmll-apply" hidden>Apply on cube</button>
+                </div>
+                <p class="hint-note" id="cmll-hint-note"></p>
+              </div>
+            </div>
+          </div>
+
+          <div class="solved-banner" id="cmll-solved-banner" hidden>
+            <strong>CMLL complete.</strong> Again = same case · Next CMLL = next in the list.
+          </div>
+
+          <div class="f2l-tips" id="cmll-tips"></div>
+        </div>
+
+        <div class="panel-body" id="panel-lse" data-panel="lse" hidden>
+          <div class="f2l-progress" id="lse-progress" aria-label="LSE steps"></div>
+
+          <div class="hint-card" id="lse-hint-card">
+            <div class="hint-kicker" id="lse-hint-kicker">LSE</div>
+            <h2 class="hint-title" id="lse-hint-title">Ready</h2>
+            <p class="hint-copy" id="lse-hint-copy">
+              Tap <strong>Again</strong> / <strong>Next LSE</strong>. Path: <strong>EO</strong> → <strong>UL/UR</strong>
+              → M-slice. Use the M buttons on the move pad.
+            </p>
+            <div class="alg-block">
+              <code class="alg" id="lse-hint-alg"></code>
+              <button type="button" class="btn btn-small" id="btn-lse-apply" hidden>Apply on cube</button>
+            </div>
+            <p class="hint-note" id="lse-hint-note"></p>
+          </div>
+
+          <div class="solved-banner" id="lse-solved-banner" hidden>
+            <strong>LSE complete.</strong> Again = same case · Next LSE = next in the list.
+          </div>
+
+          <div class="f2l-tips" id="lse-tips"></div>
+        </div>
+
         <div class="panel-body" id="panel-match" data-panel="match" hidden>
           <p class="match-help">
             Paint every sticker to match a real scramble. Centres are fixed (yellow opposite white, green opposite blue,
@@ -350,8 +482,8 @@
       <kbd>Pieces</kbd> turn · <kbd>Around</kbd> look · <kbd>Z</kbd> undo
     </footer>
 
-    <script src="vendor/cubejs.js?v=boy1"></script>
-    <script src="vendor/erno.js?v=boy1"></script>
-    <script type="module" src="js/main.js?v=boy1"></script>
+    <script src="vendor/cubejs.js?v=roux1"></script>
+    <script src="vendor/erno.js?v=roux1"></script>
+    <script type="module" src="js/main.js?v=roux1"></script>
   </body>
 </html>

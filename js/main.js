@@ -9,13 +9,39 @@ import {
   solvedFacelets,
 } from "./cube.js";
 import { consumeAlgMove, initAlgProgress, restoreAlgMove } from "./alg-progress.js";
-import { createErnoCube } from "./erno-view.js?v=boy1";
+import { createErnoCube } from "./erno-view.js?v=roux1";
 import { analyzeCross, CROSS_TIPS, scrambleCross } from "./cross-trainer.js";
 import { analyzeF2lDrill, countSlotsSolved, F2L_TIPS, getF2lDrillInfo, popBaselineIds, poppedSolvedSlots, scrambleF2L, shouldFlashPop, solvedSlotIds, stableSolvedSlotIds } from "./f2l-trainer.js?v=conn1";
 import { renderCaseDiagram } from "./case-diagram.js";
 import { analyzeOll, expandWideAlg, getOllDrillInfo, OLL_TIPS, scrambleOll } from "./oll-trainer.js";
 import { analyzePll, getPllDrillInfo, PLL_TIPS, scramblePll } from "./pll-trainer.js";
 import { ALG_LIBRARY, analyze, STEPS } from "./solver.js";
+import {
+  analyzeRoux,
+  ROUX_ALG_LIBRARY,
+  ROUX_STEPS,
+} from "./roux-solver.js";
+import {
+  analyzeFirstBlock,
+  analyzeSecondBlock,
+  FB_TIPS,
+  SB_TIPS,
+  scrambleFb,
+  scrambleSb,
+} from "./roux-blocks.js";
+import {
+  analyzeCmll,
+  CMLL_TIPS,
+  getCmllDrillInfo,
+  scrambleCmll,
+} from "./cmll-trainer.js";
+import {
+  analyzeLse,
+  getLseDrillInfo,
+  LSE_TIPS,
+  lseProgress,
+  scrambleLse,
+} from "./lse-trainer.js";
 import {
   armTimer,
   buildAnalysis,
@@ -26,6 +52,7 @@ import {
   formatClock,
   formatSolveReport,
   loadSolveHistory,
+  methodTimerConfig,
   noteProgress,
   recordSolve,
   renderAnalysisHtml,
@@ -33,6 +60,49 @@ import {
   SPLIT_SHORT,
   startTimer,
 } from "./solve-timer.js";
+
+
+function activeSteps() {
+  return solveMethod === "roux" ? ROUX_STEPS : STEPS;
+}
+
+function activeAnalyze(f) {
+  return solveMethod === "roux" ? analyzeRoux(f) : analyze(f);
+}
+
+function activeAlgLibrary() {
+  return solveMethod === "roux" ? ROUX_ALG_LIBRARY : ALG_LIBRARY;
+}
+
+function solvedBannerDoneCopy() {
+  return solveMethod === "roux" ? " Full Roux solve done." : " Full CFOP solve done.";
+}
+
+function syncMethodChrome() {
+  const tag = document.getElementById("brand-tag");
+  if (tag) {
+    tag.textContent =
+      solveMethod === "roux" ? "FB · SB · CMLL · LSE" : "Cross · F2L · OLL · PLL";
+  }
+  document.querySelectorAll(".method-btn").forEach((btn) => {
+    const on = btn.dataset.method === solveMethod;
+    btn.classList.toggle("is-active", on);
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+  document.querySelectorAll(".mode-tab[data-methods]").forEach((tab) => {
+    const allowed = (tab.dataset.methods || "").split(/\s+/);
+    tab.hidden = !allowed.includes(solveMethod);
+  });
+  const sliceRow = document.getElementById("move-row-slice");
+  if (sliceRow) sliceRow.hidden = solveMethod !== "roux";
+  const panel = document.getElementById("guide-panel");
+  if (panel) {
+    panel.setAttribute(
+      "aria-label",
+      solveMethod === "roux" ? "Roux guide and drills" : "CFOP guide and drills"
+    );
+  }
+}
 
 function setHintCopy(el, text) {
   if (!el) return;
@@ -85,14 +155,20 @@ let facelets = solvedFacelets();
 let paintColor = "white";
 let netDraft = null;
 let lastHintAlg = "";
-let appMode = "guide"; // guide | cross | f2l | oll | pll | match | algs
+let appMode = "guide"; // guide | cross | f2l | oll | pll | fb | sb | cmll | lse | match | algs
+let solveMethod = "cfop"; // cfop | roux
 let lastF2lAlg = "";
 let lastCrossAlg = "";
 let lastOllAlg = "";
 let lastPllAlg = "";
-/** Last valid OLL/PLL case hint — kept while mid-alg temporarily breaks F2L. */
+let lastFbAlg = "";
+let lastSbAlg = "";
+let lastCmllAlg = "";
+let lastLseAlg = "";
+/** Last valid OLL/PLL/CMLL case hint — kept while mid-alg temporarily breaks state. */
 let stickyOllHint = null;
 let stickyPllHint = null;
+let stickyCmllHint = null;
 /** When true, ignore ERNO twist events (we're driving facelets ourselves). */
 let syncingFromUi = false;
 /** True while an undo animation is in flight — next onTwist pops history. */
@@ -256,7 +332,7 @@ function hideSolveAnalysis() {
     solveAnalysisEl.innerHTML = "";
   }
   if (solvedBannerTitle) solvedBannerTitle.textContent = "Solved.";
-  if (solvedBannerCopy) solvedBannerCopy.textContent = " Full CFOP solve done.";
+  if (solvedBannerCopy) solvedBannerCopy.textContent = solvedBannerDoneCopy();
 }
 
 function showSolveAnalysis() {
@@ -265,11 +341,17 @@ function showSolveAnalysis() {
   const history = loadSolveHistory();
   const previous = history[history.length - 1];
   const totalMoves = solveTimer.splits.reduce((sum, s) => sum + s.moves, 0);
+  const timerCfg = methodTimerConfig(solveMethod);
   const analysis = buildAnalysis({
     totalMs: elapsedMs(solveTimer, solveTimer.endMs),
     splits: solveTimer.splits,
     totalMoves,
     previousTotalMs: previous?.totalMs ?? null,
+    steps: timerCfg.steps,
+    splitGroups: timerCfg.splitGroups,
+    stepCoaching: timerCfg.stepCoaching,
+    splitShort: timerCfg.splitShort,
+    methodId: solveMethod,
   });
   const solution = moveHistory.join(" ");
   const pauses = findPauses(solveTrace);
@@ -366,7 +448,8 @@ function timerStatusText(now) {
   if (solveTimer.phase === "armed") return "Ready — first turn starts the clock";
   if (solveTimer.phase === "done") return `Solved · ${formatClock(elapsedMs(solveTimer, now))}`;
   if (solveTimer.phase === "running") {
-    const live = solveTimer.lastDone < STEPS.length ? STEPS[solveTimer.lastDone] : null;
+    const steps = activeSteps();
+    const live = solveTimer.lastDone < steps.length ? steps[solveTimer.lastDone] : null;
     if (!live) return "Running";
     return `Step ${solveTimer.lastDone + 1} · ${live.title} · ${formatClock(currentSplitMs(solveTimer, now))}`;
   }
@@ -375,7 +458,8 @@ function timerStatusText(now) {
 
 function paintTimerSplits(now) {
   if (!solveTimerSplits) return;
-  const liveIndex = solveTimer.phase === "running" && solveTimer.lastDone < STEPS.length ? solveTimer.lastDone : -1;
+  const steps = activeSteps();
+  const liveIndex = solveTimer.phase === "running" && solveTimer.lastDone < steps.length ? solveTimer.lastDone : -1;
   const chips = [];
   for (const split of solveTimer.splits) {
     chips.push(
@@ -383,7 +467,7 @@ function paintTimerSplits(now) {
     );
   }
   if (liveIndex >= 0) {
-    const step = STEPS[liveIndex];
+    const step = steps[liveIndex];
     chips.push(
       `<li class="is-live"><span>${SPLIT_SHORT[step.id] || step.title}</span><strong>${formatClock(currentSplitMs(solveTimer, now))}</strong></li>`
     );
@@ -469,12 +553,13 @@ function syncSolveTimer() {
     paintTimer();
     return;
   }
-  const result = analyze(facelets);
+  const result = activeAnalyze(facelets);
   noteProgress(solveTimer, {
     now: performance.now(),
     moveCount: moveHistory.length,
     stepsDone: result.stepsDone,
     solved: result.solved,
+    steps: activeSteps(),
   });
   stampNewSplits();
   markF2lPairProgress();
@@ -501,7 +586,8 @@ function clearSolveTimer() {
 
 function advanceStickyOnTwist(cubeMove) {
   if (!cubeMove) return;
-  const sticky = appMode === "pll" ? stickyPllHint : appMode === "oll" ? stickyOllHint : null;
+  const sticky =
+    appMode === "pll" ? stickyPllHint : appMode === "oll" ? stickyOllHint : appMode === "cmll" ? stickyCmllHint : null;
   if (!sticky?.fullAlg) return;
 
   if (undoingMove) {
@@ -524,8 +610,8 @@ function handleTwist(payload) {
 
   try {
     if (solveTimer.phase === "armed") {
-      const alreadyDone = analyze(facelets).stepsDone.filter(Boolean).length;
-      startTimer(solveTimer, performance.now(), moveHistory.length, alreadyDone);
+      const alreadyDone = activeAnalyze(facelets).stepsDone.filter(Boolean).length;
+      startTimer(solveTimer, performance.now(), moveHistory.length, alreadyDone, activeSteps());
       startTimerTick();
     }
     if (!virtual && cubeMove) {
@@ -575,10 +661,27 @@ function refreshGuide() {
     refreshPll();
     return;
   }
+  if (appMode === "fb") {
+    refreshFb();
+    return;
+  }
+  if (appMode === "sb") {
+    refreshSb();
+    return;
+  }
+  if (appMode === "cmll") {
+    refreshCmll();
+    return;
+  }
+  if (appMode === "lse") {
+    refreshLse();
+    return;
+  }
 
-  const result = analyze(facelets);
+  const guideSteps = activeSteps();
+  const result = activeAnalyze(facelets);
   const splitByIndex = new Map(solveTimer.splits.map((s) => [s.index, s]));
-  stepsEl.innerHTML = STEPS.map((step, i) => {
+  stepsEl.innerHTML = guideSteps.map((step, i) => {
     const done = result.stepsDone[i];
     const current = !result.solved && result.stepIndex === i;
     const cls = ["step", done ? "is-done" : "", current ? "is-current" : ""].filter(Boolean).join(" ");
@@ -608,13 +711,166 @@ function refreshGuide() {
   }
 
   hintCard.hidden = false;
-  document.getElementById("hint-kicker").textContent = `Step ${result.stepIndex + 1} · ${STEPS[result.stepIndex].title}`;
+  document.getElementById("hint-kicker").textContent = `Step ${result.stepIndex + 1} · ${activeSteps()[result.stepIndex].title}`;
   document.getElementById("hint-title").textContent = h.title;
   document.getElementById("hint-copy").textContent = h.copy;
   document.getElementById("hint-alg").textContent = h.alg;
   document.getElementById("hint-note").textContent = h.note || "";
   lastHintAlg = h.alg && !h.alg.includes("intuitive") ? h.alg : "";
   document.getElementById("btn-apply-alg").hidden = !lastHintAlg;
+}
+
+
+function refreshFb() {
+  const result = analyzeFirstBlock(facelets);
+  const prog = document.getElementById("fb-progress");
+  prog.innerHTML = result.progress
+    .map(
+      (p) =>
+        `<div class="f2l-slot ${p.done ? "is-done" : ""}" title="${p.label}">
+          <span class="f2l-slot-id">${p.id}</span>
+          <span class="f2l-slot-mark">${p.done ? "✓" : "·"}</span>
+        </div>`
+    )
+    .join("");
+  const solvedEl = document.getElementById("fb-solved-banner");
+  const card = document.getElementById("fb-hint-card");
+  if (result.complete) {
+    solvedEl.hidden = false;
+    card.hidden = true;
+    lastFbAlg = "";
+    return;
+  }
+  solvedEl.hidden = true;
+  card.hidden = false;
+  const h = result.hint;
+  document.getElementById("fb-hint-kicker").textContent = `FB · ${result.progress.filter((p) => p.done).length}/5`;
+  document.getElementById("fb-hint-title").textContent = h.title;
+  document.getElementById("fb-hint-copy").textContent = h.copy;
+  document.getElementById("fb-hint-alg").textContent = h.alg || "—";
+  document.getElementById("fb-hint-note").textContent = h.note || "";
+  lastFbAlg = h.alg && h.alg.trim() && !h.alg.includes("…") && !h.alg.includes("intuitive") ? h.alg : "";
+  document.getElementById("btn-fb-apply").hidden = !lastFbAlg;
+}
+
+function refreshSb() {
+  const result = analyzeSecondBlock(facelets);
+  const prog = document.getElementById("sb-progress");
+  prog.innerHTML = result.progress
+    .map(
+      (p) =>
+        `<div class="f2l-slot ${p.done ? "is-done" : ""}" title="${p.label}">
+          <span class="f2l-slot-id">${p.id}</span>
+          <span class="f2l-slot-mark">${p.done ? "✓" : "·"}</span>
+        </div>`
+    )
+    .join("");
+  const solvedEl = document.getElementById("sb-solved-banner");
+  const card = document.getElementById("sb-hint-card");
+  if (result.complete) {
+    solvedEl.hidden = false;
+    card.hidden = true;
+    lastSbAlg = "";
+    return;
+  }
+  solvedEl.hidden = true;
+  card.hidden = false;
+  const h = result.hint;
+  document.getElementById("sb-hint-kicker").textContent = `SB · ${result.progress.filter((p) => p.done).length}/5`;
+  document.getElementById("sb-hint-title").textContent = h.title;
+  document.getElementById("sb-hint-copy").textContent = h.copy;
+  document.getElementById("sb-hint-alg").textContent = h.alg || "—";
+  document.getElementById("sb-hint-note").textContent = h.note || "";
+  lastSbAlg = h.alg && h.alg.trim() && !h.alg.includes("…") && !h.alg.includes("intuitive") ? h.alg : "";
+  document.getElementById("btn-sb-apply").hidden = !lastSbAlg;
+}
+
+function refreshCmll() {
+  const result = analyzeCmll(facelets);
+  const prog = document.getElementById("cmll-progress");
+  prog.innerHTML = [
+    { id: "1", label: "Orient", done: result.oriented || result.complete },
+    { id: "2", label: "Permute", done: result.complete },
+  ]
+    .map(
+      (x) =>
+        `<div class="f2l-slot ${x.done ? "is-done" : ""}" title="${x.label}">
+          <span class="f2l-slot-id">${x.id}</span>
+          <span class="f2l-slot-mark">${x.done ? "✓" : "·"}</span>
+        </div>`
+    )
+    .join("");
+
+  const solvedEl = document.getElementById("cmll-solved-banner");
+  const card = document.getElementById("cmll-hint-card");
+  if (result.complete) {
+    solvedEl.hidden = false;
+    card.hidden = true;
+    lastCmllAlg = "";
+    stickyCmllHint = null;
+    return;
+  }
+
+  if (result.hint?.alg) {
+    stickyCmllHint = bindStickyAlg(stickyCmllHint, result.hint, result.oriented ? "permute" : "orient");
+  }
+
+  let h = result.hint;
+  const shownAlg = displayAlgFromSticky(stickyCmllHint, h?.alg);
+  solvedEl.hidden = true;
+  card.hidden = false;
+  const d = getCmllDrillInfo();
+  document.getElementById("cmll-hint-kicker").textContent = d.started
+    ? `CMLL · ${d.name} · ${d.index + 1}/${d.total}`
+    : "2-look CMLL";
+  document.getElementById("cmll-hint-title").textContent = h?.title || "CMLL";
+  setHintDiagram(document.getElementById("cmll-hint-diagram"), h?.diagram);
+  setHintCopy(document.getElementById("cmll-hint-copy"), h?.copy || "");
+  document.getElementById("cmll-hint-alg").textContent = shownAlg || "—";
+  document.getElementById("cmll-hint-note").textContent = h?.note || "";
+  lastCmllAlg =
+    stickyCmllHint?.remaining && stickyCmllHint.remaining !== "— done —"
+      ? stickyCmllHint.remaining
+      : shownAlg && shownAlg !== "— done —" && !String(shownAlg).includes("…")
+        ? shownAlg
+        : "";
+  document.getElementById("btn-cmll-apply").hidden = !lastCmllAlg;
+}
+
+function refreshLse() {
+  const result = analyzeLse(facelets);
+  const prog = document.getElementById("lse-progress");
+  prog.innerHTML = lseProgress(facelets)
+    .map(
+      (p) =>
+        `<div class="f2l-slot ${p.done ? "is-done" : ""}" title="${p.label}">
+          <span class="f2l-slot-id">${p.label}</span>
+          <span class="f2l-slot-mark">${p.done ? "✓" : "·"}</span>
+        </div>`
+    )
+    .join("");
+
+  const solvedEl = document.getElementById("lse-solved-banner");
+  const card = document.getElementById("lse-hint-card");
+  if (result.complete) {
+    solvedEl.hidden = false;
+    card.hidden = true;
+    lastLseAlg = "";
+    return;
+  }
+  solvedEl.hidden = true;
+  card.hidden = false;
+  const h = result.hint;
+  const d = getLseDrillInfo();
+  document.getElementById("lse-hint-kicker").textContent = d.started
+    ? `LSE · ${d.name} · ${d.index + 1}/${d.total}`
+    : "LSE";
+  document.getElementById("lse-hint-title").textContent = h.title;
+  document.getElementById("lse-hint-copy").textContent = h.copy;
+  document.getElementById("lse-hint-alg").textContent = h.alg || "—";
+  document.getElementById("lse-hint-note").textContent = h.note || "";
+  lastLseAlg = h.alg && h.alg.trim() && !h.alg.includes("…") ? h.alg : "";
+  document.getElementById("btn-lse-apply").hidden = !lastLseAlg;
 }
 
 function paintF2lCaseChrome() {
@@ -879,6 +1135,35 @@ function buildOllTips() {
   ).join("");
 }
 
+
+function buildFbTips() {
+  const el = document.getElementById("fb-tips");
+  if (!el) return;
+  el.innerHTML = FB_TIPS.map(
+    (t) => `<article class="f2l-tip"><h3>${t.title}</h3><p>${t.body}</p></article>`
+  ).join("");
+}
+function buildSbTips() {
+  const el = document.getElementById("sb-tips");
+  if (!el) return;
+  el.innerHTML = SB_TIPS.map(
+    (t) => `<article class="f2l-tip"><h3>${t.title}</h3><p>${t.body}</p></article>`
+  ).join("");
+}
+function buildCmllTips() {
+  const el = document.getElementById("cmll-tips");
+  if (!el) return;
+  el.innerHTML = CMLL_TIPS.map(
+    (t) => `<article class="f2l-tip"><h3>${t.title}</h3><p>${t.body}</p></article>`
+  ).join("");
+}
+function buildLseTips() {
+  const el = document.getElementById("lse-tips");
+  if (!el) return;
+  el.innerHTML = LSE_TIPS.map(
+    (t) => `<article class="f2l-tip"><h3>${t.title}</h3><p>${t.body}</p></article>`
+  ).join("");
+}
 function buildCrossTips() {
   const el = document.getElementById("cross-tips");
   el.innerHTML = CROSS_TIPS.map(
@@ -920,6 +1205,19 @@ function setPanelCopy(mode) {
   btnPll.hidden = true;
   btnPllAgain.hidden = true;
 
+  const btnFb = document.getElementById("btn-fb-case");
+  const btnSb = document.getElementById("btn-sb-case");
+  const btnCmll = document.getElementById("btn-cmll-case");
+  const btnCmllAgain = document.getElementById("btn-cmll-again");
+  const btnLse = document.getElementById("btn-lse-case");
+  const btnLseAgain = document.getElementById("btn-lse-again");
+  if (btnFb) btnFb.hidden = true;
+  if (btnSb) btnSb.hidden = true;
+  if (btnCmll) btnCmll.hidden = true;
+  if (btnCmllAgain) btnCmllAgain.hidden = true;
+  if (btnLse) btnLse.hidden = true;
+  if (btnLseAgain) btnLseAgain.hidden = true;
+
   if (mode === "cross") {
     title.textContent = "White cross drill";
     blurb.innerHTML =
@@ -951,6 +1249,38 @@ function setPanelCopy(mode) {
     btnPll.hidden = false;
     btnPllAgain.hidden = false;
     btnHint.textContent = "PLL hint";
+  } else if (mode === "fb") {
+    title.textContent = "First block drill";
+    blurb.innerHTML =
+      "Left <strong>1×2×3</strong> on orange. Tap <strong>New FB</strong>, then <strong>FB hint</strong> for the next piece. White stays on D.";
+    if (btnFb) btnFb.hidden = false;
+    btnHint.textContent = "FB hint";
+  } else if (mode === "sb") {
+    title.textContent = "Second block drill";
+    blurb.innerHTML =
+      "Right <strong>1×2×3</strong> on red. Tap <strong>New SB</strong>. Protect the left block; leave the M-slice free.";
+    if (btnSb) btnSb.hidden = false;
+    btnHint.textContent = "SB hint";
+  } else if (mode === "cmll") {
+    const d = getCmllDrillInfo();
+    title.textContent = "2-look CMLL";
+    blurb.innerHTML = `Now <strong>${d.name}</strong> · ${d.index + 1}/${d.total}. Orient = Sune · Permute = Niklas or diagonal. <strong>Again</strong> / <strong>Next CMLL</strong>.`;
+    if (btnCmll) btnCmll.hidden = false;
+    if (btnCmllAgain) btnCmllAgain.hidden = false;
+    btnHint.textContent = "CMLL hint";
+  } else if (mode === "lse") {
+    const d = getLseDrillInfo();
+    title.textContent = "LSE — last six edges";
+    blurb.innerHTML = `Now <strong>${d.name}</strong> · ${d.index + 1}/${d.total}. EO → UL/UR → M-slice. Use <strong>M / M' / M2</strong> on the pad.`;
+    if (btnLse) btnLse.hidden = false;
+    if (btnLseAgain) btnLseAgain.hidden = false;
+    btnHint.textContent = "LSE hint";
+  } else if (solveMethod === "roux") {
+    title.textContent = "Roux drills. White bottom, yellow top.";
+    blurb.innerHTML =
+      "Scramble a timed solve, or open a tab: FB → SB → 2-look CMLL → LSE. First turn starts the timer. M moves appear on the pad.";
+    btnScramble.hidden = false;
+    btnHint.textContent = "Next hint";
   } else {
     title.textContent = "CFOP drills. White bottom, yellow top.";
     blurb.innerHTML =
@@ -995,6 +1325,7 @@ function resetCube() {
   lastSolveReport = "";
   stickyOllHint = null;
   stickyPllHint = null;
+  stickyCmllHint = null;
   f2lPairMarks = [];
   f2lPairsLogged = 0;
   f2lLocked = false;
@@ -1015,6 +1346,7 @@ function playScrambleAlg(alg, { timeSolve = false } = {}) {
   clearMoveHistory();
   stickyOllHint = null;
   stickyPllHint = null;
+  stickyCmllHint = null;
   timedScramble = timeSolve ? alg || "" : "";
   solveTrace = [];
   timedUndos = 0;
@@ -1229,6 +1561,61 @@ document.getElementById("btn-pll-case").addEventListener("click", () => {
   setPanelCopy("pll");
 });
 
+document.getElementById("btn-fb-case")?.addEventListener("click", () => {
+  const draft = solvedFacelets();
+  const alg = scrambleFb(draft);
+  playScrambleAlg(alg);
+  setPanelCopy("fb");
+});
+
+document.getElementById("btn-sb-case")?.addEventListener("click", () => {
+  const draft = solvedFacelets();
+  const alg = scrambleSb(draft);
+  playScrambleAlg(alg);
+  setPanelCopy("sb");
+});
+
+document.getElementById("btn-cmll-again")?.addEventListener("click", () => {
+  const draft = solvedFacelets();
+  const alg = scrambleCmll(draft, "again");
+  playScrambleAlg(alg);
+  setPanelCopy("cmll");
+});
+
+document.getElementById("btn-cmll-case")?.addEventListener("click", () => {
+  const draft = solvedFacelets();
+  const alg = scrambleCmll(draft, "next");
+  playScrambleAlg(alg);
+  setPanelCopy("cmll");
+});
+
+document.getElementById("btn-lse-again")?.addEventListener("click", () => {
+  const draft = solvedFacelets();
+  const alg = scrambleLse(draft, "again");
+  playScrambleAlg(alg);
+  setPanelCopy("lse");
+});
+
+document.getElementById("btn-lse-case")?.addEventListener("click", () => {
+  const draft = solvedFacelets();
+  const alg = scrambleLse(draft, "next");
+  playScrambleAlg(alg);
+  setPanelCopy("lse");
+});
+
+document.getElementById("btn-fb-apply")?.addEventListener("click", () => {
+  if (lastFbAlg) doAlg(lastFbAlg);
+});
+document.getElementById("btn-sb-apply")?.addEventListener("click", () => {
+  if (lastSbAlg) doAlg(lastSbAlg);
+});
+document.getElementById("btn-cmll-apply")?.addEventListener("click", () => {
+  if (lastCmllAlg) doAlg(lastCmllAlg);
+});
+document.getElementById("btn-lse-apply")?.addEventListener("click", () => {
+  if (lastLseAlg) doAlg(lastLseAlg);
+});
+
 document.getElementById("btn-hint").addEventListener("click", () => {
   if (isCompactLayout()) {
     hintsPinned = true;
@@ -1257,6 +1644,30 @@ document.getElementById("btn-hint").addEventListener("click", () => {
     refreshPll();
     document.getElementById("pll-hint-card").hidden = false;
     document.getElementById("pll-hint-card").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    return;
+  }
+  if (appMode === "fb") {
+    refreshFb();
+    document.getElementById("fb-hint-card").hidden = false;
+    document.getElementById("fb-hint-card").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    return;
+  }
+  if (appMode === "sb") {
+    refreshSb();
+    document.getElementById("sb-hint-card").hidden = false;
+    document.getElementById("sb-hint-card").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    return;
+  }
+  if (appMode === "cmll") {
+    refreshCmll();
+    document.getElementById("cmll-hint-card").hidden = false;
+    document.getElementById("cmll-hint-card").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    return;
+  }
+  if (appMode === "lse") {
+    refreshLse();
+    document.getElementById("lse-hint-card").hidden = false;
+    document.getElementById("lse-hint-card").scrollIntoView({ behavior: "smooth", block: "nearest" });
     return;
   }
   refreshGuide();
@@ -1291,6 +1702,10 @@ const panels = {
   f2l: document.getElementById("panel-f2l"),
   oll: document.getElementById("panel-oll"),
   pll: document.getElementById("panel-pll"),
+  fb: document.getElementById("panel-fb"),
+  sb: document.getElementById("panel-sb"),
+  cmll: document.getElementById("panel-cmll"),
+  lse: document.getElementById("panel-lse"),
   match: document.getElementById("panel-match"),
   algs: document.getElementById("panel-algs"),
 };
@@ -1311,7 +1726,27 @@ document.querySelectorAll(".mode-tab").forEach((tab) => {
     if (mode === "f2l") refreshF2L();
     if (mode === "oll") refreshOll();
     if (mode === "pll") refreshPll();
+    if (mode === "fb") refreshFb();
+    if (mode === "sb") refreshSb();
+    if (mode === "cmll") refreshCmll();
+    if (mode === "lse") refreshLse();
     if (mode === "guide") refreshGuide();
+    if (mode === "algs") buildAlgList();
+  });
+});
+
+document.querySelectorAll(".method-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const next = btn.dataset.method;
+    if (!next || next === solveMethod) return;
+    solveMethod = next;
+    syncMethodChrome();
+    clearSolveTimer();
+    buildAlgList();
+    // Drop into Guide for the new method
+    document.getElementById("tab-guide").click();
+    setPanelCopy("guide");
+    refreshGuide();
   });
 });
 
@@ -1390,7 +1825,7 @@ document.getElementById("btn-net-apply").addEventListener("click", () => {
   mountErno();
   refreshGuide();
   document.getElementById("tab-guide").click();
-  if (!analyze(facelets).solved) readyFullSolveTimer();
+  if (!activeAnalyze(facelets).solved) readyFullSolveTimer();
   else clearSolveTimer();
 });
 
@@ -1401,7 +1836,7 @@ document.getElementById("tab-match").addEventListener("click", () => {
 
 function buildAlgList() {
   const el = document.getElementById("alg-list");
-  el.innerHTML = ALG_LIBRARY.map((a) => {
+  el.innerHTML = activeAlgLibrary().map((a) => {
     const canTry =
       a.alg &&
       !a.alg.includes("intuitive") &&
@@ -1440,6 +1875,7 @@ const KEY_MOVES = {
   b: "B",
   n: "B'",
   y: "y",
+  m: "M",
 };
 
 window.addEventListener("keydown", (e) => {
@@ -1455,6 +1891,11 @@ window.addEventListener("keydown", (e) => {
   if (key === "y" && e.shiftKey) {
     e.preventDefault();
     doMove("y'");
+    return;
+  }
+  if (key === "m" && e.shiftKey) {
+    e.preventDefault();
+    doMove("M'");
     return;
   }
   const move = KEY_MOVES[key];
@@ -1490,8 +1931,13 @@ buildPalette();
 buildCrossTips();
 buildOllTips();
 buildPllTips();
+buildFbTips();
+buildSbTips();
+buildCmllTips();
+buildLseTips();
 buildAlgList();
 buildF2LTips();
+syncMethodChrome();
 try {
   localStorage.removeItem("f2l-drill-random");
 } catch {

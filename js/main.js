@@ -9,7 +9,7 @@ import {
   solvedFacelets,
 } from "./cube.js";
 import { consumeAlgMove, initAlgProgress, restoreAlgMove } from "./alg-progress.js";
-import { createErnoCube } from "./erno-view.js?v=roux2";
+import { createErnoCube } from "./erno-view.js?v=roux3";
 import { analyzeCross, CROSS_TIPS, scrambleCross } from "./cross-trainer.js";
 import { analyzeF2lDrill, countSlotsSolved, F2L_TIPS, getF2lDrillInfo, popBaselineIds, poppedSolvedSlots, scrambleF2L, shouldFlashPop, solvedSlotIds, stableSolvedSlotIds } from "./f2l-trainer.js?v=conn1";
 import { renderCaseDiagram } from "./case-diagram.js";
@@ -20,7 +20,7 @@ import {
   analyzeRoux,
   ROUX_ALG_LIBRARY,
   ROUX_STEPS,
-} from "./roux-solver.js";
+} from "./roux-solver.js?v=roux3";
 import {
   analyzeFirstBlock,
   analyzeSecondBlock,
@@ -28,20 +28,20 @@ import {
   SB_TIPS,
   scrambleFb,
   scrambleSb,
-} from "./roux-blocks.js";
+} from "./roux-blocks.js?v=roux3";
 import {
   analyzeCmll,
   CMLL_TIPS,
   getCmllDrillInfo,
   scrambleCmll,
-} from "./cmll-trainer.js";
+} from "./cmll-trainer.js?v=roux3";
 import {
   analyzeLse,
   getLseDrillInfo,
   LSE_TIPS,
   lseProgress,
   scrambleLse,
-} from "./lse-trainer.js";
+} from "./lse-trainer.js?v=roux3";
 import {
   armTimer,
   buildAnalysis,
@@ -59,7 +59,7 @@ import {
   resetTimer,
   SPLIT_SHORT,
   startTimer,
-} from "./solve-timer.js";
+} from "./solve-timer.js?v=roux3";
 
 
 function activeSteps() {

@@ -1,6 +1,12 @@
 import { STEPS } from "./solver.js";
 import { countNamedAlgs, countYTurns, formatAlgCounts } from "./coach-report.js";
 import { analyzeF2lFlow, formatF2lFlow } from "./f2l-trainer.js?v=conn1";
+import {
+  ROUX_SPLIT_GROUPS,
+  ROUX_SPLIT_SHORT,
+  ROUX_STEP_COACHING,
+  ROUX_STEPS,
+} from "./roux-solver.js";
 
 export const SPLIT_SHORT = {
   "white-cross": "Cross",
@@ -9,6 +15,7 @@ export const SPLIT_SHORT = {
   "yellow-face": "Y-face",
   headlights: "Headlights",
   "yellow-edges": "Edges",
+  ...ROUX_SPLIT_SHORT,
 };
 
 export const SPLIT_GROUPS = [
@@ -44,6 +51,24 @@ const STEP_COACHING = [
     tip: "Bar at the BACK, then U-perm. No bar → U-perm once, then put the new bar at back and repeat.",
   },
 ];
+
+/** Timer / analysis spine for the active method. */
+export function methodTimerConfig(methodId) {
+  if (methodId === "roux") {
+    return {
+      steps: ROUX_STEPS,
+      splitGroups: ROUX_SPLIT_GROUPS,
+      stepCoaching: ROUX_STEP_COACHING,
+      splitShort: { ...SPLIT_SHORT, ...ROUX_SPLIT_SHORT },
+    };
+  }
+  return {
+    steps: STEPS,
+    splitGroups: SPLIT_GROUPS,
+    stepCoaching: STEP_COACHING,
+    splitShort: SPLIT_SHORT,
+  };
+}
 
 export function formatClock(ms) {
   const clamped = Math.max(0, Number(ms) || 0);
@@ -173,15 +198,25 @@ function sumSplits(splits, indices) {
   );
 }
 
-export function buildAnalysis({ totalMs, splits, totalMoves, previousTotalMs = null }) {
-  const rows = STEPS.map((step, i) => {
+export function buildAnalysis({
+  totalMs,
+  splits,
+  totalMoves,
+  previousTotalMs = null,
+  steps = STEPS,
+  splitGroups = SPLIT_GROUPS,
+  stepCoaching = STEP_COACHING,
+  splitShort = SPLIT_SHORT,
+  methodId = "cfop",
+}) {
+  const rows = steps.map((step, i) => {
     const split = splits[i] || { ms: 0, moves: 0 };
     const share = totalMs > 0 ? split.ms / totalMs : 0;
     return {
       index: i,
       id: step.id,
       title: step.title,
-      short: SPLIT_SHORT[step.id] || step.title,
+      short: splitShort[step.id] || step.title,
       ms: split.ms,
       moves: split.moves,
       share,
@@ -193,7 +228,7 @@ export function buildAnalysis({ totalMs, splits, totalMoves, previousTotalMs = n
     if (row.ms > slowest.ms) slowest = row;
   }
 
-  const groups = SPLIT_GROUPS.map((g) => {
+  const groups = splitGroups.map((g) => {
     const { ms, moves } = sumSplits(splits, g.indices);
     return {
       ...g,
@@ -210,7 +245,7 @@ export function buildAnalysis({ totalMs, splits, totalMoves, previousTotalMs = n
 
   const seconds = totalMs / 1000;
   const tps = seconds > 0 ? totalMoves / seconds : 0;
-  const coach = STEP_COACHING[slowest.index];
+  const coach = stepCoaching[slowest.index] || { tab: "Guide", tip: "Drill the slowest stage on its tab." };
 
   const insights = [];
   const sharePct = Math.round(slowest.share * 100);
@@ -219,7 +254,25 @@ export function buildAnalysis({ totalMs, splits, totalMoves, previousTotalMs = n
   );
   insights.push(coach.tip);
 
-  if (slowestGroup.id === "pll" && slowestGroup.share >= 0.35) {
+  if (methodId === "roux") {
+    if (slowestGroup.id === "lse" && slowestGroup.share >= 0.35) {
+      insights.push(
+        `LSE was ${Math.round(slowestGroup.share * 100)}% of the clock. LSE tab: EO → UL/UR → M-slice.`
+      );
+    } else if (slowestGroup.id === "cmll" && slowestGroup.share >= 0.35) {
+      insights.push(
+        `CMLL was ${Math.round(slowestGroup.share * 100)}% of the clock. CMLL tab: Sune orient, then Niklas / diagonal.`
+      );
+    } else if (slowestGroup.id === "sb" && slowestGroup.share >= 0.35) {
+      insights.push(
+        `Second block was ${Math.round(slowestGroup.share * 100)}% of the solve. Protect FB while you pair on the right.`
+      );
+    } else if (slowestGroup.id === "fb" && slowestGroup.share >= 0.35) {
+      insights.push(
+        `First block was ${Math.round(slowestGroup.share * 100)}% of the solve. FB tab: square then side edges.`
+      );
+    }
+  } else if (slowestGroup.id === "pll" && slowestGroup.share >= 0.35) {
     insights.push(
       `Perm was ${Math.round(slowestGroup.share * 100)}% of the clock. PLL tab: headlights (T-perm) then bar-at-back (U-perm).`
     );

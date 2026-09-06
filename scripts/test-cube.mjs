@@ -651,4 +651,52 @@ assert(
   "erno-ux import is versioned with the flick contract"
 );
 
+// Roux method spine
+{
+  const { firstBlockDone, secondBlockDone, scrambleFb, scrambleSb } = await import("../js/roux-blocks.js");
+  const { analyzeRoux, ROUX_STEPS } = await import("../js/roux-solver.js");
+  const { scrambleCmll, cmllCornersSolved, analyzeCmll } = await import("../js/cmll-trainer.js");
+  const { scrambleLse, lseEoDone, analyzeLse, ulUrDone } = await import("../js/lse-trainer.js");
+  const { methodTimerConfig } = await import("../js/solve-timer.js");
+
+  let rf = solvedFacelets();
+  assert(firstBlockDone(rf) && secondBlockDone(rf), "solved has both Roux blocks");
+  assert(analyzeRoux(rf).solved, "roux analyze solved");
+  assert(ROUX_STEPS.length === 6, "roux has 6 guide steps");
+
+  rf = solvedFacelets();
+  scrambleFb(rf);
+  assert(!firstBlockDone(rf), "fb scramble breaks first block");
+  assert(analyzeRoux(rf).stepIndex === 0, "fb scramble → step 0");
+
+  rf = solvedFacelets();
+  scrambleSb(rf);
+  assert(firstBlockDone(rf) && !secondBlockDone(rf), "sb scramble keeps FB");
+  assert(analyzeRoux(rf).stepIndex === 1, "sb scramble → step 1");
+
+  rf = solvedFacelets();
+  scrambleCmll(rf, "next");
+  assert(firstBlockDone(rf) && secondBlockDone(rf), "cmll scramble keeps blocks");
+  assert(!cmllCornersSolved(rf), "cmll scramble breaks corners");
+  assert(analyzeCmll(rf).hint, "cmll has hint");
+
+  rf = solvedFacelets();
+  scrambleLse(rf, "next");
+  assert(cmllCornersSolved(rf), "lse eo scramble keeps cmll");
+  assert(!lseEoDone(rf), "lse eo scramble breaks EO");
+  assert(analyzeLse(rf).hint.title.includes("EO") || analyzeLse(rf).hint.title.includes("orientation"), "lse eo hint");
+
+  rf = solvedFacelets();
+  scrambleLse(rf, "next"); // ulur
+  assert(lseEoDone(rf) && !ulUrDone(rf), "lse ulur case");
+
+  const rouxTimer = methodTimerConfig("roux");
+  assert(rouxTimer.steps === ROUX_STEPS, "roux timer steps");
+  assert(rouxTimer.splitGroups.length === 4, "roux split groups");
+
+  assert(htmlSrc.includes('data-method="roux"'), "roux method switch in html");
+  assert(htmlSrc.includes('data-mode="cmll"'), "cmll tab in html");
+  assert(htmlSrc.includes('data-move="M"'), "M move on pad");
+}
+
 console.log("ALL PASS");

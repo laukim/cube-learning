@@ -31,16 +31,22 @@ export function pllHeadlightsDiagram(hasHeadlights) {
     type: "pll-sides",
     mode: hasHeadlights ? "headlights" : "none",
     hold: "left",
-    caption: hasHeadlights ? "Hold headlights on the LEFT" : "No headlights — any angle → T-perm",
+    caption: hasHeadlights ? "Hold headlights on the LEFT → T-perm" : "No headlights — Y-perm",
   };
 }
 
 export function pllEdgesDiagram(kind) {
-  // kind: UA | UB | H | Z — beginner method only shows U-perm bar
+  const k = kind === "UB" ? "UB" : kind === "H" ? "H" : kind === "Z" ? "Z" : "UA";
+  const captions = {
+    UA: "Bar (solved side) at BACK → Ua-perm",
+    UB: "Bar at BACK, front edge left → Ub-perm",
+    H: "No bars — H-perm (M moves)",
+    Z: "Opposite bars LEFT + RIGHT → Z-perm",
+  };
   return {
     type: "pll-edges",
-    kind: kind === "UB" ? "UB" : "UA",
-    caption: "Bar (solved edge) at BACK → U-perm",
+    kind: k,
+    caption: captions[k],
   };
 }
 

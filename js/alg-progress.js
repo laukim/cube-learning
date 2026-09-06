@@ -7,7 +7,7 @@ function normalizeToken(tok) {
   const t = String(tok || "").trim();
   if (!t || t.includes("…")) return null;
   const face = t[0];
-  if (!face || !"URFDLBurfdlbxyzXYZ".includes(face)) return null;
+  if (!face || !"URFDLBMSEurfdlbmsexyzXYZ".includes(face)) return null;
   let rest = t.slice(1);
   if (rest === "3") rest = "'";
   if (rest && rest !== "'" && rest !== "2") return null;

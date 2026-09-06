@@ -1,9 +1,9 @@
 /**
- * 2-look PLL — only 2 algorithms (T-perm + U-perm)
- * Method from: https://www.youtube.com/watch?v=RCPVu112HKg
+ * CubeHead 2-look PLL — 6 algs.
+ * https://www.cube.academy/2-look-pll-algs
  *
- * Step 1: corners with T-perm (headlights on LEFT)
- * Step 2: edges with U-perm (bar at BACK); no bar → U-perm once to create one
+ * Step 1: corners — T-perm (headlights on LEFT) or Y-perm (no headlights)
+ * Step 2: edges — Ua, Ub, H, or Z
  */
 
 import {
@@ -18,39 +18,49 @@ import {
   sticker,
 } from "./cube.js";
 import { f2lComplete } from "./f2l-trainer.js?v=conn1";
-import { expandWideAlg, invertAlg } from "./oll-trainer.js";
+import { expandWideAlg, invertAlg } from "./alg.js";
 import { pllEdgesDiagram, pllHeadlightsDiagram } from "./case-diagram.js";
 
 export { expandWideAlg };
 
-/** The only corner alg — T-perm */
 export const PLL_T = {
   name: "T-perm",
   alg: "R U R' U' R' F R2 U' R' U' R U R' F'",
   howHeadlights:
     "1) Find headlights (two matching colours on one side).\n2) Turn only U until that pair sits on the LEFT (see picture).\n3) Do the full T-perm — mid-way F2L looks broken; finish every move.",
-  howNone:
-    "1) No headlights on any side.\n2) Hold any way and do T-perm once.\n3) Tap PLL hint — you should get headlights; put them on the LEFT and T-perm again.",
 };
 
-/**
- * The only edge alg taught in the video — Ua.
- * Mirror (Ub) shown only when the bar needs the other cycle.
- */
+export const PLL_Y = {
+  name: "Y-perm",
+  alg: "F R U' R' U' R U R' F' R U R' U' R' F R F'",
+  how: "1) No headlights — corners need a diagonal swap.\n2) Turn U until this hint’s alg works (U is included if needed).\n3) Do the full Y-perm. Mid-way F2L looks broken; finish every move.",
+};
+
 export const PLL_U = {
-  name: "U-perm",
+  name: "Ua-perm",
   alg: "R2 U' R' U' R U R U R U' R",
   algMirror: "R' U R' U' R' U' R' U R U R2",
   howBar:
-    "1) One side already solved (full bar).\n2) Turn only U so that bar sits at the BACK.\n3) Do U-perm. If still wrong, Undo and try the mirror (other direction).",
-  howNone:
-    "1) No solid bar yet.\n2) Do U-perm once from any angle.\n3) Tap PLL hint — put the new bar at the BACK and U-perm again.",
+    "1) One side already solved (full bar).\n2) Turn only U so that bar sits at the BACK.\n3) Do Ua. Front edge going left → Ub instead.",
 };
 
-/** Y-perm — setup only (creates no-headlights for T-perm practice). */
-const Y_PERM = "F R U' R' U' R U R' F' R U R' U' R' F R F'";
-/** H-perm — setup only (no edge bar). */
-const H_PERM = "M2 U' M2 U2 M2 U' M2";
+export const PLL_UB = {
+  name: "Ub-perm",
+  alg: "R' U R' U' R' U' R' U R U R2",
+  how: "Bar at BACK. Front edge goes left. Ub-perm.",
+};
+
+export const PLL_H = {
+  name: "H-perm",
+  alg: "M2 U' M2 U2 M2 U' M2",
+  how: "Corners done, no edges solved (all four opposite). H-perm — M follows L. Use M / M' / M2 on the pad.",
+};
+
+export const PLL_Z = {
+  name: "Z-perm",
+  alg: "M' U' M2 U' M2 U' M' U2 M2",
+  how: "Two opposite sides already solved. Hold those bars LEFT and RIGHT, then Z-perm (M moves).",
+};
 
 function randomAuf() {
   return ["", "U", "U'", "U2"][Math.floor(Math.random() * 4)];
@@ -60,11 +70,12 @@ function randomAuf() {
  * Fixed PLL practice order — not random.
  */
 export const PLL_DRILL_CASES = [
-  { id: "t-hl", name: "T-perm · headlights", setup: () => invertAlg(PLL_T.alg) },
-  { id: "t-none", name: "T-perm · no headlights", setup: () => invertAlg(Y_PERM) },
-  { id: "u-bar", name: "U-perm · bar", setup: () => invertAlg(PLL_U.alg) },
-  { id: "u-mirror", name: "U-perm · mirror", setup: () => invertAlg(PLL_U.algMirror) },
-  { id: "u-none", name: "U-perm · no bar", setup: () => invertAlg(H_PERM) },
+  { id: "t", name: "T-perm · headlights", setup: () => invertAlg(PLL_T.alg) },
+  { id: "y", name: "Y-perm · no headlights", setup: () => invertAlg(PLL_Y.alg) },
+  { id: "ua", name: "Ua-perm", setup: () => invertAlg(PLL_U.alg) },
+  { id: "ub", name: "Ub-perm", setup: () => invertAlg(PLL_UB.alg) },
+  { id: "h", name: "H-perm", setup: () => invertAlg(PLL_H.alg) },
+  { id: "z", name: "Z-perm", setup: () => invertAlg(PLL_Z.alg) },
 ];
 
 let pllDrillIndex = 0;
@@ -143,30 +154,62 @@ function withPrefix(prefix, alg) {
   return prefix ? `${prefix} ${alg}` : alg;
 }
 
+function prefixAt(i) {
+  return i === 0 ? "" : i === 1 ? "U" : i === 2 ? "U2" : "U'";
+}
+
+function solvedUpToAuf(facelets) {
+  const tmp = cloneFacelets(facelets);
+  for (let i = 0; i < 4; i++) {
+    if (isSolved(tmp)) return true;
+    applyMove(tmp, "U");
+  }
+  return false;
+}
+
+function cornersSolvedUpToAuf(facelets) {
+  const tmp = cloneFacelets(facelets);
+  for (let i = 0; i < 4; i++) {
+    if (cornersSolved(tmp)) return true;
+    applyMove(tmp, "U");
+  }
+  return false;
+}
+
+function findHold(facelets, alg, ok) {
+  for (let i = 0; i < 4; i++) {
+    const prefix = prefixAt(i);
+    const held = cloneFacelets(facelets);
+    if (prefix) applyAlg(held, prefix);
+    const after = cloneFacelets(held);
+    applyAlg(after, expandWideAlg(alg));
+    if (ok(after)) return { prefix, held };
+  }
+  return null;
+}
+
 function cornersHint(facelets) {
-  // Prefer headlights on LEFT (video hold for T-perm)
   for (let i = 0; i < 4; i++) {
     const tmp = cloneFacelets(facelets);
     for (let t = 0; t < i; t++) applyMove(tmp, "U");
     if (headlightsOn(tmp, "L")) {
-      const prefix = i === 0 ? "" : i === 1 ? "U" : i === 2 ? "U2" : "U'";
       return hint(
         `Step 1 · ${PLL_T.name}`,
         PLL_T.howHeadlights,
-        withPrefix(prefix, PLL_T.alg),
+        withPrefix(prefixAt(i), PLL_T.alg),
         HOLD_NOTE,
         pllHeadlightsDiagram(true)
       );
     }
   }
 
-  const faces = ["L", "B", "R", "F"];
-  const anyHl = faces.some((f) => headlightsOn(facelets, f));
+  const anyHl = ["L", "B", "R", "F"].some((f) => headlightsOn(facelets, f));
   if (!anyHl) {
+    const hit = findHold(facelets, PLL_Y.alg, cornersSolvedUpToAuf);
     return hint(
-      `Step 1 · ${PLL_T.name}`,
-      PLL_T.howNone,
-      PLL_T.alg,
+      `Step 1 · ${PLL_Y.name}`,
+      PLL_Y.how,
+      withPrefix(hit?.prefix || "", PLL_Y.alg),
       HOLD_NOTE,
       pllHeadlightsDiagram(false)
     );
@@ -192,59 +235,83 @@ function sideBarColor(facelets, face) {
   return null;
 }
 
-function anyFullBar(facelets) {
-  return ["B", "R", "F", "L"].some((f) => sideBarColor(facelets, f));
+function barCount(facelets) {
+  return ["B", "R", "F", "L"].filter((f) => sideBarColor(facelets, f)).length;
 }
 
 /**
- * Edges: U-perm only. One AUF so the solid bar sits at BACK — never stack a
- * separate “align corners” U on top (that produced confusing U2 U2 … hints).
+ * Edges: Ua / Ub (one bar at BACK), Z (two opposite bars), or H (none).
  */
 function edgesHint(facelets) {
   if (edgesSolved(facelets)) {
-    return hint("PLL done", "Cube solved (or AUF only).", "", "2-look PLL · T-perm + U-perm");
+    return hint("PLL done", "Cube solved (or AUF only).", "", "2-look PLL · 6 algs");
   }
 
-  // Prefer: U until a full bar is on BACK, then U-perm
-  for (let i = 0; i < 4; i++) {
-    const tmp = cloneFacelets(facelets);
-    for (let t = 0; t < i; t++) applyMove(tmp, "U");
-    if (!sideBarColor(tmp, "B")) continue;
+  const nBars = barCount(facelets);
 
-    const prefix = i === 0 ? "" : i === 1 ? "U" : i === 2 ? "U2" : "U'";
-    const frontColor = edgeSideColor(tmp, 2);
-    // Mirror when front edge wants to go to L
-    const useMirror = frontColor === faceCenter("L");
-    const alg = useMirror ? PLL_U.algMirror : PLL_U.alg;
-    const copy = useMirror
-      ? `${PLL_U.howBar}\n(This case needs the mirror U-perm.)`
-      : PLL_U.howBar;
+  if (nBars === 1) {
+    for (let i = 0; i < 4; i++) {
+      const tmp = cloneFacelets(facelets);
+      for (let t = 0; t < i; t++) applyMove(tmp, "U");
+      if (!sideBarColor(tmp, "B")) continue;
+
+      const prefix = prefixAt(i);
+      const frontColor = edgeSideColor(tmp, 2);
+      const useMirror = frontColor === faceCenter("L");
+      const alg = useMirror ? PLL_UB.alg : PLL_U.alg;
+      const name = useMirror ? PLL_UB.name : PLL_U.name;
+      const copy = useMirror ? PLL_UB.how : PLL_U.howBar;
+      return hint(
+        `Step 2 · ${name}`,
+        copy,
+        withPrefix(prefix, alg),
+        HOLD_NOTE,
+        pllEdgesDiagram(useMirror ? "UB" : "UA")
+      );
+    }
+  }
+
+  if (nBars >= 2) {
+    const zHit = findHold(facelets, PLL_Z.alg, solvedUpToAuf);
+    if (zHit) {
+      return hint(
+        `Step 2 · ${PLL_Z.name}`,
+        PLL_Z.how,
+        withPrefix(zHit.prefix, PLL_Z.alg),
+        HOLD_NOTE,
+        pllEdgesDiagram("Z")
+      );
+    }
+  }
+
+  const hHit = findHold(facelets, PLL_H.alg, solvedUpToAuf);
+  if (hHit) {
     return hint(
-      `Step 2 · ${PLL_U.name}`,
-      copy,
-      withPrefix(prefix, alg),
+      `Step 2 · ${PLL_H.name}`,
+      PLL_H.how,
+      withPrefix(hHit.prefix, PLL_H.alg),
       HOLD_NOTE,
-      pllEdgesDiagram("UA")
+      pllEdgesDiagram("H")
     );
   }
 
-  if (!anyFullBar(facelets)) {
+  const zHit = findHold(facelets, PLL_Z.alg, solvedUpToAuf);
+  if (zHit) {
     return hint(
-      `Step 2 · ${PLL_U.name}`,
-      PLL_U.howNone,
-      PLL_U.alg,
+      `Step 2 · ${PLL_Z.name}`,
+      PLL_Z.how,
+      withPrefix(zHit.prefix, PLL_Z.alg),
       HOLD_NOTE,
-      pllEdgesDiagram("UA")
+      pllEdgesDiagram("Z")
     );
   }
 
-  // Bar exists but not yet dialed to back — tell them to U
   return hint(
-    `Step 2 · ${PLL_U.name}`,
-    PLL_U.howBar,
-    `U …  ${PLL_U.alg}`,
+    "Step 2 · PLL",
+    "Couldn’t name this edge case. Undo, turn U, and tap PLL hint again.",
+    "",
     HOLD_NOTE,
-    pllEdgesDiagram("UA")
+    pllEdgesDiagram("H")
   );
 }
 
@@ -292,7 +359,7 @@ export function analyzePll(facelets) {
         "PLL done",
         "Cube solved. New PLL to drill again.",
         "",
-        "2-look PLL · T-perm + U-perm"
+        "2-look PLL · 6 algs"
       ),
     };
   }
@@ -375,19 +442,19 @@ export function scramblePll(facelets, mode = "next") {
 export const PLL_TIPS = [
   {
     title: "Practice order",
-    body: "Fixed list: T (headlights) → T (none) → U (bar) → U (mirror) → U (no bar). Again = same case. Next PLL = move on.",
+    body: "T (headlights) → Y (no headlights) → Ua → Ub → H → Z. Again = same case. Next PLL = move on.",
   },
   {
-    title: "Only 2 algorithms",
-    body: "T-perm for corners, U-perm for edges. You may need each more than once — that’s 2-look PLL.",
+    title: "6 algorithms",
+    body: "Corners: T-perm if headlights, Y-perm if not. Edges: Ua or Ub with the bar at back; H if none solved; Z if two opposite sides are done.",
   },
   {
-    title: "Step 1 — Corners (T-perm)",
-    body: "Headlights → hold on the LEFT → T-perm. No headlights → T-perm from anywhere, then headlights appear.",
+    title: "Step 1 — Corners",
+    body: "Headlights → hold on the LEFT → T-perm. No headlights → Y-perm (the longer alg).",
   },
   {
-    title: "Step 2 — Edges (U-perm)",
-    body: "Solid bar → bar at BACK → U-perm. No bar → U-perm once, then put the new bar at back and U-perm again.",
+    title: "Step 2 — Edges",
+    body: "One bar → back → Ua (or Ub if the front edge goes left). Two opposite bars → Z. No bars → H. H and Z use M — tap PLL hint and the next M / M' / M2 lights up on the pad.",
   },
   {
     title: "Algs break F2L mid-way",
@@ -399,16 +466,18 @@ export const PLL_TIPS = [
   },
   {
     title: "Source",
-    body: "2-look PLL (2 algs) — https://www.youtube.com/watch?v=RCPVu112HKg",
+    body: "CubeHead 2-look PLL — https://www.cube.academy/2-look-pll-algs",
   },
 ];
 
 /** @deprecated aliases kept for any old imports */
 export const PLL_CORNERS = {
   HEADLIGHTS: { name: PLL_T.name, alg: PLL_T.alg, how: PLL_T.howHeadlights },
-  NO_HEADLIGHTS: { name: PLL_T.name, alg: PLL_T.alg, how: PLL_T.howNone },
+  NO_HEADLIGHTS: { name: PLL_Y.name, alg: PLL_Y.alg, how: PLL_Y.how },
 };
 export const PLL_EDGES = {
   UA: { name: PLL_U.name, alg: PLL_U.alg, how: PLL_U.howBar },
-  UB: { name: PLL_U.name, alg: PLL_U.algMirror, how: PLL_U.howBar },
+  UB: { name: PLL_UB.name, alg: PLL_UB.alg, how: PLL_UB.how },
+  H: { name: PLL_H.name, alg: PLL_H.alg, how: PLL_H.how },
+  Z: { name: PLL_Z.name, alg: PLL_Z.alg, how: PLL_Z.how },
 };

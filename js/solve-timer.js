@@ -36,19 +36,19 @@ const STEP_COACHING = [
   },
   {
     tab: "OLL",
-    tip: "Yellow cross is one alg: F, righty, F′. Hold the L or line correctly so you don’t repeat extra times.",
+    tip: "Yellow cross: line = F sexy F′. L at front-right = f sexy f′. Dot = both.",
   },
   {
     tab: "OLL",
-    tip: "Yellow face: Sune only. 1 corner → bottom-left. 0 → no yellow on front. 2 adj → on the right. 2 opp → top-left + bottom-right.",
+    tip: "Yellow face: one of 7 CubeHead algs (Sune, Anti-Sune, H, Pi, T, Bowtie, U). Match the picture — don’t keep Suning.",
   },
   {
     tab: "PLL",
-    tip: "Headlights on the LEFT, then T-perm. No headlights → T-perm once from anywhere, then headlights appear.",
+    tip: "Headlights on the LEFT → T-perm. No headlights → Y-perm.",
   },
   {
     tab: "PLL",
-    tip: "Bar at the BACK, then U-perm. No bar → U-perm once, then put the new bar at back and repeat.",
+    tip: "Bar at the BACK → Ua or Ub. Two opposite bars → Z. No bars → H (M moves).",
   },
 ];
 
@@ -274,11 +274,11 @@ export function buildAnalysis({
     }
   } else if (slowestGroup.id === "pll" && slowestGroup.share >= 0.35) {
     insights.push(
-      `Perm was ${Math.round(slowestGroup.share * 100)}% of the clock. PLL tab: headlights (T-perm) then bar-at-back (U-perm).`
+      `Perm was ${Math.round(slowestGroup.share * 100)}% of the clock. PLL tab: T or Y, then Ua / Ub / H / Z.`
     );
   } else if (slowestGroup.id === "oll" && slowestGroup.share >= 0.35) {
     insights.push(
-      `Yellow face was ${Math.round(slowestGroup.share * 100)}% of the clock. OLL tab: cross alg then Sune holds.`
+      `Yellow face was ${Math.round(slowestGroup.share * 100)}% of the clock. OLL tab: cross, then one of the 7 corner algs.`
     );
   } else if (slowestGroup.id === "f2l" && slowestGroup.share >= 0.4) {
     insights.push(

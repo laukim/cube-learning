@@ -12,8 +12,8 @@
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=roux1" />
-    <link rel="stylesheet" href="vendor/erno-cube.css?v=roux1" />
+    <link rel="stylesheet" href="styles.css?v=2look3" />
+    <link rel="stylesheet" href="vendor/erno-cube.css?v=2look3" />
   </head>
   <body class="hints-open">
     <div class="ambient" aria-hidden="true"></div>
@@ -284,24 +284,30 @@
         </div>
 
         <div class="panel-body" id="panel-oll" data-panel="oll" hidden>
+          <div class="look-switch" role="group" aria-label="Which OLL look to drill">
+            <button type="button" class="method-btn" data-oll-look="cross" aria-pressed="false">Look 1 · Cross</button>
+            <button type="button" class="method-btn is-active" data-oll-look="corners" aria-pressed="true">
+              Look 2 · Corners
+            </button>
+          </div>
           <div class="f2l-progress" id="oll-progress" aria-label="OLL steps"></div>
 
           <div class="hint-card" id="oll-hint-card">
-            <div class="hint-kicker" id="oll-hint-kicker">2-look OLL</div>
+            <div class="hint-kicker" id="oll-hint-kicker">2-look OLL · look 2</div>
             <h2 class="hint-title" id="oll-hint-title">Ready</h2>
             <div class="hint-layout">
               <div class="hint-diagram" id="oll-hint-diagram" hidden></div>
               <div class="hint-text">
                 <p class="hint-copy" id="oll-hint-copy">
-                  Tap <strong>Again</strong> / <strong>Next OLL</strong>. 2-look OLL uses
-                  <strong>2 algs</strong>: <strong>F R U R' U' F'</strong> (yellow cross) then
-                  <strong>Sune</strong> for corners — hold correctly and repeat. Reference:
+                  This tab starts on <strong>Look 2</strong> — the 7 corner algs, with the yellow cross already
+                  done. Tap <strong>Again</strong> / <strong>Next OLL</strong> for Sune, Anti-Sune, H, Pi, T,
+                  Bowtie, U. Switch to Look 1 if you want line / L / dot. Reference:
                   <a
                     class="ext-link"
-                    href="https://www.youtube.com/watch?v=x6EoaxxbImI"
+                    href="https://www.cube.academy/2-look-oll-algs"
                     target="_blank"
                     rel="noopener"
-                    >CFOP Cubing OLL</a
+                    >CubeHead 2-look OLL</a
                   >.
                 </p>
                 <div class="alg-block">
@@ -314,7 +320,8 @@
           </div>
 
           <div class="solved-banner" id="oll-solved-banner" hidden>
-            <strong>OLL complete.</strong> Again = same case · Next OLL = next in the list.
+            <strong id="oll-solved-title">Look 2 done — yellow face.</strong>
+            <span id="oll-solved-copy">Again = same case · Next OLL = next corner case · or open PLL.</span>
           </div>
 
           <div class="f2l-tips" id="oll-tips"></div>
@@ -331,14 +338,14 @@
               <div class="hint-text">
                 <p class="hint-copy" id="pll-hint-copy">
                   Tap <strong>Again</strong> for the same case or <strong>Next PLL</strong> for the next in order
-                  (T headlights → T none → U bar → U mirror → U no bar). 2-look PLL uses
-                  <strong>2 algs</strong>: T-perm + U-perm. Reference:
+                  (T → Y → Ua → Ub → H → Z). CubeHead 2-look PLL is
+                  <strong>6 algs</strong>: T or Y for corners, then Ua / Ub / H / Z for edges. Reference:
                   <a
                     class="ext-link"
-                    href="https://www.youtube.com/watch?v=RCPVu112HKg"
+                    href="https://www.cube.academy/2-look-pll-algs"
                     target="_blank"
                     rel="noopener"
-                    >CFOP Cubing PLL</a
+                    >CubeHead 2-look PLL</a
                   >.
                 </p>
                 <div class="alg-block">
@@ -482,8 +489,8 @@
       <kbd>Pieces</kbd> turn · <kbd>Around</kbd> look · <kbd>Z</kbd> undo
     </footer>
 
-    <script src="vendor/cubejs.js?v=roux1"></script>
-    <script src="vendor/erno.js?v=roux1"></script>
-    <script type="module" src="js/main.js?v=roux1"></script>
+    <script src="vendor/cubejs.js?v=2look3"></script>
+    <script src="vendor/erno.js?v=2look3"></script>
+    <script type="module" src="js/main.js?v=2look3"></script>
   </body>
 </html>

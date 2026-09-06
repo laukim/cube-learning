@@ -5,7 +5,7 @@ import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 globalThis.Cube = require("cubejs");
 
-const { applyAlg, applyMove, scrambleCube, isSolved, solvedFacelets, sticker } = await import("../js/cube.js");
+const { applyAlg, applyMove, scrambleCube, isSolved, solvedFacelets, sticker, getFace } = await import("../js/cube.js");
 const { analyze, RIGHTY } = await import("../js/solver.js");
 const {
   armTimer,
@@ -22,7 +22,10 @@ const {
 } = await import("../js/solve-timer.js");
 const { analyzeF2lFlow, formatF2lFlow, popBaselineIds, poppedSolvedSlots, scrambleF2L, getF2lDrillInfo, resetF2lDrill, shouldFlashPop, slotSolved, solvedSlotIds, stableSolvedSlotIds, whiteCrossIntact, SLOTS } = await import("../js/f2l-trainer.js");
 const { F2L_DRILL_CASES } = await import("../js/f2l-cases.js");
-const { invertAlg } = await import("../js/alg.js");
+const { invertAlg, expandWideAlg } = await import("../js/alg.js");
+const { consumeAlgMove, initAlgProgress, toAtomics } = await import("../js/alg-progress.js");
+const { analyzeOll, OLL_DRILL_CASES, OLL_CROSS_ALG, getOllDrillInfo, getOllLook, resetOllDrill, scrambleOll, setOllLook } = await import("../js/oll-trainer.js");
+const { analyzePll, PLL_DRILL_CASES, PLL_T, PLL_Y, PLL_H, PLL_Z } = await import("../js/pll-trainer.js");
 const {
   FLICK_HALF_TURN_DEG,
   FLICK_MIN_PX,
@@ -191,6 +194,8 @@ assert(countYTurns("R U R' y U y'") === 2, "y turns counted");
 const tHits = countNamedAlgs("R U R' U' R' F R2 U' R' U' R U R' F'");
 assert(tHits["T-perm"] === 1, "T-perm");
 assert(!tHits.righty, "T-perm is not counted as righty");
+assert(countNamedAlgs("M2 U' M2 U2 M2 U' M2")["H-perm"] === 1, "coach names H-perm from M moves");
+assert(countNamedAlgs("M' U' M2 U' M2 U' M' U2 M2")["Z-perm"] === 1, "coach names Z-perm from M moves");
 
 const html = renderAnalysisHtml({ ...analysis, report, scramble: "R U F", solution: "F' U' R'" });
 assert(html.includes("solve-report-text"), "report textarea");
@@ -697,6 +702,101 @@ assert(
   assert(htmlSrc.includes('data-method="roux"'), "roux method switch in html");
   assert(htmlSrc.includes('data-mode="cmll"'), "cmll tab in html");
   assert(htmlSrc.includes('data-move="M"'), "M move on pad");
+  assert(htmlSrc.includes('data-oll-look="corners"'), "OLL look 2 switch in html");
 }
+
+assert(OLL_DRILL_CASES.length === 10, "2-look OLL is CubeHead’s 10 cases");
+assert(OLL_DRILL_CASES[0].id === "line" && OLL_DRILL_CASES[1].id === "l" && OLL_DRILL_CASES[2].id === "dot", "OLL starts line / L / dot");
+assert(OLL_DRILL_CASES.some((c) => c.id === "antisune"), "Anti-Sune is a real case, not Sune-on-repeat");
+function yellowFace(f) {
+  return getFace(f, "U").every((c) => c === "yellow");
+}
+function yellowCross(f) {
+  const u = getFace(f, "U");
+  return [1, 3, 5, 7].every((i) => u[i] === "yellow");
+}
+for (const auf of ["", "U", "U'", "U2"]) {
+  for (const c of OLL_DRILL_CASES) {
+    const cube = solvedFacelets();
+    applyAlg(cube, expandWideAlg(c.setup()));
+    if (auf) applyAlg(cube, auf);
+    const a = analyzeOll(cube);
+    assert(a.hint?.alg, `${c.id} ${auf || "noAUF"} has an alg`);
+    applyAlg(cube, expandWideAlg(a.hint.alg));
+    if (c.id === "line" || c.id === "l" || c.id === "dot") {
+      assert(yellowCross(cube), `${c.id} ${auf || "noAUF"} hint makes the yellow cross`);
+    } else {
+      assert(yellowFace(cube), `${c.id} ${auf || "noAUF"} hint finishes OLL`);
+    }
+  }
+}
+const lCase = solvedFacelets();
+applyAlg(lCase, expandWideAlg(OLL_DRILL_CASES.find((c) => c.id === "l").setup()));
+const lHint = analyzeOll(lCase).hint.alg;
+assert(lHint.includes("f R U R' U' f'"), "L-shape uses CubeHead’s f-alg, not F sexy F′");
+
+resetOllDrill();
+assert(getOllLook() === "corners", "OLL tab defaults to look 2 (corners)");
+assert(getOllDrillInfo().total === 7 && getOllDrillInfo().id === "sune", "look 2 starts at Sune, 7 cases");
+{
+  const cube = solvedFacelets();
+  scrambleOll(cube, "next");
+  assert(yellowCross(cube), "look 2 scramble already has the yellow cross");
+  assert(!yellowFace(cube), "look 2 scramble still needs a corner alg");
+  const a = analyzeOll(cube, { look: "corners" });
+  assert(a.stage === "finish" && a.crossDone, "look 2 hints a corner alg, not line/L/dot");
+}
+{
+  const line = solvedFacelets();
+  applyAlg(line, expandWideAlg(invertAlg(OLL_CROSS_ALG.alg)));
+  assert(!analyzeOll(line, { look: "cross" }).complete, "look 1 is not done while the line is still there");
+  applyAlg(line, expandWideAlg(analyzeOll(line, { look: "cross" }).hint.alg));
+  assert(analyzeOll(line, { look: "cross" }).complete, "look 1 drill is done at the yellow cross");
+}
+{
+  const sune = solvedFacelets();
+  applyAlg(sune, invertAlg("R U R' U R U2 R'"));
+  assert(yellowCross(sune) && !yellowFace(sune), "Sune case has the cross, not the full face");
+  assert(analyzeOll(sune, { look: "cross" }).complete, "look 1 skips a cube that already has the cross");
+  assert(!analyzeOll(sune).complete, "timed/full OLL still needs the corner alg");
+  assert(analyzeOll(sune, { look: "corners" }).stage === "finish", "look 2 still hints Sune / Anti-Sune / …");
+}
+setOllLook("cross");
+assert(getOllDrillInfo().total === 3 && getOllDrillInfo().id === "line", "look 1 is line / L / dot");
+resetOllDrill();
+
+assert(PLL_DRILL_CASES.length === 6, "2-look PLL is CubeHead’s 6 cases");
+assert(PLL_DRILL_CASES.map((c) => c.id).join(" ") === "t y ua ub h z", "PLL order T Y Ua Ub H Z");
+for (const auf of ["", "U", "U'", "U2"]) {
+  for (const c of PLL_DRILL_CASES) {
+    const cube = solvedFacelets();
+    applyAlg(cube, expandWideAlg(c.setup()));
+    if (auf) applyAlg(cube, auf);
+    const a = analyzePll(cube);
+    assert(a.hint?.alg && !a.hint.alg.includes("…"), `${c.id} ${auf || "noAUF"} has a concrete alg`);
+    applyAlg(cube, expandWideAlg(a.hint.alg));
+    const again = analyzePll(cube);
+    assert(again.complete || again.cornersDone, `${c.id} ${auf || "noAUF"} hint advances PLL`);
+  }
+}
+const yCube = solvedFacelets();
+applyAlg(yCube, invertAlg(PLL_Y.alg));
+const yHint = analyzePll(yCube).hint;
+assert(yHint.alg.includes(PLL_Y.alg), "no headlights uses Y-perm, not T-perm twice");
+assert(!yHint.alg.includes(PLL_T.alg), "Y case is not T-perm");
+const hCube = solvedFacelets();
+applyAlg(hCube, invertAlg(PLL_H.alg));
+assert(analyzePll(hCube).hint.alg.includes(PLL_H.alg), "H-perm case hints H, not U-perm");
+assert(analyzePll(hCube).hint.alg.trim().startsWith("M2") || analyzePll(hCube).hint.alg.includes(" M2"), "H-perm hint includes M2");
+const hProg = initAlgProgress(analyzePll(hCube).hint.alg);
+assert(toAtomics(hProg.remaining)[0] === "M", "H-perm remaining starts with M (not dropped)");
+const afterM2 = consumeAlgMove(hProg.remaining, "M2");
+assert(afterM2.matched && afterM2.remaining.startsWith("U'"), "PLL hint consumes M2 then asks for U'");
+const afterMThenM = consumeAlgMove(hProg.remaining, "M");
+assert(afterMThenM.matched, "two M flicks also satisfy M2");
+const zCube = solvedFacelets();
+applyAlg(zCube, invertAlg(PLL_Z.alg));
+assert(analyzePll(zCube).hint.alg.includes(PLL_Z.alg), "Z-perm case hints Z");
+assert(toAtomics(analyzePll(zCube).hint.alg)[0] === "M'", "Z-perm remaining starts with M'");
 
 console.log("ALL PASS");

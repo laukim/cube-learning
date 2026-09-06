@@ -1,11 +1,21 @@
-import { toAtomics } from "./alg-progress.js";
+import { toAtomics } from "./alg-progress.js?v=2look3";
 
 /** Longest first so T-perm is not counted as a righty + leftovers. */
 export const COACH_ALGS = [
+  { name: "Y-perm", alg: "F R U' R' U' R U R' F' R U R' U' R' F R F'" },
   { name: "T-perm", alg: "R U R' U' R' F R2 U' R' U' R U R' F'" },
+  { name: "Pi", alg: "R U2 R2 U' R2 U' R2 U2 R" },
+  { name: "H-OLL", alg: "R U R' U R U' R' U R U2 R'" },
+  { name: "Bowtie", alg: "F' r U R' U' r' F R" },
+  { name: "T-OLL", alg: "r U R' U' r' F R F'" },
+  { name: "U-OLL", alg: "R2 D R' U2 R D' R' U2 R'" },
+  { name: "Z-perm", alg: "M' U' M2 U' M2 U' M' U2 M2" },
+  { name: "H-perm", alg: "M2 U' M2 U2 M2 U' M2" },
   { name: "Ua", alg: "R2 U' R' U' R U R U R U' R" },
   { name: "Ub", alg: "R' U R' U' R' U' R' U R U R2" },
   { name: "Sune", alg: "R U R' U R U2 R'" },
+  { name: "Anti-Sune", alg: "R U2 R' U' R U' R'" },
+  { name: "OLL-L", alg: "f R U R' U' f'" },
   { name: "OLL-cross", alg: "F R U R' U' F'" },
   { name: "righty", alg: "R U R' U'" },
   { name: "lefty", alg: "L' U' L U" },

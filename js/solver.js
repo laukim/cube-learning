@@ -5,8 +5,8 @@ import {
   sticker,
 } from "./cube.js";
 import { analyzeF2L, f2lComplete } from "./f2l-trainer.js?v=conn1";
-import { analyzeOll } from "./oll-trainer.js";
-import { analyzePll } from "./pll-trainer.js";
+import { analyzeOll, OLL_CROSS_ALG, OLL_FINISH_ALGS } from "./oll-trainer.js";
+import { analyzePll, PLL_H, PLL_T, PLL_U, PLL_UB, PLL_Y, PLL_Z } from "./pll-trainer.js";
 
 /** Cross · F2L · 2-look OLL · 2-look PLL (white on bottom → yellow on top). */
 export const STEPS = [
@@ -23,22 +23,22 @@ export const STEPS = [
   {
     id: "yellow-cross",
     title: "Yellow cross",
-    blurb: "Dot / L / line → F, righty, F′ (repeat). Same as the OLL tab.",
+    blurb: "Line = F sexy F′. L = f sexy f′ (L at front-right). Dot = both. Same as the OLL tab.",
   },
   {
     id: "yellow-face",
     title: "Yellow face",
-    blurb: "Sune until every yellow faces up. Don’t worry about the sides yet.",
+    blurb: "One of 7 CubeHead algs (Sune, Anti-Sune, H, Pi, T, Bowtie, U). Match the picture — don’t repeat Sune.",
   },
   {
     id: "headlights",
     title: "Headlights",
-    blurb: "T-perm: headlights on the left (or once from anywhere if none), until four side corners match.",
+    blurb: "T-perm if headlights on the left. No headlights → Y-perm.",
   },
   {
     id: "yellow-edges",
     title: "Last edges",
-    blurb: "U-perm: bar at the back, then the edge alg until the cube is solved.",
+    blurb: "Ua / Ub with the bar at back, H if no bars, Z if two opposite sides are done.",
   },
 ];
 
@@ -48,31 +48,73 @@ export const LEFTY = "L' U' L U";
 export const ALG_LIBRARY = [
   {
     group: "OLL",
-    name: "Sune",
-    when: "Yellow cross done — finish corners (2-look OLL)",
-    alg: "R U R' U R U2 R'",
-    tip: "1 corner → bottom-left. 0 → no yellow on front. 2 adj → on right. 2 opp → top-left + bottom-right. Repeat with holds.",
+    name: "Line",
+    when: "Yellow line left–right",
+    alg: OLL_CROSS_ALG.alg,
+    tip: "Horizontal line, then F R U R' U' F'.",
+  },
+  {
+    group: "OLL",
+    name: "L",
+    when: "Yellow L at front-right",
+    alg: OLL_CROSS_ALG.algL,
+    tip: "L on UF + UR, then f R U R' U' f'.",
+  },
+  {
+    group: "OLL",
+    name: "Dot",
+    when: "No yellow edges on top",
+    alg: OLL_CROSS_ALG.algDot,
+    tip: "Line alg, then L alg, from the same hold.",
+  },
+  ...OLL_FINISH_ALGS.map((a) => ({
+    group: "OLL",
+    name: a.name,
+    when: "Yellow cross done — " + a.name,
+    alg: a.alg,
+    tip: a.how,
+  })),
+  {
+    group: "PLL",
+    name: PLL_T.name,
+    when: "Corners — headlights on LEFT",
+    alg: PLL_T.alg,
+    tip: "Headlights LEFT, then T-perm.",
   },
   {
     group: "PLL",
-    name: "T-perm",
-    when: "Corners — headlights on LEFT (or none → do once)",
-    alg: "R U R' U' R' F R2 U' R' U' R U R' F'",
-    tip: "Headlights LEFT. No headlights → same alg from any angle, then headlights appear.",
+    name: PLL_Y.name,
+    when: "Corners — no headlights (diagonal)",
+    alg: PLL_Y.alg,
+    tip: "Y-perm. Finish every move.",
   },
   {
     group: "PLL",
-    name: "Ua",
+    name: PLL_U.name,
     when: "Edges — bar at BACK; front edge goes right",
-    alg: "R2 U' R' U' R U R U R U' R",
-    tip: "Bar at back. No bar → do once from anywhere, then bar at back again.",
+    alg: PLL_U.alg,
+    tip: "Bar at back → Ua.",
   },
   {
     group: "PLL",
-    name: "Ub",
+    name: PLL_UB.name,
     when: "Edges — bar at BACK; front edge goes left",
-    alg: "R' U R' U' R' U' R' U R U R2",
-    tip: "Mirror of Ua. Undo and switch if Ua made it worse.",
+    alg: PLL_UB.alg,
+    tip: "Bar at back → Ub.",
+  },
+  {
+    group: "PLL",
+    name: PLL_H.name,
+    when: "Edges — none solved",
+    alg: PLL_H.alg,
+    tip: "H-perm. M follows L.",
+  },
+  {
+    group: "PLL",
+    name: PLL_Z.name,
+    when: "Edges — two opposite sides solved",
+    alg: PLL_Z.alg,
+    tip: "Bars on LEFT and RIGHT → Z-perm.",
   },
 ];
 

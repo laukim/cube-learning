@@ -8,12 +8,12 @@ import {
   setFacelet,
   solvedFacelets,
 } from "./cube.js";
-import { consumeAlgMove, initAlgProgress, restoreAlgMove } from "./alg-progress.js";
-import { createErnoCube } from "./erno-view.js?v=roux1";
+import { consumeAlgMove, initAlgProgress, restoreAlgMove } from "./alg-progress.js?v=2look3";
+import { createErnoCube } from "./erno-view.js?v=2look3";
 import { analyzeCross, CROSS_TIPS, scrambleCross } from "./cross-trainer.js";
 import { analyzeF2lDrill, countSlotsSolved, F2L_TIPS, getF2lDrillInfo, popBaselineIds, poppedSolvedSlots, scrambleF2L, shouldFlashPop, solvedSlotIds, stableSolvedSlotIds } from "./f2l-trainer.js?v=conn1";
 import { renderCaseDiagram } from "./case-diagram.js";
-import { analyzeOll, expandWideAlg, getOllDrillInfo, OLL_TIPS, scrambleOll } from "./oll-trainer.js";
+import { analyzeOll, expandWideAlg, getOllDrillInfo, getOllLook, OLL_TIPS, scrambleOll, setOllLook } from "./oll-trainer.js";
 import { analyzePll, getPllDrillInfo, PLL_TIPS, scramblePll } from "./pll-trainer.js";
 import { ALG_LIBRARY, analyze, STEPS } from "./solver.js";
 import {
@@ -78,6 +78,12 @@ function solvedBannerDoneCopy() {
   return solveMethod === "roux" ? " Full Roux solve done." : " Full CFOP solve done.";
 }
 
+function syncSlicePad() {
+  const sliceRow = document.getElementById("move-row-slice");
+  if (!sliceRow) return;
+  sliceRow.hidden = !(solveMethod === "roux" || appMode === "pll" || appMode === "oll");
+}
+
 function syncMethodChrome() {
   const tag = document.getElementById("brand-tag");
   if (tag) {
@@ -93,8 +99,7 @@ function syncMethodChrome() {
     const allowed = (tab.dataset.methods || "").split(/\s+/);
     tab.hidden = !allowed.includes(solveMethod);
   });
-  const sliceRow = document.getElementById("move-row-slice");
-  if (sliceRow) sliceRow.hidden = solveMethod !== "roux";
+  syncSlicePad();
   const panel = document.getElementById("guide-panel");
   if (panel) {
     panel.setAttribute(
@@ -194,6 +199,7 @@ let analysisShownForSolve = false;
 
 const MOVE_PAD_KEY = "bylayer-show-move-pad";
 const PHONE_PAD_KEY = "bylayer-phone-move-pad";
+const OLL_LOOK_KEY = "bylayer-oll-look";
 
 function isCompactLayout() {
   return window.matchMedia("(max-width: 920px)").matches;
@@ -976,12 +982,17 @@ function refreshCross() {
 }
 
 function refreshOll() {
-  const result = analyzeOll(facelets);
+  const look = getOllLook();
+  const result = analyzeOll(facelets, { look });
   const prog = document.getElementById("oll-progress");
-  prog.innerHTML = [
-    { id: "1", label: "Cross", done: result.crossDone },
-    { id: "2", label: "Finish", done: result.complete },
-  ]
+  const steps =
+    look === "cross"
+      ? [{ id: "1", label: "Cross", done: result.crossDone || result.complete }]
+      : [
+          { id: "1", label: "Cross", done: result.crossDone || result.complete },
+          { id: "2", label: "Corners", done: result.complete },
+        ];
+  prog.innerHTML = steps
     .map(
       (s) =>
         `<div class="f2l-slot ${s.done ? "is-done" : ""}" title="${s.label}">
@@ -998,6 +1009,17 @@ function refreshOll() {
     card.hidden = true;
     lastOllAlg = "";
     stickyOllHint = null;
+    const titleEl = document.getElementById("oll-solved-title");
+    const copyEl = document.getElementById("oll-solved-copy");
+    if (titleEl) {
+      titleEl.textContent = look === "cross" ? "Look 1 done — yellow cross." : "Look 2 done — yellow face.";
+    }
+    if (copyEl) {
+      copyEl.textContent =
+        look === "cross"
+          ? "Again / Next for another shape, or switch to Look 2 for corners."
+          : "Again = same case · Next OLL = next corner case · or open PLL.";
+    }
     return;
   }
 
@@ -1025,12 +1047,13 @@ function refreshOll() {
 
   solvedEl.hidden = true;
   card.hidden = false;
+  const drill = getOllDrillInfo();
   const stageLabel =
-    stage === "cross"
-      ? `Step 1 · Cross · drill ${getOllDrillInfo().name}`
+    look === "cross"
+      ? `Look 1 · Cross · ${drill.name}`
       : stage === "finish"
-        ? `Step 2 · Finish · drill ${getOllDrillInfo().name}`
-        : `OLL · ${getOllDrillInfo().name}`;
+        ? `Look 2 · Corners · ${drill.name}`
+        : `Look 2 · ${drill.name}`;
   document.getElementById("oll-hint-kicker").textContent = stageLabel;
   document.getElementById("oll-hint-title").textContent = h.title;
   setHintDiagram(document.getElementById("oll-hint-diagram"), h.diagram);
@@ -1135,6 +1158,15 @@ function buildOllTips() {
   ).join("");
 }
 
+function syncOllLookChrome() {
+  const look = getOllLook();
+  document.querySelectorAll("[data-oll-look]").forEach((btn) => {
+    const on = btn.dataset.ollLook === look;
+    btn.classList.toggle("is-active", on);
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+}
+
 
 function buildFbTips() {
   const el = document.getElementById("fb-tips");
@@ -1237,15 +1269,20 @@ function setPanelCopy(mode) {
     btnHint.textContent = "F2L hint";
   } else if (mode === "oll") {
     const d = getOllDrillInfo();
-    title.textContent = "2-look OLL — 2 algs";
-    blurb.innerHTML = `Now <strong>${d.name}</strong> · ${d.index + 1}/${d.total}. Cross = <code class="inline-alg">F R U R' U' F'</code> · Finish = Sune. <strong>Again</strong> / <strong>Next OLL</strong>. Reference: <a class="ext-link" href="https://www.youtube.com/watch?v=x6EoaxxbImI" target="_blank" rel="noopener">CFOP Cubing OLL</a>.`;
+    const look = d.look;
+    title.textContent = look === "cross" ? "2-look OLL — look 1 · 3 algs" : "2-look OLL — look 2 · 7 algs";
+    blurb.innerHTML =
+      look === "cross"
+        ? `Now <strong>${d.name}</strong> · ${d.index + 1}/${d.total}. Only the yellow cross (line / L / dot). Switch to <strong>Look 2</strong> for the 7 corner algs.`
+        : `Now <strong>${d.name}</strong> · ${d.index + 1}/${d.total}. Yellow cross is already there — one of 7 corner algs. <strong>Again</strong> / <strong>Next OLL</strong>. Switch to Look 1 if you want line / L / dot. From <a class="ext-link" href="https://www.cube.academy/2-look-oll-algs" target="_blank" rel="noopener">CubeHead 2-look OLL</a>.`;
     btnOll.hidden = false;
     btnOllAgain.hidden = false;
     btnHint.textContent = "OLL hint";
+    syncOllLookChrome();
   } else if (mode === "pll") {
     const d = getPllDrillInfo();
-    title.textContent = "2-look PLL — case order";
-    blurb.innerHTML = `Practice in order (now <strong>${d.name}</strong> · ${d.index + 1}/${d.total}). <strong>Again</strong> = same case · <strong>Next PLL</strong> = next in the list. T-perm + U-perm only.`;
+    title.textContent = "2-look PLL — 6 algs";
+    blurb.innerHTML = `Now <strong>${d.name}</strong> · ${d.index + 1}/${d.total}. Corners = T or Y · Edges = Ua / Ub / H / Z. <strong>PLL hint</strong> lights the next move — including <strong>M / M' / M2</strong> for H and Z. <strong>Again</strong> / <strong>Next PLL</strong>. From <a class="ext-link" href="https://www.cube.academy/2-look-pll-algs" target="_blank" rel="noopener">CubeHead 2-look PLL</a>.`;
     btnPll.hidden = false;
     btnPllAgain.hidden = false;
     btnHint.textContent = "PLL hint";
@@ -1308,6 +1345,28 @@ function flashMovePad(move) {
   void btn.offsetWidth;
   btn.classList.add("is-flash");
   window.setTimeout(() => btn.classList.remove("is-flash"), 280);
+}
+
+function firstRemainingMove(alg) {
+  return (
+    String(alg || "")
+      .trim()
+      .split(/\s+/)
+      .find((t) => t && !t.includes("…")) || ""
+  );
+}
+
+/** PLL/OLL/LSE hint: light the next pad button (M / M' / M2 for H and Z). */
+function flashHintedMove(alg) {
+  const move = firstRemainingMove(alg);
+  if (!move) return;
+  if (/^[MSE]/i.test(move)) {
+    const sliceRow = document.getElementById("move-row-slice");
+    if (sliceRow) sliceRow.hidden = false;
+    if (movePad.hidden) setMovePadVisible(true, { persist: false });
+  }
+  flashMovePad(move);
+  flashFlickToast(move);
 }
 
 function doAlg(alg) {
@@ -1413,16 +1472,18 @@ function undoLastMove() {
   updateMoveTrace();
 }
 
-function setMovePadVisible(visible) {
+function setMovePadVisible(visible, { persist = true } = {}) {
   stageMain.classList.toggle("move-pad-hidden", !visible);
   movePad.hidden = !visible;
   btnTogglePad.setAttribute("aria-pressed", visible ? "true" : "false");
   btnTogglePad.textContent = visible ? "Hide moves" : "Show moves";
-  try {
-    const key = isCompactLayout() ? PHONE_PAD_KEY : MOVE_PAD_KEY;
-    localStorage.setItem(key, visible ? "1" : "0");
-  } catch {
-    /* ignore */
+  if (persist) {
+    try {
+      const key = isCompactLayout() ? PHONE_PAD_KEY : MOVE_PAD_KEY;
+      localStorage.setItem(key, visible ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
   }
   // Give the cube more room after the pad collapses
   requestAnimationFrame(() => erno?.resize());
@@ -1547,6 +1608,25 @@ document.getElementById("btn-oll-case").addEventListener("click", () => {
   setPanelCopy("oll");
 });
 
+document.querySelectorAll("[data-oll-look]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const next = btn.dataset.ollLook;
+    if (!next || next === getOllLook()) return;
+    setOllLook(next);
+    try {
+      localStorage.setItem(OLL_LOOK_KEY, next);
+    } catch {
+      /* ignore */
+    }
+    stickyOllHint = null;
+    const draft = solvedFacelets();
+    const alg = scrambleOll(draft, "again");
+    playScrambleAlg(alg);
+    setPanelCopy("oll");
+    refreshOll();
+  });
+});
+
 document.getElementById("btn-pll-again").addEventListener("click", () => {
   const draft = solvedFacelets();
   const alg = scramblePll(draft, "again");
@@ -1644,6 +1724,7 @@ document.getElementById("btn-hint").addEventListener("click", () => {
     refreshPll();
     document.getElementById("pll-hint-card").hidden = false;
     document.getElementById("pll-hint-card").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    flashHintedMove(lastPllAlg);
     return;
   }
   if (appMode === "fb") {
@@ -1718,6 +1799,7 @@ document.querySelectorAll(".mode-tab").forEach((tab) => {
     });
     const mode = tab.dataset.mode;
     appMode = mode;
+    syncSlicePad();
     Object.entries(panels).forEach(([key, el]) => {
       el.hidden = key !== mode;
     });
@@ -1876,6 +1958,7 @@ const KEY_MOVES = {
   n: "B'",
   y: "y",
   m: "M",
+  ",": "M2",
 };
 
 window.addEventListener("keydown", (e) => {
@@ -1926,6 +2009,13 @@ try {
 }
 
 setHintsOpen(isCompactLayout());
+
+try {
+  const savedLook = localStorage.getItem(OLL_LOOK_KEY);
+  if (savedLook === "cross" || savedLook === "corners") setOllLook(savedLook);
+} catch {
+  /* default look 2 */
+}
 
 buildPalette();
 buildCrossTips();

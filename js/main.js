@@ -9,7 +9,7 @@ import {
   solvedFacelets,
 } from "./cube.js";
 import { consumeAlgMove, initAlgProgress, restoreAlgMove } from "./alg-progress.js";
-import { createErnoCube } from "./erno-view.js?v=flick1";
+import { createErnoCube } from "./erno-view.js?v=boy1";
 import { analyzeCross, CROSS_TIPS, scrambleCross } from "./cross-trainer.js";
 import { analyzeF2lDrill, countSlotsSolved, F2L_TIPS, getF2lDrillInfo, popBaselineIds, poppedSolvedSlots, scrambleF2L, shouldFlashPop, solvedSlotIds, stableSolvedSlotIds } from "./f2l-trainer.js?v=conn1";
 import { renderCaseDiagram } from "./case-diagram.js";
@@ -166,8 +166,8 @@ let flickToastTimer = 0;
 const CENTER_COLOR = {
   U: "yellow",
   D: "white",
-  F: "green",
-  B: "blue",
+  F: "blue",
+  B: "green",
   L: "orange",
   R: "red",
 };

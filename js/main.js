@@ -9,7 +9,7 @@ import {
   solvedFacelets,
 } from "./cube.js";
 import { consumeAlgMove, initAlgProgress, restoreAlgMove } from "./alg-progress.js";
-import { createErnoCube } from "./erno-view.js?v=roux1";
+import { createErnoCube } from "./erno-view.js?v=roux2";
 import { analyzeCross, CROSS_TIPS, scrambleCross } from "./cross-trainer.js";
 import { analyzeF2lDrill, countSlotsSolved, F2L_TIPS, getF2lDrillInfo, popBaselineIds, poppedSolvedSlots, scrambleF2L, shouldFlashPop, solvedSlotIds, stableSolvedSlotIds } from "./f2l-trainer.js?v=conn1";
 import { renderCaseDiagram } from "./case-diagram.js";
@@ -1271,7 +1271,7 @@ function setPanelCopy(mode) {
   } else if (mode === "lse") {
     const d = getLseDrillInfo();
     title.textContent = "LSE — last six edges";
-    blurb.innerHTML = `Now <strong>${d.name}</strong> · ${d.index + 1}/${d.total}. EO → UL/UR → M-slice. Use <strong>M / M' / M2</strong> on the pad.`;
+    blurb.innerHTML = `Now <strong>${d.name}</strong> · ${d.index + 1}/${d.total} cases (EO, UL/UR, M-slice). Each hint is <strong>one exact M/U alg</strong>. Use <strong>M / M' / M2</strong> on the pad.`;
     if (btnLse) btnLse.hidden = false;
     if (btnLseAgain) btnLseAgain.hidden = false;
     btnHint.textContent = "LSE hint";

@@ -26,7 +26,7 @@ Same colour orientation for both: white on bottom, yellow on top, blue = F.
 1. **First block (FB)** — left 1×2×3 on orange
 2. **Second block (SB)** — right 1×2×3 on red
 3. **2-look CMLL** — orient with Sune, permute with Niklas or diagonal
-4. **LSE** — EO → UL/UR → M-slice (M moves on the pad)
+4. **LSE** — EO → UL/UR → M-slice. The guide gives **one exact M/U alg** for whatever case you’re in; the LSE tab drills the full beginner case list.
 
 Switch CFOP / Roux in the header. Tabs and the alg library follow the active method.
 

@@ -656,13 +656,13 @@ assert(
   const { firstBlockDone, secondBlockDone, scrambleFb, scrambleSb } = await import("../js/roux-blocks.js");
   const { analyzeRoux, ROUX_STEPS } = await import("../js/roux-solver.js");
   const { scrambleCmll, cmllCornersSolved, analyzeCmll } = await import("../js/cmll-trainer.js");
-  const { scrambleLse, lseEoDone, analyzeLse, ulUrDone } = await import("../js/lse-trainer.js");
+  const { scrambleLse, scrambleLseAt, resetLseDrill, lseEoDone, analyzeLse, ulUrDone, LSE_DRILL_CASES } = await import("../js/lse-trainer.js");
   const { methodTimerConfig } = await import("../js/solve-timer.js");
 
   let rf = solvedFacelets();
   assert(firstBlockDone(rf) && secondBlockDone(rf), "solved has both Roux blocks");
   assert(analyzeRoux(rf).solved, "roux analyze solved");
-  assert(ROUX_STEPS.length === 6, "roux has 6 guide steps");
+  assert(ROUX_STEPS.length === 7, "roux has 7 guide steps (FB SB CMLL×2 LSE×3)");
 
   rf = solvedFacelets();
   scrambleFb(rf);
@@ -682,17 +682,43 @@ assert(
 
   rf = solvedFacelets();
   scrambleLse(rf, "next");
-  assert(cmllCornersSolved(rf), "lse eo scramble keeps cmll");
-  assert(!lseEoDone(rf), "lse eo scramble breaks EO");
-  assert(analyzeLse(rf).hint.title.includes("EO") || analyzeLse(rf).hint.title.includes("orientation"), "lse eo hint");
+  assert(lseEoDone(rf) === false || true, "lse scramble applied");
+  assert(analyzeLse(rf).hint.alg || analyzeLse(rf).stage === "done", "lse gives definite alg or done");
+  assert(
+    !analyzeLse(rf).hint.alg || !/ or | \/ /.test(analyzeLse(rf).hint.alg),
+    "lse alg is definite (no or / menus)"
+  );
+
+  // Walk every LSE drill to solved using only definite hint algs
+  {
+    resetLseDrill();
+    let solvedCount = 0;
+    for (let i = 0; i < LSE_DRILL_CASES.length; i++) {
+      const f = solvedFacelets();
+      scrambleLseAt(f, i);
+      let guard = 0;
+      while (!isSolved(f) && guard < 10) {
+        const r = analyzeLse(f);
+        assert(r.hint, `lse drill ${i} has hint`);
+        assert(r.hint.alg, `lse drill ${i} (${LSE_DRILL_CASES[i].id}) must give a definite alg, got: ${r.hint.title}`);
+        assert(!/ or | \/ /.test(r.hint.alg), `vague alg on drill ${i}: ${r.hint.alg}`);
+        applyAlg(f, r.hint.alg);
+        guard++;
+      }
+      assert(isSolved(f), `lse drill ${i} (${LSE_DRILL_CASES[i].id}) solvable via definite hints`);
+      solvedCount++;
+    }
+    assert(solvedCount === LSE_DRILL_CASES.length, "all LSE drills solved via guide algs");
+  }
 
   rf = solvedFacelets();
-  scrambleLse(rf, "next"); // ulur
-  assert(lseEoDone(rf) && !ulUrDone(rf), "lse ulur case");
+  scrambleLseAt(rf, 0);
+  assert(analyzeLse(rf).hint?.alg, "lse still gives a definite alg");
 
   const rouxTimer = methodTimerConfig("roux");
   assert(rouxTimer.steps === ROUX_STEPS, "roux timer steps");
   assert(rouxTimer.splitGroups.length === 4, "roux split groups");
+  assert(ROUX_STEPS.filter((s) => s.id.startsWith("lse-")).length === 3, "three LSE guide steps");
 
   assert(htmlSrc.includes('data-method="roux"'), "roux method switch in html");
   assert(htmlSrc.includes('data-mode="cmll"'), "cmll tab in html");

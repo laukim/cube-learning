@@ -7,7 +7,7 @@
  * Flick the sticker you mean — that face turns.
  */
 
-import { FLICK_MIN_PX, ORBIT_SPEED, TAP_PX } from "./erno-ux.js?v=2look3";
+import { FLICK_MIN_PX, ORBIT_SPEED, TAP_PX } from "./erno-ux.js?v=2look4";
 
 function moveToErno(move) {
   const m = String(move).trim();
@@ -370,9 +370,13 @@ export function createErnoCube(container, hooks) {
       if (s) cube.twist(s);
     },
     /** Cube-space alg — not remapped by camera orbit. */
-    twistAlg(alg) {
+    twistAlg(alg, { instant = false } = {}) {
       const s = algToErno(alg);
-      if (s) cube.twist(s);
+      if (!s) return;
+      const prev = cube.twistDuration;
+      if (instant) cube.twistDuration = 0;
+      cube.twist(s);
+      if (instant) cube.twistDuration = prev;
     },
     shuffle(n = 25) {
       cube.shuffle(n);

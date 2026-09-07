@@ -121,19 +121,28 @@ export function scrambleLastLayer(facelets, count = 12) {
   return facelets;
 }
 
-/** Full-cube scramble (all layers). Returns the alg string applied. */
-export function scrambleCube(facelets, moves = 25) {
+/** Full-cube scramble (WCA-style: no same face twice, no three on one axis). */
+export function scrambleCube(facelets, moves = 20) {
   const faces = ["U", "D", "R", "L", "F", "B"];
   const suffixes = ["", "'", "2"];
+  const AXIS = { U: 0, D: 0, R: 1, L: 1, F: 2, B: 2 };
   const parts = [];
   let lastFace = "";
+  let lastAxis = -1;
+  let twoOnAxis = false;
   for (let i = 0; i < moves; i++) {
     let face = faces[Math.floor(Math.random() * faces.length)];
-    while (face === lastFace) face = faces[Math.floor(Math.random() * faces.length)];
+    let ax = AXIS[face];
+    while (face === lastFace || (twoOnAxis && ax === lastAxis)) {
+      face = faces[Math.floor(Math.random() * faces.length)];
+      ax = AXIS[face];
+    }
     const move = face + suffixes[Math.floor(Math.random() * suffixes.length)];
     applyMove(facelets, move);
     parts.push(move);
+    twoOnAxis = ax === lastAxis;
     lastFace = face;
+    lastAxis = ax;
   }
   return parts.join(" ");
 }

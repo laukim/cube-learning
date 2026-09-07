@@ -1,4 +1,4 @@
-import { toAtomics } from "./alg-progress.js?v=2look3";
+import { toAtomics } from "./alg-progress.js?v=2look4";
 
 /** Longest first so T-perm is not counted as a righty + leftovers. */
 export const COACH_ALGS = [

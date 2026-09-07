@@ -8,8 +8,8 @@ import {
   setFacelet,
   solvedFacelets,
 } from "./cube.js";
-import { consumeAlgMove, initAlgProgress, restoreAlgMove } from "./alg-progress.js?v=2look3";
-import { createErnoCube } from "./erno-view.js?v=2look3";
+import { consumeAlgMove, initAlgProgress, restoreAlgMove } from "./alg-progress.js?v=2look4";
+import { createErnoCube } from "./erno-view.js?v=2look4";
 import { analyzeCross, CROSS_TIPS, scrambleCross } from "./cross-trainer.js";
 import { analyzeF2lDrill, countSlotsSolved, F2L_TIPS, getF2lDrillInfo, popBaselineIds, poppedSolvedSlots, scrambleF2L, shouldFlashPop, solvedSlotIds, stableSolvedSlotIds } from "./f2l-trainer.js?v=conn1";
 import { renderCaseDiagram } from "./case-diagram.js";
@@ -448,6 +448,33 @@ function markCopyButton(btn, ok) {
   window.setTimeout(() => {
     btn.textContent = prev;
   }, 2200);
+}
+
+function paintScrambleCard(alg) {
+  const card = document.getElementById("scramble-card");
+  const kicker = document.getElementById("scramble-kicker");
+  const el = document.getElementById("scramble-alg");
+  if (!card || !el) return;
+  const shown = String(alg || "").trim();
+  card.classList.toggle("has-scramble", Boolean(shown));
+  if (kicker) {
+    kicker.textContent = shown
+      ? "Do this on your cube · white D · blue F · tap for a new one"
+      : "Real cube";
+  }
+  el.textContent = shown || "Tap for a scramble";
+}
+
+function openGuideTab() {
+  if (appMode === "guide") return;
+  document.getElementById("tab-guide")?.click();
+}
+
+function issueFullScramble() {
+  openGuideTab();
+  const draft = solvedFacelets();
+  const alg = scrambleCube(draft);
+  playScrambleAlg(alg, { timeSolve: true, instant: true });
 }
 
 function timerStatusText(now) {
@@ -1379,6 +1406,7 @@ function resetCube() {
   undoingMove = false;
   clearMoveHistory();
   timedScramble = "";
+  paintScrambleCard("");
   solveTrace = [];
   timedUndos = 0;
   lastSolveReport = "";
@@ -1397,7 +1425,7 @@ function resetCube() {
 
 let scrambleGen = 0;
 
-function playScrambleAlg(alg, { timeSolve = false } = {}) {
+function playScrambleAlg(alg, { timeSolve = false, instant = false } = {}) {
   const gen = ++scrambleGen;
   facelets = solvedFacelets();
   if (alg) applyAlg(facelets, alg);
@@ -1407,6 +1435,7 @@ function playScrambleAlg(alg, { timeSolve = false } = {}) {
   stickyPllHint = null;
   stickyCmllHint = null;
   timedScramble = timeSolve ? alg || "" : "";
+  paintScrambleCard(timeSolve ? alg : "");
   solveTrace = [];
   timedUndos = 0;
   lastSolveReport = "";
@@ -1428,7 +1457,7 @@ function playScrambleAlg(alg, { timeSolve = false } = {}) {
     erno.setSuppressOrbitDetect(true);
     updateMoveTrace();
     // Scramble is cube-space; temporarily clear viewer yaw (fresh mount is 0)
-    erno.twistAlg(alg);
+    erno.twistAlg(alg, { instant: instant || timeSolve });
     erno.whenIdle(() => {
       if (gen !== scrambleGen) return;
       erno.clearHistory();
@@ -1555,9 +1584,10 @@ document.getElementById("btn-reset").addEventListener("click", () => {
 });
 
 document.getElementById("btn-scramble").addEventListener("click", () => {
-  const draft = solvedFacelets();
-  const alg = scrambleCube(draft);
-  playScrambleAlg(alg, { timeSolve: true });
+  issueFullScramble();
+});
+document.getElementById("btn-scramble-card")?.addEventListener("click", () => {
+  issueFullScramble();
 });
 
 document.getElementById("btn-cross-case").addEventListener("click", () => {

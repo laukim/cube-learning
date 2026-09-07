@@ -47,6 +47,22 @@ let f = solvedFacelets();
 assert(analyze(f).solved, "solved start");
 
 f = solvedFacelets();
+const scrambleAlg = scrambleCube(f);
+assert(!isSolved(f), "default scramble messes the cube");
+const scrambleToks = scrambleAlg.split(" ");
+assert(scrambleToks.length === 20, "WCA-length 20-move scramble");
+const AXIS = { U: 0, D: 0, R: 1, L: 1, F: 2, B: 2 };
+for (let i = 1; i < scrambleToks.length; i++) {
+  assert(scrambleToks[i][0] !== scrambleToks[i - 1][0], "scramble never repeats a face");
+  if (i >= 2) {
+    const a0 = AXIS[scrambleToks[i - 2][0]];
+    const a1 = AXIS[scrambleToks[i - 1][0]];
+    const a2 = AXIS[scrambleToks[i][0]];
+    if (a0 === a1) assert(a2 !== a1, "scramble does not put three moves on one axis");
+  }
+}
+
+f = solvedFacelets();
 scrambleCube(f, 30);
 const a = analyze(f);
 assert(!a.solved, "scrambled");
@@ -703,6 +719,7 @@ assert(
   assert(htmlSrc.includes('data-mode="cmll"'), "cmll tab in html");
   assert(htmlSrc.includes('data-move="M"'), "M move on pad");
   assert(htmlSrc.includes('data-oll-look="corners"'), "OLL look 2 switch in html");
+  assert(htmlSrc.includes('id="btn-scramble-card"'), "real-cube scramble tap in html");
 }
 
 assert(OLL_DRILL_CASES.length === 10, "2-look OLL is CubeHead’s 10 cases");

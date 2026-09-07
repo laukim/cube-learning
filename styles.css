@@ -449,6 +449,51 @@ body {
   background: rgba(255, 255, 255, 0.02);
 }
 
+.scramble-card {
+  width: 100%;
+}
+
+.scramble-card-hit {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.28rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.55rem 0.75rem 0.65rem;
+  border-radius: 14px;
+  border: 1px dashed rgba(232, 244, 236, 0.22);
+  background: rgba(8, 14, 12, 0.45);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.scramble-card.has-scramble .scramble-card-hit {
+  border-style: solid;
+  border-color: rgba(255, 200, 87, 0.4);
+  background: rgba(255, 200, 87, 0.06);
+}
+
+.scramble-card-kicker {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.scramble-card-alg {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: clamp(1.05rem, 3.2vw, 1.35rem);
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1.45;
+  color: var(--ink);
+  word-break: break-word;
+}
+
 .solve-timer[data-phase="armed"] {
   border-color: rgba(255, 200, 87, 0.35);
 }
@@ -1639,7 +1684,9 @@ kbd {
   .stage-dock .btn,
   .stage-dock .solve-timer,
   .stage-dock .solve-timer-clock,
-  .stage-dock .f2l-case-badge {
+  .stage-dock .f2l-case-badge,
+  .stage-dock .scramble-card,
+  .stage-dock .scramble-card-hit {
     pointer-events: auto;
   }
 
@@ -1658,6 +1705,19 @@ kbd {
 
   .solve-timer-clock {
     font-size: 1.15rem;
+  }
+
+  .scramble-card {
+    order: -1;
+    flex: 1 0 100%;
+  }
+
+  .scramble-card-hit {
+    padding: 0.4rem 0.55rem 0.45rem;
+  }
+
+  .scramble-card-alg {
+    font-size: 1.12rem;
   }
 
   .f2l-case-badge {

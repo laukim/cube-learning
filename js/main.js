@@ -8,8 +8,8 @@ import {
   setFacelet,
   solvedFacelets,
 } from "./cube.js";
-import { consumeAlgMove, initAlgProgress, restoreAlgMove } from "./alg-progress.js?v=2look4";
-import { createErnoCube } from "./erno-view.js?v=2look4";
+import { consumeAlgMove, initAlgProgress, restoreAlgMove } from "./alg-progress.js?v=2look5";
+import { createErnoCube } from "./erno-view.js?v=2look5";
 import { analyzeCross, CROSS_TIPS, scrambleCross } from "./cross-trainer.js";
 import { analyzeF2lDrill, countSlotsSolved, F2L_TIPS, getF2lDrillInfo, popBaselineIds, poppedSolvedSlots, scrambleF2L, shouldFlashPop, solvedSlotIds, stableSolvedSlotIds } from "./f2l-trainer.js?v=conn1";
 import { renderCaseDiagram } from "./case-diagram.js";
@@ -450,6 +450,15 @@ function markCopyButton(btn, ok) {
   }, 2200);
 }
 
+function syncScrambleCardVisibility() {
+  const card = document.getElementById("scramble-card");
+  if (!card) return;
+  // Hide once the solve starts so the dock scramble doesn't cover the cube.
+  const hide = solveTimer.phase === "running" || solveTimer.phase === "done";
+  card.hidden = hide;
+  card.setAttribute("aria-hidden", hide ? "true" : "false");
+}
+
 function paintScrambleCard(alg) {
   const card = document.getElementById("scramble-card");
   const kicker = document.getElementById("scramble-kicker");
@@ -463,6 +472,7 @@ function paintScrambleCard(alg) {
       : "Real cube";
   }
   el.textContent = shown || "Tap for a scramble";
+  syncScrambleCardVisibility();
 }
 
 function openGuideTab() {
@@ -515,6 +525,7 @@ function paintTimer(now = performance.now()) {
   solveTimerClock.textContent = formatClock(elapsedMs(solveTimer, now));
   solveTimerStatus.textContent = timerStatusText(now);
   paintTimerSplits(now);
+  syncScrambleCardVisibility();
 }
 
 function markF2lPairProgress() {

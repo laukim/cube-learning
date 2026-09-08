@@ -453,6 +453,10 @@ body {
   width: 100%;
 }
 
+.scramble-card[hidden] {
+  display: none !important;
+}
+
 .scramble-card-hit {
   appearance: none;
   display: flex;

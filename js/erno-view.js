@@ -7,7 +7,7 @@
  * Flick the sticker you mean — that face turns.
  */
 
-import { FLICK_MIN_PX, ORBIT_SPEED, TAP_PX } from "./erno-ux.js?v=2look4";
+import { FLICK_MIN_PX, ORBIT_SPEED, TAP_PX } from "./erno-ux.js?v=2look5";
 
 function moveToErno(move) {
   const m = String(move).trim();

@@ -720,6 +720,11 @@ assert(
   assert(htmlSrc.includes('data-move="M"'), "M move on pad");
   assert(htmlSrc.includes('data-oll-look="corners"'), "OLL look 2 switch in html");
   assert(htmlSrc.includes('id="btn-scramble-card"'), "real-cube scramble tap in html");
+  assert(
+    mainSrc.includes("syncScrambleCardVisibility") &&
+      mainSrc.includes('solveTimer.phase === "running"'),
+    "real-cube scramble hides once the timed solve starts"
+  );
 }
 
 assert(OLL_DRILL_CASES.length === 10, "2-look OLL is CubeHead’s 10 cases");

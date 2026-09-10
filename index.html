@@ -12,7 +12,7 @@
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=2look5" />
+    <link rel="stylesheet" href="styles.css?v=timer1" />
     <link rel="stylesheet" href="vendor/erno-cube.css?v=2look5" />
   </head>
   <body class="hints-open">
@@ -57,6 +57,16 @@
             <p class="orbit-hint">
               Flick a face to turn · drag empty space around the cube to look
             </p>
+          </div>
+
+          <div class="practice-timer" id="practice-timer" hidden>
+            <p class="practice-scramble-kicker">Scramble</p>
+            <code class="practice-scramble" id="practice-scramble">—</code>
+            <button type="button" class="practice-clock" id="practice-clock" data-phase="idle" aria-label="Start timer">
+              <span class="practice-clock-value" id="practice-clock-value">0.00</span>
+            </button>
+            <p class="practice-status" id="practice-status">Space or tap to start</p>
+            <button type="button" class="btn btn-ghost" id="timer-new-scramble">New scramble</button>
           </div>
 
           <div class="move-pad" id="move-pad" aria-label="Face turns">
@@ -177,6 +187,9 @@
         <div class="mode-tabs" role="tablist" aria-label="Practice mode">
           <button type="button" class="mode-tab is-active" role="tab" aria-selected="true" data-mode="guide" id="tab-guide">
             Guide
+          </button>
+          <button type="button" class="mode-tab" role="tab" aria-selected="false" data-mode="timer" id="tab-timer">
+            Timer
           </button>
           <button type="button" class="mode-tab" role="tab" aria-selected="false" data-mode="cross" id="tab-cross" data-methods="cfop">
             Cross
@@ -470,6 +483,26 @@
           </div>
 
           <div class="f2l-tips" id="lse-tips"></div>
+        </div>
+
+        <div class="panel-body" id="panel-timer" data-panel="timer" hidden>
+          <div class="timer-toolbar">
+            <label class="timer-inspect">
+              Inspection
+              <select id="timer-inspect" aria-label="Inspection time">
+                <option value="0">0s</option>
+                <option value="3">3s</option>
+                <option value="5">5s</option>
+                <option value="10">10s</option>
+                <option value="15">15s</option>
+              </select>
+            </label>
+            <button type="button" class="btn btn-ghost btn-small" id="timer-clear" disabled>Clear times</button>
+          </div>
+          <div class="timer-stats" id="timer-stats"></div>
+          <div class="timer-chart" id="timer-chart" aria-live="polite"></div>
+          <h2 class="timer-times-title">Times</h2>
+          <div class="timer-times" id="timer-times"></div>
         </div>
 
         <div class="panel-body" id="panel-match" data-panel="match" hidden>

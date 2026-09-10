@@ -60,6 +60,7 @@ import {
   SPLIT_SHORT,
   startTimer,
 } from "./solve-timer.js";
+import { initPracticeTimer } from "./practice-timer.js";
 
 
 function activeSteps() {
@@ -160,7 +161,7 @@ let facelets = solvedFacelets();
 let paintColor = "white";
 let netDraft = null;
 let lastHintAlg = "";
-let appMode = "guide"; // guide | cross | f2l | oll | pll | fb | sb | cmll | lse | match | algs
+let appMode = "guide"; // guide | timer | cross | f2l | oll | pll | fb | sb | cmll | lse | match | algs
 let solveMethod = "cfop"; // cfop | roux
 let lastF2lAlg = "";
 let lastCrossAlg = "";
@@ -220,7 +221,13 @@ function setHintsOpen(open) {
   if (guidePanel) guidePanel.setAttribute("aria-hidden", open ? "false" : "true");
   if (btnHints) {
     btnHints.setAttribute("aria-pressed", open ? "true" : "false");
-    btnHints.textContent = open ? "Hide guide" : "Guide";
+    btnHints.textContent = open
+      ? appMode === "timer"
+        ? "Hide times"
+        : "Hide guide"
+      : appMode === "timer"
+        ? "Times"
+        : "Guide";
   }
 }
 
@@ -1274,6 +1281,7 @@ function setPanelCopy(mode) {
   btnOllAgain.hidden = true;
   btnPll.hidden = true;
   btnPllAgain.hidden = true;
+  btnHint.hidden = false;
 
   const btnFb = document.getElementById("btn-fb-case");
   const btnSb = document.getElementById("btn-sb-case");
@@ -1288,7 +1296,14 @@ function setPanelCopy(mode) {
   if (btnLse) btnLse.hidden = true;
   if (btnLseAgain) btnLseAgain.hidden = true;
 
-  if (mode === "cross") {
+  if (mode === "timer") {
+    title.textContent = "Timer";
+    blurb.innerHTML =
+      "Space or tap the clock to start and stop. Times stay on this device. The chart updates after every solve.";
+    btnHint.hidden = true;
+    const sheetLabel = document.querySelector(".hints-sheet-label");
+    if (sheetLabel) sheetLabel.textContent = "Timer";
+  } else if (mode === "cross") {
     title.textContent = "White cross drill";
     blurb.innerHTML =
       "White on the bottom. Build the <strong>+</strong> — four edges, each side colour matching its centre. Tap <strong>New cross</strong>, then solve one edge at a time with <strong>Cross hint</strong>.";
@@ -1363,6 +1378,9 @@ function setPanelCopy(mode) {
     btnScramble.hidden = false;
     btnHint.textContent = "Next hint";
   }
+
+  const sheetLabel = document.querySelector(".hints-sheet-label");
+  if (sheetLabel && mode !== "timer") sheetLabel.textContent = "Guide";
 }
 
 function render() {
@@ -1820,6 +1838,7 @@ document.getElementById("btn-pll-apply").addEventListener("click", () => {
 
 const panels = {
   guide: document.getElementById("panel-guide"),
+  timer: document.getElementById("panel-timer"),
   cross: document.getElementById("panel-cross"),
   f2l: document.getElementById("panel-f2l"),
   oll: document.getElementById("panel-oll"),
@@ -1832,6 +1851,19 @@ const panels = {
   algs: document.getElementById("panel-algs"),
 };
 
+const practiceTimerEl = document.getElementById("practice-timer");
+const practiceTimer = initPracticeTimer({
+  isActive: () => appMode === "timer",
+});
+
+function setTimerWorkspace(on) {
+  document.body.classList.toggle("timer-mode", on);
+  if (practiceTimerEl) practiceTimerEl.hidden = !on;
+  if (!on) practiceTimer.cancel();
+  if (on) practiceTimer.refresh();
+  erno?.resize();
+}
+
 document.querySelectorAll(".mode-tab").forEach((tab) => {
   tab.addEventListener("click", () => {
     document.querySelectorAll(".mode-tab").forEach((t) => {
@@ -1842,8 +1874,9 @@ document.querySelectorAll(".mode-tab").forEach((tab) => {
     appMode = mode;
     syncSlicePad();
     Object.entries(panels).forEach(([key, el]) => {
-      el.hidden = key !== mode;
+      if (el) el.hidden = key !== mode;
     });
+    setTimerWorkspace(mode === "timer");
     setPanelCopy(mode);
     if (mode === "cross") refreshCross();
     if (mode === "f2l") refreshF2L();
@@ -1855,6 +1888,7 @@ document.querySelectorAll(".mode-tab").forEach((tab) => {
     if (mode === "lse") refreshLse();
     if (mode === "guide") refreshGuide();
     if (mode === "algs") buildAlgList();
+    if (isCompactLayout()) setHintsOpen(document.body.classList.contains("hints-open"));
   });
 });
 
@@ -2003,7 +2037,11 @@ const KEY_MOVES = {
 };
 
 window.addEventListener("keydown", (e) => {
-  if (e.target?.matches?.("input, textarea")) return;
+  if (e.target?.matches?.("input, textarea, select")) return;
+  if (appMode === "timer") {
+    if (e.code === "Space") e.preventDefault();
+    return;
+  }
   // Holding a key must not spam turns — that looks like a snap / no animation
   if (e.repeat) return;
   const key = e.key.toLowerCase();

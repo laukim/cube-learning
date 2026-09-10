@@ -821,4 +821,42 @@ applyAlg(zCube, invertAlg(PLL_Z.alg));
 assert(analyzePll(zCube).hint.alg.includes(PLL_Z.alg), "Z-perm case hints Z");
 assert(toAtomics(analyzePll(zCube).hint.alg)[0] === "M'", "Z-perm remaining starts with M'");
 
+const {
+  addPracticeTime,
+  averageOf,
+  clearPracticeTimes,
+  computeStats,
+  deletePracticeTime,
+  loadPracticeTimes,
+  memoryStore,
+  renderProgressChart,
+  rollingAverages,
+} = await import("../js/practice-timer.js");
+
+const store = memoryStore();
+assert(loadPracticeTimes(store).length === 0, "empty practice store");
+addPracticeTime({ id: "a", ms: 12000, at: 1, scramble: "R U" }, store);
+addPracticeTime({ id: "b", ms: 10000, at: 2, scramble: "U R" }, store);
+addPracticeTime({ id: "c", ms: 14000, at: 3, scramble: "F U" }, store);
+let stats = computeStats(loadPracticeTimes(store));
+assert(stats.count === 3, "three solves");
+assert(stats.best === 10000, "best single");
+assert(stats.worst === 14000, "worst single");
+assert(stats.mean === 12000, "mean of three");
+assert(stats.trimmed === 12000, "trimmed drops best and worst");
+assert(stats.ao5 == null, "ao5 needs five");
+assert(renderProgressChart(loadPracticeTimes(store)).includes("timer-chart-svg"), "chart after two+ solves");
+addPracticeTime({ id: "d", ms: 11000, at: 4 }, store);
+addPracticeTime({ id: "e", ms: 13000, at: 5 }, store);
+stats = computeStats(loadPracticeTimes(store));
+assert(Math.abs(stats.ao5 - 12000) < 0.001, "ao5 drops 10s and 14s");
+assert(averageOf([12, 10, 14, 11, 13].map((s) => s * 1000), 5) === 12000, "ao5 helper");
+const ao5s = rollingAverages([12000, 10000, 14000, 11000, 13000, 9000], 5);
+assert(ao5s[3] == null && ao5s[4] === 12000, "rolling ao5 starts at solve 5");
+deletePracticeTime("b", store);
+assert(loadPracticeTimes(store).every((r) => r.id !== "b"), "deleted time is gone");
+clearPracticeTimes(store);
+assert(loadPracticeTimes(store).length === 0, "cleared store");
+assert(renderProgressChart([]).includes("timer-chart-empty"), "empty chart copy");
+
 console.log("ALL PASS");

@@ -12,7 +12,7 @@
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=timer2" />
+    <link rel="stylesheet" href="styles.css?v=timer3" />
   </head>
   <body class="timer-page">
     <div class="ambient" aria-hidden="true"></div>
@@ -31,12 +31,13 @@
     <main class="timer-page-main">
       <section class="timer-stage" aria-label="Scramble and timer">
         <p class="practice-scramble-kicker">Scramble</p>
-        <code class="practice-scramble" id="practice-scramble">—</code>
+        <button type="button" class="practice-scramble" id="practice-scramble" title="Tap for a new scramble" aria-label="Current scramble. Tap for a new scramble.">
+          —
+        </button>
         <button type="button" class="practice-clock" id="practice-clock" data-phase="idle" aria-label="Start timer">
           <span class="practice-clock-value" id="practice-clock-value">0.00</span>
         </button>
-        <p class="practice-status" id="practice-status">Space or tap to start</p>
-        <button type="button" class="btn btn-ghost" id="timer-new-scramble">New scramble</button>
+        <p class="practice-status" id="practice-status">Space or tap to start · next scramble appears when you stop</p>
       </section>
 
       <section class="timer-side" aria-label="Solve times and progress">
@@ -65,6 +66,6 @@
       <span>Space or tap the clock</span>
     </footer>
 
-    <script type="module" src="js/timer-page.js?v=timer2"></script>
+    <script type="module" src="js/timer-page.js?v=timer3"></script>
   </body>
 </html>

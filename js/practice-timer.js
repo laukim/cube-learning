@@ -1,5 +1,5 @@
-import { randomScrambleMoves } from "./cube.js?v=timer2";
-import { formatClock } from "./solve-timer.js?v=timer2";
+import { randomScrambleMoves } from "./cube.js?v=timer3";
+import { formatClock } from "./solve-timer.js?v=timer3";
 
 export const PRACTICE_TIMES_KEY = "cube-coach-practice-times";
 export const PRACTICE_INSPECT_KEY = "cube-coach-practice-inspect";
@@ -254,13 +254,19 @@ export function renderTimesList(records) {
   }
   const items = [...records]
     .reverse()
-    .map(
-      (row, i) => `<li data-id="${escapeHtml(row.id)}">
-        <span class="timer-time-index">#${records.length - i}</span>
-        <span class="timer-time-ms">${formatClock(row.ms)}</span>
-        <button type="button" class="timer-time-delete" data-delete="${escapeHtml(row.id)}" aria-label="Delete ${formatClock(row.ms)}">×</button>
-      </li>`
-    )
+    .map((row, i) => {
+      const scramble = row.scramble
+        ? `<code class="timer-time-scramble">${escapeHtml(row.scramble)}</code>`
+        : "";
+      return `<li data-id="${escapeHtml(row.id)}">
+        <div class="timer-time-row">
+          <span class="timer-time-index">#${records.length - i}</span>
+          <span class="timer-time-ms">${formatClock(row.ms)}</span>
+          <button type="button" class="timer-time-delete" data-delete="${escapeHtml(row.id)}" aria-label="Delete ${formatClock(row.ms)}">×</button>
+        </div>
+        ${scramble}
+      </li>`;
+    })
     .join("");
   return `<ol class="timer-times-list">${items}</ol>`;
 }
@@ -302,7 +308,6 @@ export function initPracticeTimer({
   const chartEl = document.getElementById("timer-chart");
   const inspectEl = document.getElementById("timer-inspect");
   const clearBtn = document.getElementById("timer-clear");
-  const newScrambleBtn = document.getElementById("timer-new-scramble");
 
   if (!clockBtn || !clockValue) return { refresh() {}, cancel() {} };
 
@@ -337,9 +342,10 @@ export function initPracticeTimer({
     clockValue.innerHTML = `${m}<span class="practice-colon">:</span>${s}<span class="practice-centi">${centi}</span>`;
   }
 
-  function newScramble() {
+  function newScramble({ announce = false } = {}) {
     state.scramble = generatePracticeScramble();
     if (scrambleEl) scrambleEl.textContent = state.scramble;
+    if (announce) setStatus("New scramble");
   }
 
   function renderRecords() {
@@ -413,7 +419,7 @@ export function initPracticeTimer({
       addPracticeTime({ ms, at: Date.now(), scramble: state.scramble }, store);
       renderRecords();
       newScramble();
-      setStatus(`Stopped at ${formatClock(ms)}. Next scramble is ready.`);
+      setStatus(`Stopped at ${formatClock(ms)}. Scramble ready for the next solve.`);
     } else {
       paintClock(0);
       setStatus("Inspection cancelled");
@@ -431,10 +437,9 @@ export function initPracticeTimer({
     toggle();
     clockBtn.blur();
   });
-  newScrambleBtn?.addEventListener("click", () => {
+  scrambleEl?.addEventListener("click", () => {
     if (state.phase !== "idle") return;
-    newScramble();
-    setStatus("New scramble");
+    newScramble({ announce: true });
   });
   inspectEl?.addEventListener("change", () => {
     saveInspectionSeconds(inspectEl.value, store);

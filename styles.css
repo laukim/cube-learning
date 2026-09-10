@@ -1976,8 +1976,10 @@ body.timer-page .topbar {
 }
 
 .practice-scramble {
+  appearance: none;
   display: block;
   max-width: 36rem;
+  width: 100%;
   margin: 0;
   padding: 0.75rem 1rem;
   border-radius: 14px;
@@ -1989,6 +1991,15 @@ body.timer-page .topbar {
   line-height: 1.5;
   white-space: normal;
   overflow-wrap: break-word;
+  text-align: center;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.practice-scramble:hover,
+.practice-scramble:focus-visible {
+  border-color: rgba(109, 255, 176, 0.45);
+  outline: none;
 }
 
 .practice-clock {
@@ -2215,18 +2226,38 @@ body.timer-page .topbar {
 }
 
 .timer-times-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  padding: 0.5rem 0.2rem;
+  border-bottom: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-time-row {
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 0.55rem;
-  padding: 0.42rem 0.2rem;
-  border-bottom: 1px solid var(--line);
-  font-variant-numeric: tabular-nums;
 }
 
 .timer-time-index {
   color: var(--muted);
   font-size: 0.78rem;
+}
+
+.timer-time-scramble {
+  display: block;
+  margin: 0 0 0 1.5rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .timer-time-delete {

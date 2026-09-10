@@ -830,6 +830,7 @@ const {
   loadPracticeTimes,
   memoryStore,
   renderProgressChart,
+  renderTimesList,
   rollingAverages,
 } = await import("../js/practice-timer.js");
 
@@ -858,5 +859,10 @@ assert(loadPracticeTimes(store).every((r) => r.id !== "b"), "deleted time is gon
 clearPracticeTimes(store);
 assert(loadPracticeTimes(store).length === 0, "cleared store");
 assert(renderProgressChart([]).includes("timer-chart-empty"), "empty chart copy");
+assert(
+  renderTimesList([{ id: "s1", ms: 12340, at: 1, scramble: "R U R' U'" }]).includes("R U R' U'"),
+  "times list shows scramble moves"
+);
+assert(!renderTimesList([{ id: "s2", ms: 10000, at: 2, scramble: "" }]).includes("timer-time-scramble"), "blank scramble omitted");
 
 console.log("ALL PASS");

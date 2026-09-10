@@ -1,5 +1,5 @@
-import { scrambleCube, solvedFacelets } from "./cube.js";
-import { formatClock } from "./solve-timer.js";
+import { randomScrambleMoves } from "./cube.js?v=timer2";
+import { formatClock } from "./solve-timer.js?v=timer2";
 
 export const PRACTICE_TIMES_KEY = "cube-coach-practice-times";
 export const PRACTICE_INSPECT_KEY = "cube-coach-practice-inspect";
@@ -111,7 +111,7 @@ export function saveInspectionSeconds(seconds, store = browserStore()) {
 }
 
 export function generatePracticeScramble(moves = 20) {
-  return scrambleCube(solvedFacelets(), moves);
+  return randomScrambleMoves(moves);
 }
 
 export function mean(values) {
@@ -286,7 +286,7 @@ export function renderStats(stats) {
 }
 
 function isTypingTarget(el) {
-  return Boolean(el?.closest?.("a[href], button, input, select, textarea, [contenteditable], [tabindex]:not([tabindex='-1'])"));
+  return Boolean(el?.closest?.("input, select, textarea, [contenteditable=true]"));
 }
 
 export function initPracticeTimer({
@@ -314,6 +314,15 @@ export function initPracticeTimer({
     raf: 0,
     inspectTimer: 0,
   };
+
+  function setPhase(phase) {
+    state.phase = phase;
+    clockBtn.dataset.phase = phase;
+    clockBtn.setAttribute(
+      "aria-label",
+      phase === "running" ? "Stop timer" : phase === "inspecting" ? "Cancel inspection" : "Start timer"
+    );
+  }
 
   function setStatus(text) {
     if (statusEl) statusEl.textContent = text;
@@ -351,9 +360,8 @@ export function initPracticeTimer({
 
   function cancelSession() {
     cancelTimers();
-    state.phase = "idle";
+    setPhase("idle");
     state.startedAt = 0;
-    clockBtn.dataset.phase = "idle";
     paintClock(0);
     setStatus("Space or tap to start");
   }
@@ -366,9 +374,8 @@ export function initPracticeTimer({
 
   function startTiming() {
     cancelTimers();
-    state.phase = "running";
+    setPhase("running");
     state.startedAt = Date.now();
-    clockBtn.dataset.phase = "running";
     setStatus("Timing — space or tap to stop");
     tickRunning();
   }
@@ -380,9 +387,8 @@ export function initPracticeTimer({
       return;
     }
     cancelTimers();
-    state.phase = "inspecting";
+    setPhase("inspecting");
     state.inspectLeft = seconds;
-    clockBtn.dataset.phase = "inspecting";
     paintClock(seconds, true);
     setStatus(`Inspection — ${seconds}s`);
     state.inspectTimer = window.setInterval(() => {
@@ -401,8 +407,7 @@ export function initPracticeTimer({
   function stopTiming() {
     const ms = Date.now() - state.startedAt;
     cancelTimers();
-    state.phase = "idle";
-    clockBtn.dataset.phase = "idle";
+    setPhase("idle");
     if (ms > 0) {
       paintClock(ms);
       addPracticeTime({ ms, at: Date.now(), scramble: state.scramble }, store);
@@ -422,7 +427,10 @@ export function initPracticeTimer({
     else startInspection();
   }
 
-  clockBtn.addEventListener("click", toggle);
+  clockBtn.addEventListener("click", () => {
+    toggle();
+    clockBtn.blur();
+  });
   newScrambleBtn?.addEventListener("click", () => {
     if (state.phase !== "idle") return;
     newScramble();
@@ -452,13 +460,14 @@ export function initPracticeTimer({
     e.preventDefault();
   });
   document.addEventListener("keyup", (e) => {
-    if (!isActive() || e.code !== "Space") return;
+    if (!isActive() || e.repeat || e.code !== "Space") return;
     if (isTypingTarget(e.target)) return;
     e.preventDefault();
     toggle();
   });
 
   if (inspectEl) inspectEl.value = String(loadInspectionSeconds(store));
+  setPhase("idle");
   newScramble();
   paintClock(0);
   renderRecords();

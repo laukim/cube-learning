@@ -122,7 +122,7 @@ export function scrambleLastLayer(facelets, count = 12) {
 }
 
 /** Full-cube scramble (WCA-style: no same face twice, no three on one axis). */
-export function scrambleCube(facelets, moves = 20) {
+export function randomScrambleMoves(moves = 20) {
   const faces = ["U", "D", "R", "L", "F", "B"];
   const suffixes = ["", "'", "2"];
   const AXIS = { U: 0, D: 0, R: 1, L: 1, F: 2, B: 2 };
@@ -137,14 +137,18 @@ export function scrambleCube(facelets, moves = 20) {
       face = faces[Math.floor(Math.random() * faces.length)];
       ax = AXIS[face];
     }
-    const move = face + suffixes[Math.floor(Math.random() * suffixes.length)];
-    applyMove(facelets, move);
-    parts.push(move);
+    parts.push(face + suffixes[Math.floor(Math.random() * suffixes.length)]);
     twoOnAxis = ax === lastAxis;
     lastFace = face;
     lastAxis = ax;
   }
   return parts.join(" ");
+}
+
+export function scrambleCube(facelets, moves = 20) {
+  const alg = randomScrambleMoves(moves);
+  applyAlg(facelets, alg);
+  return alg;
 }
 
 export function isSolved(facelets) {

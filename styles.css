@@ -153,11 +153,36 @@ body {
   font-size: 0.92rem;
 }
 
-.method-switch {
+.site-nav {
   display: inline-flex;
   align-items: center;
   gap: 0.2rem;
   margin-left: auto;
+  padding: 0.2rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(8, 14, 12, 0.55);
+}
+
+.site-nav-link {
+  color: var(--muted);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+}
+
+.site-nav-link.is-active {
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+
+.method-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
   padding: 0.2rem;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -1892,42 +1917,53 @@ kbd {
   }
 }
 
-.practice-timer {
-  display: none;
+html:has(body.timer-page),
+body.timer-page {
+  overflow: auto;
+  height: auto;
+  min-height: 100dvh;
+}
+
+body.timer-page .topbar {
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.timer-page-main {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+  gap: clamp(1rem, 3vw, 2rem);
+  padding: 0.75rem clamp(1rem, 3vw, 2rem) 1.5rem;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+  flex: 1;
+}
+
+.timer-stage,
+.timer-side {
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) + 6px);
+  background: linear-gradient(165deg, rgba(18, 28, 24, 0.92), rgba(11, 18, 16, 0.75));
+  box-shadow: var(--shadow);
+  padding: 1.15rem 1rem 1.25rem;
+}
+
+.timer-stage {
+  display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.7rem;
-  min-height: 0;
-  height: 100%;
-  padding: 0.5rem 0.75rem 0.75rem;
+  gap: 0.75rem;
   text-align: center;
+  min-height: 28rem;
 }
 
-body.timer-mode .cube-wrap,
-body.timer-mode .move-pad,
-body.timer-mode .scramble-card,
-body.timer-mode .solve-timer,
-body.timer-mode .move-trace,
-body.timer-mode .f2l-case-badge,
-body.timer-mode .toolbar #btn-undo,
-body.timer-mode .toolbar #btn-toggle-pad,
-body.timer-mode .toolbar #btn-reset,
-body.timer-mode .toolbar #btn-scramble,
-body.timer-mode .toolbar #btn-hint {
-  display: none !important;
-}
-
-body.timer-mode .stage-dock {
-  display: none;
-}
-
-body.timer-mode .stage-main {
-  grid-template-columns: 1fr;
-}
-
-body.timer-mode .practice-timer {
-  display: flex;
+.timer-side {
+  min-height: 0;
 }
 
 .practice-scramble-kicker {
@@ -2209,20 +2245,31 @@ body.timer-mode .practice-timer {
 }
 
 @media (max-width: 920px) {
-  body.timer-mode .stage-dock {
-    display: flex;
+  html:has(body.timer-page),
+  body.timer-page {
+    overflow: auto;
+    height: auto;
+    min-height: 100dvh;
   }
 
-  body.timer-mode .toolbar {
-    display: flex;
+  .timer-page-main {
+    grid-template-columns: 1fr;
+    padding: 0.45rem 0.7rem 1.25rem;
   }
 
-  body.timer-mode .toolbar .btn:not(#btn-hints) {
-    display: none !important;
+  .timer-stage {
+    min-height: 22rem;
   }
 
   .practice-clock {
     min-height: 6.2rem;
+  }
+
+  body.timer-page .foot {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    padding-bottom: calc(0.8rem + env(safe-area-inset-bottom));
   }
 }
 

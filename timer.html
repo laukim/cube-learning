@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b1210" />
+    <meta name="description" content="3×3 timer and scramble — times stay on this device." />
+    <title>Timer — 3×3 Coach</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css?v=timer2" />
+  </head>
+  <body class="timer-page">
+    <div class="ambient" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <a class="brand" href="./">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-name">3×3 Coach</span>
+      </a>
+      <nav class="site-nav" aria-label="App pages">
+        <a class="site-nav-link" href="./">Coach</a>
+        <a class="site-nav-link is-active" href="./timer.html" aria-current="page">Timer</a>
+      </nav>
+    </header>
+
+    <main class="timer-page-main">
+      <section class="timer-stage" aria-label="Scramble and timer">
+        <p class="practice-scramble-kicker">Scramble</p>
+        <code class="practice-scramble" id="practice-scramble">—</code>
+        <button type="button" class="practice-clock" id="practice-clock" data-phase="idle" aria-label="Start timer">
+          <span class="practice-clock-value" id="practice-clock-value">0.00</span>
+        </button>
+        <p class="practice-status" id="practice-status">Space or tap to start</p>
+        <button type="button" class="btn btn-ghost" id="timer-new-scramble">New scramble</button>
+      </section>
+
+      <section class="timer-side" aria-label="Solve times and progress">
+        <div class="timer-toolbar">
+          <label class="timer-inspect">
+            Inspection
+            <select id="timer-inspect" aria-label="Inspection time">
+              <option value="0">0s</option>
+              <option value="3">3s</option>
+              <option value="5">5s</option>
+              <option value="10">10s</option>
+              <option value="15">15s</option>
+            </select>
+          </label>
+          <button type="button" class="btn btn-ghost btn-small" id="timer-clear" disabled>Clear times</button>
+        </div>
+        <div class="timer-stats" id="timer-stats"></div>
+        <div class="timer-chart" id="timer-chart" aria-live="polite"></div>
+        <h2 class="timer-times-title">Times</h2>
+        <div class="timer-times" id="timer-times"></div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <span>Works offline · times stay on this device</span>
+      <span>Space or tap the clock</span>
+    </footer>
+
+    <script type="module" src="js/timer-page.js?v=timer2"></script>
+  </body>
+</html>

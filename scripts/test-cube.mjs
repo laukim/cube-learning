@@ -844,13 +844,15 @@ const {
   renderStats,
   renderTimesList,
   rollingAverages,
+  runningMean,
   saveChartWindow,
   saveTimerMode,
   sliceChartRecords,
   splitBests,
   splitDurationsFromMarks,
-  splitFinishTimes,
+  splitStageTimes,
   stageBest,
+  stageMean,
   TIMER_MODE_SINGLE,
   TIMER_MODE_SPLITS,
 } = await import("../js/practice-timer.js");
@@ -929,13 +931,15 @@ assert(Math.abs(splitStats.stages.find((s) => s.id === "cross").mean - 4500) < 0
 assert(renderSplitStats(splitStats).includes("White cross"), "stage averages mention white cross");
 assert(renderSplitStats(splitStats).includes("F2L is your slowest stage"), "coaching tip names slowest stage");
 
-const finish = splitFinishTimes({ cross: 4000, f2l: 18000, final: 8000 });
-assert(finish.cross === 4000, "cross finish is the cross clock");
-assert(finish.f2l === 22000, "f2l finish is cross plus f2l");
+const stages = splitStageTimes({ cross: 4000, f2l: 18000, final: 8000 });
+assert(stages.cross === 4000, "chart Cross is the Cross duration");
+assert(stages.f2l === 18000, "chart F2L excludes Cross");
 const splitChart = renderProgressChart(splitRows);
-assert(splitChart.includes("timer-chart-cross") && splitChart.includes("timer-chart-f2l"), "chart plots Cross and F2L finish");
+assert(splitChart.includes("timer-chart-cross") && splitChart.includes("timer-chart-f2l"), "chart plots Cross and F2L times");
 assert(splitChart.includes("Cross") && splitChart.includes("F2L"), "chart legend includes split series");
-assert(splitChart.includes("22.00"), "chart includes F2L finish clock time");
+assert(!splitChart.includes("timer-chart-cross-avg") && !splitChart.includes("Cross avg"), "small chart omits Cross/F2L averages");
+assert(splitChart.includes("18.00"), "chart includes F2L pair time");
+assert(!splitChart.includes("22.00"), "chart F2L does not add Cross onto F2L");
 assert(
   !renderProgressChart([
     { id: "n1", ms: 12000 },
@@ -949,7 +953,7 @@ const gappedChart = renderProgressChart([
   { id: "g3", ms: 28000, splits: { cross: 5000, f2l: 16000, final: 7000 } },
 ]);
 assert(/class="timer-chart-cross" d="M [\d.]+ [\d.]+ L /.test(gappedChart), "cross line continues across a single-mode solve");
-assert(gappedChart.includes("Solve 3 Cross: 5.00"), "later split still plots a Cross finish point");
+assert(gappedChart.includes("Solve 3 Cross: 5.00"), "later split still plots a Cross point");
 
 const chartStore = memoryStore();
 assert(loadChartWindow(chartStore) === 50, "default chart window is last 50");
@@ -973,13 +977,17 @@ const windowedSplits = [
   { id: "ws2", ms: 28000, splits: { cross: 5000, f2l: 16000, final: 7000 } },
 ];
 const windowedSplitChart = renderProgressChart(windowedSplits, { windowSize: 25 });
-assert(windowedSplitChart.includes("timer-chart-cross"), "last-N window still plots Cross finish");
+assert(windowedSplitChart.includes("timer-chart-cross"), "last-N window still plots Cross");
 assert(windowedSplitChart.includes(">8</text>") && windowedSplitChart.includes(">32</text>"), "windowed split chart keeps absolute solve numbers");
 
 const statsHtml = renderStats(computeStats(splitRows));
 assert(statsHtml.includes("Cross best") && statsHtml.includes("4.00"), "stats grid shows Cross best");
 assert(statsHtml.includes("F2L best") && statsHtml.includes("16.00"), "stats grid shows F2L best");
+assert(statsHtml.includes("Cross avg") && statsHtml.includes("4.50"), "stats grid shows Cross average");
+assert(statsHtml.includes("F2L avg") && statsHtml.includes("17.00"), "stats grid shows F2L average");
 assert(stageBest(computeSplitStats(splitRows), "cross") === 4000, "stageBest reads Cross");
+assert(stageMean(computeSplitStats(splitRows), "f2l") === 17000, "stageMean reads F2L");
+assert(renderStats(computeStats([])).includes("Cross avg") && renderStats(computeStats([])).includes("F2L avg"), "empty stats still list split averages");
 assert(renderStats(computeStats([])).includes("Cross best") && renderStats(computeStats([])).includes("F2L best"), "empty stats still list split records");
 assert(renderProgressChart(many).includes("data-enlarge-chart"), "sidebar chart has Enlarge");
 assert(!renderProgressChart([]).includes("data-enlarge-chart"), "empty chart has no Enlarge");
@@ -999,6 +1007,31 @@ assert(!renderChartTooltip({ n: 2, single: "12.00" }).includes("Cross"), "toolti
 assert(nearestChartIndex(CHART_PAD.l, { width: 420, count: 10 }) === 0, "left plot edge maps to first solve");
 assert(nearestChartIndex(420 - CHART_PAD.r, { width: 420, count: 10 }) === 9, "right plot edge maps to last solve");
 assert(typeof bindChartInteract === "function", "chart tooltip binder is exported");
+const crossMean = runningMean([4000, null, 5000]);
+assert(crossMean[0] === 4000 && crossMean[1] === 4000 && crossMean[2] === 4500, "running mean carries across gaps");
+const enlargedSplitChart = renderProgressChart(splitRows, { enlarged: true });
+assert(enlargedSplitChart.includes("timer-chart-cross-avg") && enlargedSplitChart.includes("timer-chart-f2l-avg"), "enlarged chart plots Cross and F2L averages");
+assert(enlargedSplitChart.includes("Cross avg") && enlargedSplitChart.includes("F2L avg"), "enlarged legend lists split averages");
+assert(
+  !renderProgressChart(
+    [
+      { id: "n1", ms: 12000 },
+      { id: "n2", ms: 11000 },
+    ],
+    { enlarged: true }
+  ).includes("timer-chart-cross-avg"),
+  "enlarged chart omits split averages without checkpoints"
+);
+const avgTip = renderChartTooltip({
+  n: 8,
+  single: "1:20.00",
+  cross: "8.00",
+  f2l: "50.00",
+  crossAvg: "8.40",
+  f2lAvg: "52.10",
+});
+assert(avgTip.includes("Cross avg") && avgTip.includes("8.40") && avgTip.includes("F2L avg"), "tooltip lists Cross/F2L averages");
+assert(avgTip.includes("tip-cross") && avgTip.includes("tip-f2l"), "average tooltip rows keep Cross/F2L colors");
 
 assert(isSessionBest(10000, 10000), "exact best matches");
 assert(!isSessionBest(0, 0), "zero clock is not a best");

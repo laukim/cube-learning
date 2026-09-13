@@ -2470,6 +2470,20 @@ body.timer-page .topbar {
   stroke-width: 1.75;
 }
 
+.timer-chart-cross-avg {
+  stroke: var(--timer-cross);
+  stroke-width: 2.15;
+  stroke-dasharray: 7 5;
+  stroke-linecap: round;
+}
+
+.timer-chart-f2l-avg {
+  stroke: var(--timer-f2l);
+  stroke-width: 2.15;
+  stroke-dasharray: 7 5;
+  stroke-linecap: round;
+}
+
 .timer-chart-dot {
   fill: var(--ink);
 }
@@ -2521,6 +2535,22 @@ body.timer-page .topbar {
 
 .swatch-f2l {
   background: var(--timer-f2l);
+}
+
+.swatch-cross-avg,
+.swatch-f2l-avg {
+  height: 0;
+  background: transparent;
+  border-radius: 0;
+  border-top: 2px dashed currentColor;
+}
+
+.swatch-cross-avg {
+  color: var(--timer-cross);
+}
+
+.swatch-f2l-avg {
+  color: var(--timer-f2l);
 }
 
 .timer-times-title {

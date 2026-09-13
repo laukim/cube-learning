@@ -843,6 +843,7 @@ const {
   renderStats,
   renderTimesList,
   rollingAverages,
+  runningMean,
   saveChartWindow,
   saveTimerMode,
   sliceChartRecords,
@@ -934,6 +935,7 @@ assert(finish.f2l === 22000, "f2l finish is cross plus f2l");
 const splitChart = renderProgressChart(splitRows);
 assert(splitChart.includes("timer-chart-cross") && splitChart.includes("timer-chart-f2l"), "chart plots Cross and F2L finish");
 assert(splitChart.includes("Cross") && splitChart.includes("F2L"), "chart legend includes split series");
+assert(!splitChart.includes("timer-chart-cross-avg") && !splitChart.includes("Cross avg"), "small chart omits Cross/F2L averages");
 assert(splitChart.includes("22.00"), "chart includes F2L finish clock time");
 assert(
   !renderProgressChart([
@@ -1002,5 +1004,29 @@ assert(!renderChartTooltip({ n: 2, single: "12.00" }).includes("Cross"), "toolti
 assert(nearestChartIndex(CHART_PAD.l, { width: 420, count: 10 }) === 0, "left plot edge maps to first solve");
 assert(nearestChartIndex(420 - CHART_PAD.r, { width: 420, count: 10 }) === 9, "right plot edge maps to last solve");
 assert(typeof bindChartInteract === "function", "chart tooltip binder is exported");
+const crossMean = runningMean([4000, null, 5000]);
+assert(crossMean[0] === 4000 && crossMean[1] === 4000 && crossMean[2] === 4500, "running mean carries across gaps");
+const enlargedSplitChart = renderProgressChart(splitRows, { enlarged: true });
+assert(enlargedSplitChart.includes("timer-chart-cross-avg") && enlargedSplitChart.includes("timer-chart-f2l-avg"), "enlarged chart plots Cross and F2L averages");
+assert(enlargedSplitChart.includes("Cross avg") && enlargedSplitChart.includes("F2L avg"), "enlarged legend lists split averages");
+assert(
+  !renderProgressChart(
+    [
+      { id: "n1", ms: 12000 },
+      { id: "n2", ms: 11000 },
+    ],
+    { enlarged: true }
+  ).includes("timer-chart-cross-avg"),
+  "enlarged chart omits split averages without checkpoints"
+);
+const avgTip = renderChartTooltip({
+  n: 8,
+  single: "1:20.00",
+  cross: "8.00",
+  f2l: "50.00",
+  crossAvg: "8.40",
+  f2lAvg: "52.10",
+});
+assert(avgTip.includes("Cross avg") && avgTip.includes("8.40") && avgTip.includes("F2L avg"), "tooltip lists Cross/F2L averages");
 
 console.log("ALL PASS");

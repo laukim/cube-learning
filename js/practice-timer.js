@@ -225,6 +225,19 @@ export function rollingAverages(values, n) {
   return values.map((_, i) => (i + 1 < n ? null : averageOf(values.slice(0, i + 1), n)));
 }
 
+/** Clock time when Cross / F2L finished (F2L is Cross + F2L duration). */
+export function splitFinishTimes(splits) {
+  if (!splits) return null;
+  const cross = Number(splits.cross);
+  const f2l = Number(splits.f2l);
+  if (!Number.isFinite(cross) || cross < 0 || !Number.isFinite(f2l) || f2l < 0) return null;
+  return { cross, f2l: cross + f2l };
+}
+
+export function chartRows(records) {
+  return (records || []).filter((row) => Number.isFinite(row?.ms) && row.ms > 0);
+}
+
 export function summarizeStage(values) {
   const times = (values || []).filter((ms) => Number.isFinite(ms) && ms >= 0);
   if (!times.length) return null;
@@ -281,17 +294,27 @@ export function computeStats(records) {
 }
 
 export function renderProgressChart(records, { width = 420, height = 180 } = {}) {
-  const times = (records || []).map((r) => r.ms).filter((ms) => Number.isFinite(ms) && ms > 0);
+  const rows = chartRows(records);
+  const times = rows.map((row) => row.ms);
   if (times.length < 2) {
-    return `<div class="timer-chart-empty">Solve twice and a progress chart appears here — singles, ao5, and ao12.</div>`;
+    return `<div class="timer-chart-empty">Solve twice and a progress chart appears here — singles, ao5, ao12, and Cross / F2L finish times.</div>`;
   }
+
+  const crossFinish = rows.map((row) => splitFinishTimes(row.splits)?.cross ?? null);
+  const f2lFinish = rows.map((row) => splitFinishTimes(row.splits)?.f2l ?? null);
+  const hasSplitSeries = crossFinish.some((ms) => ms != null) || f2lFinish.some((ms) => ms != null);
 
   const pad = { t: 16, r: 12, b: 28, l: 44 };
   const innerW = width - pad.l - pad.r;
   const innerH = height - pad.t - pad.b;
   const ao5 = rollingAverages(times, 5);
   const ao12 = rollingAverages(times, 12);
-  const plotted = times.concat(ao5.filter((n) => n != null), ao12.filter((n) => n != null));
+  const plotted = times.concat(
+    ao5.filter((n) => n != null),
+    ao12.filter((n) => n != null),
+    crossFinish.filter((n) => n != null),
+    f2lFinish.filter((n) => n != null)
+  );
   const min = Math.min(...plotted);
   const max = Math.max(...plotted);
   const span = Math.max(50, max - min);
@@ -323,22 +346,41 @@ export function renderProgressChart(records, { width = 420, height = 180 } = {})
     );
   }
 
-  const dots = times
-    .map(
-      (ms, i) =>
-        `<circle class="timer-chart-dot" cx="${xAt(i).toFixed(1)}" cy="${yAt(ms).toFixed(1)}" r="2.4"><title>Solve ${i + 1}: ${formatClock(ms)}</title></circle>`
-    )
-    .join("");
+  const seriesDots = (series, className, label) =>
+    series
+      .map((ms, i) => {
+        if (ms == null) return "";
+        return `<circle class="${className}" cx="${xAt(i).toFixed(1)}" cy="${yAt(ms).toFixed(1)}" r="2.2"><title>Solve ${i + 1} ${label}: ${formatClock(ms)}</title></circle>`;
+      })
+      .join("");
+
+  const dots = seriesDots(times, "timer-chart-dot", "single");
+  const crossDots = seriesDots(crossFinish, "timer-chart-dot-cross", "Cross");
+  const f2lDots = seriesDots(f2lFinish, "timer-chart-dot-f2l", "F2L");
 
   const ao5Path = line(ao5);
   const ao12Path = line(ao12);
+  const crossPath = line(crossFinish);
+  const f2lPath = line(f2lFinish);
+  const aria = hasSplitSeries
+    ? "Solve times over session, with Cross and F2L finish times"
+    : "Solve times over session";
 
-  return `<svg class="timer-chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Solve times over session">
+  const splitLegend = hasSplitSeries
+    ? `<li><span class="swatch swatch-cross"></span>Cross</li>
+    <li><span class="swatch swatch-f2l"></span>F2L</li>`
+    : "";
+
+  return `<svg class="timer-chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${aria}">
     ${grid.join("")}
     <path class="timer-chart-singles" d="${line(times)}" fill="none" />
     ${ao5Path ? `<path class="timer-chart-ao5" d="${ao5Path}" fill="none" />` : ""}
     ${ao12Path ? `<path class="timer-chart-ao12" d="${ao12Path}" fill="none" />` : ""}
+    ${crossPath ? `<path class="timer-chart-cross" d="${crossPath}" fill="none" />` : ""}
+    ${f2lPath ? `<path class="timer-chart-f2l" d="${f2lPath}" fill="none" />` : ""}
     ${dots}
+    ${crossDots}
+    ${f2lDots}
     <text class="timer-chart-axis" x="${pad.l}" y="${height - 8}">1</text>
     <text class="timer-chart-axis timer-chart-axis-end" x="${width - pad.r}" y="${height - 8}">${times.length}</text>
   </svg>
@@ -346,6 +388,7 @@ export function renderProgressChart(records, { width = 420, height = 180 } = {})
     <li><span class="swatch swatch-single"></span>Single</li>
     <li><span class="swatch swatch-ao5"></span>ao5</li>
     <li><span class="swatch swatch-ao12"></span>ao12</li>
+    ${splitLegend}
   </ul>`;
 }
 

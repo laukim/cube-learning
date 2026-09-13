@@ -839,6 +839,7 @@ const {
   rollingAverages,
   saveTimerMode,
   splitDurationsFromMarks,
+  splitFinishTimes,
   TIMER_MODE_SINGLE,
   TIMER_MODE_SPLITS,
 } = await import("../js/practice-timer.js");
@@ -916,5 +917,20 @@ assert(splitStats.slowestId === "f2l", "F2L is the slowest average stage");
 assert(Math.abs(splitStats.stages.find((s) => s.id === "cross").mean - 4500) < 0.001, "mean white cross");
 assert(renderSplitStats(splitStats).includes("White cross"), "stage averages mention white cross");
 assert(renderSplitStats(splitStats).includes("F2L is your slowest stage"), "coaching tip names slowest stage");
+
+const finish = splitFinishTimes({ cross: 4000, f2l: 18000, final: 8000 });
+assert(finish.cross === 4000, "cross finish is the cross clock");
+assert(finish.f2l === 22000, "f2l finish is cross plus f2l");
+const splitChart = renderProgressChart(splitRows);
+assert(splitChart.includes("timer-chart-cross") && splitChart.includes("timer-chart-f2l"), "chart plots Cross and F2L finish");
+assert(splitChart.includes("Cross") && splitChart.includes("F2L"), "chart legend includes split series");
+assert(splitChart.includes("22.00"), "chart includes F2L finish clock time");
+assert(
+  !renderProgressChart([
+    { id: "n1", ms: 12000 },
+    { id: "n2", ms: 11000 },
+  ]).includes("timer-chart-cross"),
+  "chart omits split series without checkpoints"
+);
 
 console.log("ALL PASS");

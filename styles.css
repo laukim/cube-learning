@@ -2239,14 +2239,33 @@ body.timer-page .topbar {
   stroke-width: 2;
 }
 
+.timer-chart-cross {
+  stroke: #8ec8ff;
+  stroke-width: 1.75;
+}
+
+.timer-chart-f2l {
+  stroke: #ff8a4a;
+  stroke-width: 1.75;
+}
+
 .timer-chart-dot {
   fill: var(--ink);
 }
 
+.timer-chart-dot-cross {
+  fill: #8ec8ff;
+}
+
+.timer-chart-dot-f2l {
+  fill: #ff8a4a;
+}
+
 .timer-chart-legend {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
-  gap: 1rem;
+  gap: 0.35rem 1rem;
   margin: 0.15rem 0 0;
   padding: 0;
   list-style: none;
@@ -2273,6 +2292,14 @@ body.timer-page .topbar {
 
 .swatch-ao12 {
   background: var(--warn);
+}
+
+.swatch-cross {
+  background: #8ec8ff;
+}
+
+.swatch-f2l {
+  background: #ff8a4a;
 }
 
 .timer-times-title {

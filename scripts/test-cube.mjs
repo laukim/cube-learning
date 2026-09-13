@@ -829,6 +829,7 @@ const {
   computeSplitStats,
   computeStats,
   deletePracticeTime,
+  loadChartWindow,
   loadPracticeTimes,
   loadTimerMode,
   memoryStore,
@@ -837,7 +838,9 @@ const {
   renderSplitStats,
   renderTimesList,
   rollingAverages,
+  saveChartWindow,
   saveTimerMode,
+  sliceChartRecords,
   splitDurationsFromMarks,
   splitFinishTimes,
   TIMER_MODE_SINGLE,
@@ -939,5 +942,30 @@ const gappedChart = renderProgressChart([
 ]);
 assert(/class="timer-chart-cross" d="M [\d.]+ [\d.]+ L /.test(gappedChart), "cross line continues across a single-mode solve");
 assert(gappedChart.includes("Solve 3 Cross: 5.00"), "later split still plots a Cross finish point");
+
+const chartStore = memoryStore();
+assert(loadChartWindow(chartStore) === 50, "default chart window is last 50");
+assert(saveChartWindow(100, chartStore) === 100, "persists last 100");
+assert(loadChartWindow(chartStore) === 100, "loads saved chart window");
+assert(saveChartWindow(999, chartStore) === 50, "invalid chart window falls back to 50");
+const many = Array.from({ length: 80 }, (_, i) => ({ id: `w${i}`, ms: 10000 + i * 10, at: i + 1 }));
+const sliced = sliceChartRecords(many, 25);
+assert(sliced.records.length === 25 && sliced.startIndex === 55, "slice keeps last 25");
+assert(sliceChartRecords(many, 0).records.length === 80, "window 0 keeps all");
+const windowedChart = renderProgressChart(many, { windowSize: 25 });
+assert(windowedChart.includes(">56</text>") && windowedChart.includes(">80</text>"), "chart x-axis uses absolute solve numbers");
+assert(windowedChart.includes("timer-chart-dot"), "last 25 still shows dots");
+const denseChart = renderProgressChart(many, { windowSize: 0 });
+assert(!denseChart.includes("timer-chart-dot"), "all 80 hides dots");
+const sparseChart = renderProgressChart(many.slice(0, 10), { windowSize: 25 });
+assert(sparseChart.includes("timer-chart-dot"), "short sessions still show dots");
+const windowedSplits = [
+  ...Array.from({ length: 30 }, (_, i) => ({ id: `x${i}`, ms: 20000 })),
+  { id: "ws1", ms: 30000, splits: { cross: 4000, f2l: 18000, final: 8000 } },
+  { id: "ws2", ms: 28000, splits: { cross: 5000, f2l: 16000, final: 7000 } },
+];
+const windowedSplitChart = renderProgressChart(windowedSplits, { windowSize: 25 });
+assert(windowedSplitChart.includes("timer-chart-cross"), "last-N window still plots Cross finish");
+assert(windowedSplitChart.includes(">8</text>") && windowedSplitChart.includes(">32</text>"), "windowed split chart keeps absolute solve numbers");
 
 console.log("ALL PASS");

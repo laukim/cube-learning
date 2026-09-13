@@ -825,6 +825,8 @@ const {
   addPracticeTime,
   applySplitTap,
   averageOf,
+  bindChartInteract,
+  CHART_PAD,
   clearPracticeTimes,
   computeSplitStats,
   computeStats,
@@ -833,9 +835,12 @@ const {
   loadPracticeTimes,
   loadTimerMode,
   memoryStore,
+  nearestChartIndex,
+  renderChartTooltip,
   renderLiveSplits,
   renderProgressChart,
   renderSplitStats,
+  renderStats,
   renderTimesList,
   rollingAverages,
   saveChartWindow,
@@ -843,6 +848,7 @@ const {
   sliceChartRecords,
   splitDurationsFromMarks,
   splitFinishTimes,
+  stageBest,
   TIMER_MODE_SINGLE,
   TIMER_MODE_SPLITS,
 } = await import("../js/practice-timer.js");
@@ -967,5 +973,29 @@ const windowedSplits = [
 const windowedSplitChart = renderProgressChart(windowedSplits, { windowSize: 25 });
 assert(windowedSplitChart.includes("timer-chart-cross"), "last-N window still plots Cross finish");
 assert(windowedSplitChart.includes(">8</text>") && windowedSplitChart.includes(">32</text>"), "windowed split chart keeps absolute solve numbers");
+
+const statsHtml = renderStats(computeStats(splitRows));
+assert(statsHtml.includes("Cross best") && statsHtml.includes("4.00"), "stats grid shows Cross best");
+assert(statsHtml.includes("F2L best") && statsHtml.includes("16.00"), "stats grid shows F2L best");
+assert(stageBest(computeSplitStats(splitRows), "cross") === 4000, "stageBest reads Cross");
+assert(renderStats(computeStats([])).includes("Cross best") && renderStats(computeStats([])).includes("F2L best"), "empty stats still list split records");
+assert(renderProgressChart(many).includes("data-enlarge-chart"), "sidebar chart has Enlarge");
+assert(!renderProgressChart([]).includes("data-enlarge-chart"), "empty chart has no Enlarge");
+assert(!renderProgressChart(many, { enlarged: true }).includes("data-enlarge-chart"), "enlarged chart omits Enlarge");
+assert(renderProgressChart(many, { enlarged: true }).includes("timer-chart-dot"), "enlarged chart keeps point dots");
+assert(renderProgressChart(splitRows).includes("timer-chart-tooltip") && renderProgressChart(splitRows).includes("timer-chart-data"), "chart mounts tooltip payload");
+const tip = renderChartTooltip({
+  n: 14,
+  single: "1:36.69",
+  cross: "8.20",
+  f2l: "52.40",
+  ao5: "1:26.99",
+  ao12: "1:34.57",
+});
+assert(tip.includes("Solve 14") && tip.includes("Cross") && tip.includes("F2L") && tip.includes("ao12"), "tooltip lists solve, splits, and averages");
+assert(!renderChartTooltip({ n: 2, single: "12.00" }).includes("Cross"), "tooltip omits missing split lines");
+assert(nearestChartIndex(CHART_PAD.l, { width: 420, count: 10 }) === 0, "left plot edge maps to first solve");
+assert(nearestChartIndex(420 - CHART_PAD.r, { width: 420, count: 10 }) === 9, "right plot edge maps to last solve");
+assert(typeof bindChartInteract === "function", "chart tooltip binder is exported");
 
 console.log("ALL PASS");

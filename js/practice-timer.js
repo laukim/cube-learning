@@ -329,7 +329,7 @@ export function renderProgressChart(records, { width = 420, height = 180 } = {})
     const parts = [];
     series.forEach((ms, i) => {
       if (ms == null) return;
-      const cmd = i > 0 && series[i - 1] != null ? "L" : "M";
+      const cmd = parts.length ? "L" : "M";
       parts.push(`${cmd} ${xAt(i).toFixed(1)} ${yAt(ms).toFixed(1)}`);
     });
     return parts.join(" ");
@@ -350,7 +350,7 @@ export function renderProgressChart(records, { width = 420, height = 180 } = {})
     series
       .map((ms, i) => {
         if (ms == null) return "";
-        return `<circle class="${className}" cx="${xAt(i).toFixed(1)}" cy="${yAt(ms).toFixed(1)}" r="2.2"><title>Solve ${i + 1} ${label}: ${formatClock(ms)}</title></circle>`;
+        return `<circle class="${className}" cx="${xAt(i).toFixed(1)}" cy="${yAt(ms).toFixed(1)}" r="2.6"><title>Solve ${i + 1} ${label}: ${formatClock(ms)}</title></circle>`;
       })
       .join("");
 

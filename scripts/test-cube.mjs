@@ -932,5 +932,12 @@ assert(
   ]).includes("timer-chart-cross"),
   "chart omits split series without checkpoints"
 );
+const gappedChart = renderProgressChart([
+  { id: "g1", ms: 30000, splits: { cross: 4000, f2l: 18000, final: 8000 } },
+  { id: "g2", ms: 25000 },
+  { id: "g3", ms: 28000, splits: { cross: 5000, f2l: 16000, final: 7000 } },
+]);
+assert(/class="timer-chart-cross" d="M [\d.]+ [\d.]+ L /.test(gappedChart), "cross line continues across a single-mode solve");
+assert(gappedChart.includes("Solve 3 Cross: 5.00"), "later split still plots a Cross finish point");
 
 console.log("ALL PASS");

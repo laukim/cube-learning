@@ -831,6 +831,7 @@ const {
   computeSplitStats,
   computeStats,
   deletePracticeTime,
+  isSessionBest,
   loadChartWindow,
   loadPracticeTimes,
   loadTimerMode,
@@ -847,6 +848,7 @@ const {
   saveChartWindow,
   saveTimerMode,
   sliceChartRecords,
+  splitBests,
   splitDurationsFromMarks,
   splitStageTimes,
   stageBest,
@@ -1029,5 +1031,25 @@ const avgTip = renderChartTooltip({
   f2lAvg: "52.10",
 });
 assert(avgTip.includes("Cross avg") && avgTip.includes("8.40") && avgTip.includes("F2L avg"), "tooltip lists Cross/F2L averages");
+assert(avgTip.includes("tip-cross") && avgTip.includes("tip-f2l"), "average tooltip rows keep Cross/F2L colors");
+
+assert(isSessionBest(10000, 10000), "exact best matches");
+assert(!isSessionBest(0, 0), "zero clock is not a best");
+assert(!isSessionBest(11000, 10000), "slower than best is not highlighted");
+assert(splitBests(splitStats).cross === 4000 && splitBests(splitStats).f2l === 16000, "splitBests reads stage records");
+const liveBest = renderLiveSplits({
+  splits: { cross: 4000, f2l: 16000, final: 8000 },
+  bests: { cross: 4000, f2l: 16000, final: 7000 },
+});
+assert(liveBest.includes("split-cross") && liveBest.includes("split-f2l"), "live splits mark Cross and F2L stages");
+assert(liveBest.includes("split-cross is-done is-best"), "best Cross split is marked");
+assert(liveBest.includes("split-f2l is-done is-best"), "best F2L split is marked");
+assert(!liveBest.includes("split-final is-done is-best"), "slower Final is not a best");
+const timesHtml = renderTimesList(splitRows);
+assert(timesHtml.includes("timer-time-ms is-best"), "times list highlights the session best");
+assert(timesHtml.includes("split-cross") && timesHtml.includes("split-f2l"), "times list colors Cross and F2L");
+assert(statsHtml.includes("timer-stat-best") && statsHtml.includes("timer-stat-cross") && statsHtml.includes("timer-stat-f2l"), "stats highlight Best, Cross, and F2L");
+assert(renderSplitStats(splitStats).includes("timer-split-avg-cross") && renderSplitStats(splitStats).includes("timer-split-avg-f2l"), "stage averages tag Cross and F2L");
+assert(tip.includes("tip-cross") && tip.includes("tip-f2l"), "tooltip tags Cross and F2L rows");
 
 console.log("ALL PASS");

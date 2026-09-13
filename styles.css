@@ -14,6 +14,8 @@
   --orange: #ff6a00;
   --blue: #0b5fbf;
   --green: #0b9e4a;
+  --timer-cross: color-mix(in srgb, var(--blue) 52%, #ffffff);
+  --timer-f2l: var(--orange);
   --plastic: #111111;
   --shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
   --radius: 18px;
@@ -2031,6 +2033,34 @@ body.timer-page .topbar {
   color: var(--accent);
 }
 
+.practice-clock.is-best {
+  border-color: color-mix(in srgb, var(--warn) 72%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--warn) 28%, transparent),
+    0 16px 36px color-mix(in srgb, var(--warn) 16%, transparent);
+}
+
+.practice-clock.is-best:hover,
+.practice-clock.is-best:focus-visible {
+  border-color: color-mix(in srgb, var(--warn) 88%, transparent);
+}
+
+.practice-clock.is-best .practice-clock-value {
+  color: var(--warn);
+}
+
+.practice-clock.is-best::after {
+  content: "Best";
+  display: block;
+  margin-top: 0.5rem;
+  font-family: var(--font-body);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--warn);
+}
+
 .practice-clock-value {
   font-family: var(--font-display);
   font-size: clamp(2.8rem, 7vw, 4.6rem);
@@ -2135,6 +2165,24 @@ body.timer-page .topbar {
   color: var(--ink);
 }
 
+.practice-splits li.split-cross:not(.is-live) strong {
+  color: var(--timer-cross);
+}
+
+.practice-splits li.split-f2l:not(.is-live) strong {
+  color: var(--timer-f2l);
+}
+
+.practice-splits li.split-cross.is-best {
+  border-color: color-mix(in srgb, var(--blue) 55%, transparent);
+  background: color-mix(in srgb, var(--blue) 18%, transparent);
+}
+
+.practice-splits li.split-f2l.is-best {
+  border-color: color-mix(in srgb, var(--orange) 55%, transparent);
+  background: color-mix(in srgb, var(--orange) 16%, transparent);
+}
+
 .timer-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -2192,12 +2240,31 @@ body.timer-page .topbar {
   font-variant-numeric: tabular-nums;
 }
 
+.timer-stat-best {
+  border-color: color-mix(in srgb, var(--warn) 45%, var(--line));
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
+}
+
+.timer-stat-best strong {
+  color: var(--warn);
+}
+
+.timer-stat-cross {
+  border-color: color-mix(in srgb, var(--blue) 50%, var(--line));
+  background: color-mix(in srgb, var(--blue) 20%, transparent);
+}
+
 .timer-stat-cross strong {
-  color: #8ec8ff;
+  color: var(--timer-cross);
+}
+
+.timer-stat-f2l {
+  border-color: color-mix(in srgb, var(--orange) 55%, var(--line));
+  background: color-mix(in srgb, var(--orange) 14%, transparent);
 }
 
 .timer-stat-f2l strong {
-  color: #ff8a4a;
+  color: var(--timer-f2l);
 }
 
 .timer-chart {
@@ -2269,6 +2336,16 @@ body.timer-page .topbar {
   color: var(--muted);
 }
 
+.timer-chart-tip-row.tip-cross span,
+.timer-chart-tip-row.tip-cross strong {
+  color: var(--timer-cross);
+}
+
+.timer-chart-tip-row.tip-f2l span,
+.timer-chart-tip-row.tip-f2l strong {
+  color: var(--timer-f2l);
+}
+
 .timer-chart-guide {
   stroke: rgba(232, 242, 236, 0.45);
   stroke-width: 1;
@@ -2282,13 +2359,13 @@ body.timer-page .topbar {
 }
 
 .timer-chart-hover-cross {
-  fill: #8ec8ff;
+  fill: var(--timer-cross);
   stroke: rgba(11, 18, 16, 0.9);
   stroke-width: 1.5;
 }
 
 .timer-chart-hover-f2l {
-  fill: #ff8a4a;
+  fill: var(--timer-f2l);
   stroke: rgba(11, 18, 16, 0.9);
   stroke-width: 1.5;
 }
@@ -2384,24 +2461,24 @@ body.timer-page .topbar {
 }
 
 .timer-chart-cross {
-  stroke: #8ec8ff;
+  stroke: var(--timer-cross);
   stroke-width: 1.75;
 }
 
 .timer-chart-f2l {
-  stroke: #ff8a4a;
+  stroke: var(--timer-f2l);
   stroke-width: 1.75;
 }
 
 .timer-chart-cross-avg {
-  stroke: #8ec8ff;
+  stroke: var(--timer-cross);
   stroke-width: 2.15;
   stroke-dasharray: 7 5;
   stroke-linecap: round;
 }
 
 .timer-chart-f2l-avg {
-  stroke: #ff8a4a;
+  stroke: var(--timer-f2l);
   stroke-width: 2.15;
   stroke-dasharray: 7 5;
   stroke-linecap: round;
@@ -2412,11 +2489,11 @@ body.timer-page .topbar {
 }
 
 .timer-chart-dot-cross {
-  fill: #8ec8ff;
+  fill: var(--timer-cross);
 }
 
 .timer-chart-dot-f2l {
-  fill: #ff8a4a;
+  fill: var(--timer-f2l);
 }
 
 .timer-chart-legend {
@@ -2453,11 +2530,11 @@ body.timer-page .topbar {
 }
 
 .swatch-cross {
-  background: #8ec8ff;
+  background: var(--timer-cross);
 }
 
 .swatch-f2l {
-  background: #ff8a4a;
+  background: var(--timer-f2l);
 }
 
 .swatch-cross-avg,
@@ -2469,11 +2546,11 @@ body.timer-page .topbar {
 }
 
 .swatch-cross-avg {
-  color: #8ec8ff;
+  color: var(--timer-cross);
 }
 
 .swatch-f2l-avg {
-  color: #ff8a4a;
+  color: var(--timer-f2l);
 }
 
 .timer-times-title {
@@ -2523,6 +2600,23 @@ body.timer-page .topbar {
 .timer-time-index {
   color: var(--muted);
   font-size: 0.78rem;
+}
+
+.timer-time-ms.is-best {
+  color: var(--warn);
+  font-weight: 800;
+}
+
+.timer-time-splits .split-cross {
+  color: var(--timer-cross);
+}
+
+.timer-time-splits .split-f2l {
+  color: var(--timer-f2l);
+}
+
+.timer-time-splits .is-best {
+  font-weight: 700;
 }
 
 .timer-time-scramble {
@@ -2627,6 +2721,30 @@ body.timer-page .topbar {
 
 .timer-split-avg.is-slowest .timer-split-avg-fill {
   background: var(--warn);
+}
+
+.timer-split-avg-cross .timer-split-avg-name,
+.timer-split-avg-cross.is-slowest .timer-split-avg-name,
+.timer-split-avg-cross strong,
+.timer-split-avg-cross .timer-split-avg-best {
+  color: var(--timer-cross);
+}
+
+.timer-split-avg-cross .timer-split-avg-fill,
+.timer-split-avg-cross.is-slowest .timer-split-avg-fill {
+  background: var(--timer-cross);
+}
+
+.timer-split-avg-f2l .timer-split-avg-name,
+.timer-split-avg-f2l.is-slowest .timer-split-avg-name,
+.timer-split-avg-f2l strong,
+.timer-split-avg-f2l .timer-split-avg-best {
+  color: var(--timer-f2l);
+}
+
+.timer-split-avg-f2l .timer-split-avg-fill,
+.timer-split-avg-f2l.is-slowest .timer-split-avg-fill {
+  background: var(--timer-f2l);
 }
 
 .timer-split-avg strong {

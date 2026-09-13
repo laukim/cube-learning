@@ -146,15 +146,30 @@ export function liveSplitDurations(marks = [], elapsed = 0, { running = false, s
   return out;
 }
 
-export function renderLiveSplits({ marks = [], elapsed = 0, running = false, splits = null } = {}) {
+export function isSessionBest(ms, best) {
+  return Number.isFinite(ms) && ms > 0 && best != null && ms === best;
+}
+
+export function splitBests(splitStats) {
+  return {
+    cross: stageBest(splitStats, "cross"),
+    f2l: stageBest(splitStats, "f2l"),
+    final: stageBest(splitStats, "final"),
+  };
+}
+
+export function renderLiveSplits({ marks = [], elapsed = 0, running = false, splits = null, bests = null } = {}) {
   const durations = liveSplitDurations(marks, elapsed, { running, splits });
   const liveIndex = running ? currentSplitIndex(marks) : -1;
   return SPLIT_STEPS.map((step, i) => {
     const ms = durations[step.id];
     const isLive = i === liveIndex;
     const shown = ms != null ? formatClock(ms) : "—";
-    const cls = isLive ? "is-live" : ms != null ? "is-done" : "";
-    return `<li${cls ? ` class="${cls}"` : ""}><span>${step.short}</span><strong>${shown}</strong></li>`;
+    const isBest = !running && isSessionBest(ms, bests?.[step.id]);
+    const cls = [`split-${step.id}`, isLive ? "is-live" : "", !isLive && ms != null ? "is-done" : "", isBest ? "is-best" : ""]
+      .filter(Boolean)
+      .join(" ");
+    return `<li class="${cls}"><span>${step.short}</span><strong>${shown}</strong></li>`;
   }).join("");
 }
 
@@ -377,16 +392,16 @@ export function svgPointFromEvent(event, svg) {
 
 export function renderChartTooltip(point) {
   if (!point) return "";
-  const row = (label, value) =>
+  const row = (label, value, extra = "") =>
     value
-      ? `<div class="timer-chart-tip-row"><span>${label}</span><strong>${value}</strong></div>`
+      ? `<div class="timer-chart-tip-row${extra ? ` ${extra}` : ""}"><span>${label}</span><strong>${value}</strong></div>`
       : "";
   return `<div class="timer-chart-tip-solve">Solve ${point.n}</div>
     ${row("Single", point.single)}
-    ${row("Cross", point.cross)}
-    ${row("F2L", point.f2l)}
-    ${row("Cross avg", point.crossAvg)}
-    ${row("F2L avg", point.f2lAvg)}
+    ${row("Cross", point.cross, "tip-cross")}
+    ${row("F2L", point.f2l, "tip-f2l")}
+    ${row("Cross avg", point.crossAvg, "tip-cross")}
+    ${row("F2L avg", point.f2lAvg, "tip-f2l")}
     ${row("ao5", point.ao5)}
     ${row("ao12", point.ao12)}`;
 }
@@ -683,6 +698,9 @@ export function renderTimesList(records) {
   if (!records.length) {
     return `<p class="timer-times-empty">Your solve times will appear here</p>`;
   }
+  const stats = computeStats(records);
+  const best = stats.best;
+  const stageBests = splitBests(stats.splits);
   const items = [...records]
     .reverse()
     .map((row, i) => {
@@ -690,15 +708,16 @@ export function renderTimesList(records) {
         ? `<code class="timer-time-scramble">${escapeHtml(row.scramble)}</code>`
         : "";
       const splits = row.splits
-        ? `<div class="timer-time-splits">${SPLIT_STEPS.map(
-            (step) =>
-              `<span><em>${step.short}</em> ${formatClock(row.splits[step.id])}</span>`
-          ).join("")}</div>`
+        ? `<div class="timer-time-splits">${SPLIT_STEPS.map((step) => {
+            const bestCls = isSessionBest(row.splits[step.id], stageBests[step.id]) ? " is-best" : "";
+            return `<span class="split-${step.id}${bestCls}"><em>${step.short}</em> ${formatClock(row.splits[step.id])}</span>`;
+          }).join("")}</div>`
         : "";
+      const bestCls = isSessionBest(row.ms, best) ? " is-best" : "";
       return `<li data-id="${escapeHtml(row.id)}">
         <div class="timer-time-row">
           <span class="timer-time-index">#${records.length - i}</span>
-          <span class="timer-time-ms">${formatClock(row.ms)}</span>
+          <span class="timer-time-ms${bestCls}">${formatClock(row.ms)}</span>
           <button type="button" class="timer-time-delete" data-delete="${escapeHtml(row.id)}" aria-label="Delete ${formatClock(row.ms)}">×</button>
         </div>
         ${splits}
@@ -713,7 +732,7 @@ export function renderStats(stats) {
   const rows = [
     ["Solves", String(stats.count || 0), ""],
     ["Average", dash(stats.mean), ""],
-    ["Best", dash(stats.best), ""],
+    ["Best", dash(stats.best), "timer-stat-best"],
     ["Worst", dash(stats.worst), ""],
     ["Cross avg", dash(stageMean(stats.splits, "cross")), "timer-stat-cross"],
     ["F2L avg", dash(stageMean(stats.splits, "f2l")), "timer-stat-f2l"],
@@ -740,7 +759,7 @@ export function renderSplitStats(splitStats) {
     .map((stage) => {
       const pct = Math.max(8, Math.round((stage.mean / totalMean) * 100));
       const slow = stage.id === splitStats.slowestId ? " is-slowest" : "";
-      return `<div class="timer-split-avg${slow}">
+      return `<div class="timer-split-avg timer-split-avg-${stage.id}${slow}">
         <span class="timer-split-avg-name">${stage.title}</span>
         <div class="timer-split-avg-track" aria-hidden="true">
           <span class="timer-split-avg-fill" style="width:${pct}%"></span>
@@ -813,6 +832,7 @@ export function initPracticeTimer({
     marks: [],
     lastTapElapsed: 0,
     lastSplits: null,
+    lastMs: 0,
     chartWindow: loadChartWindow(store),
   };
 
@@ -849,15 +869,24 @@ export function initPracticeTimer({
     if (!show) return;
     const running = state.phase === "running";
     const inspecting = state.phase === "inspecting";
+    const bests = running || inspecting ? null : splitBests(computeStats(loadPracticeTimes(store)).splits);
     splitsEl.innerHTML = renderLiveSplits({
       marks: inspecting ? [] : state.marks,
       elapsed: running ? elapsed : elapsed || 0,
       running,
       splits: running || inspecting ? null : state.lastSplits,
+      bests,
     });
   }
 
+  function updateBestHighlight() {
+    const show =
+      state.phase === "idle" && isSessionBest(state.lastMs, computeStats(loadPracticeTimes(store)).best);
+    clockBtn.classList.toggle("is-best", show);
+  }
+
   function paintClock(ms, inspecting = false) {
+    if (inspecting || state.phase === "running") clockBtn.classList.remove("is-best");
     if (inspecting) {
       clockValue.textContent = String(Math.max(0, ms));
       paintSplits(0);
@@ -911,6 +940,7 @@ export function initPracticeTimer({
     }
     if (chartDialog?.open) paintEnlargedChart(records);
     if (clearBtn) clearBtn.disabled = records.length === 0;
+    updateBestHighlight();
   }
 
   function cancelTimers() {
@@ -927,7 +957,9 @@ export function initPracticeTimer({
     state.marks = [];
     state.lastTapElapsed = 0;
     state.lastSplits = null;
+    state.lastMs = 0;
     paintClock(0);
+    updateBestHighlight();
     setStatus(idleStatus(state.mode));
   }
 
@@ -944,6 +976,7 @@ export function initPracticeTimer({
     state.marks = [];
     state.lastTapElapsed = 0;
     state.lastSplits = null;
+    clockBtn.classList.remove("is-best");
     setStatus(runningStatus(state.mode, state.marks));
     tickRunning();
   }
@@ -982,8 +1015,9 @@ export function initPracticeTimer({
           ? splitDurationsFromMarks(state.marks, ms)
           : null;
       state.lastSplits = splits;
-      paintClock(ms);
+      state.lastMs = ms;
       addPracticeTime({ ms, at: Date.now(), scramble: state.scramble, splits }, store);
+      paintClock(ms);
       renderRecords();
       newScramble();
       const splitBits = splits
@@ -998,7 +1032,9 @@ export function initPracticeTimer({
       state.lastTapElapsed = 0;
     } else {
       state.lastSplits = null;
+      state.lastMs = 0;
       paintClock(0);
+      updateBestHighlight();
       setStatus("Inspection cancelled");
     }
   }
@@ -1067,6 +1103,7 @@ export function initPracticeTimer({
     if (!window.confirm("Clear all timer records?")) return;
     clearPracticeTimes(store);
     state.lastSplits = null;
+    state.lastMs = 0;
     renderRecords();
     paintSplits(0);
     setStatus("All times cleared");

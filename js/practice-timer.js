@@ -260,6 +260,19 @@ export function rollingAverages(values, n) {
   return values.map((_, i) => (i + 1 < n ? null : averageOf(values.slice(0, i + 1), n)));
 }
 
+/** Cumulative mean of a series, carrying the current mean across gaps. */
+export function runningMean(series) {
+  let sum = 0;
+  let count = 0;
+  return (series || []).map((ms) => {
+    if (Number.isFinite(ms)) {
+      sum += ms;
+      count += 1;
+    }
+    return count ? sum / count : null;
+  });
+}
+
 /** Clock time when Cross / F2L finished (F2L is Cross + F2L duration). */
 export function splitFinishTimes(splits) {
   if (!splits) return null;
@@ -372,6 +385,8 @@ export function renderChartTooltip(point) {
     ${row("Single", point.single)}
     ${row("Cross", point.cross)}
     ${row("F2L", point.f2l)}
+    ${row("Cross avg", point.crossAvg)}
+    ${row("F2L avg", point.f2lAvg)}
     ${row("ao5", point.ao5)}
     ${row("ao12", point.ao12)}`;
 }
@@ -502,11 +517,16 @@ export function renderProgressChart(records, { width, height, windowSize = DEFAU
   const innerH = height - pad.t - pad.b;
   const ao5 = rollingAverages(times, 5);
   const ao12 = rollingAverages(times, 12);
+  const showSplitAverages = Boolean(enlarged && hasSplitSeries);
+  const crossAvg = showSplitAverages ? runningMean(crossFinish) : [];
+  const f2lAvg = showSplitAverages ? runningMean(f2lFinish) : [];
   const plotted = times.concat(
     ao5.filter((n) => n != null),
     ao12.filter((n) => n != null),
     crossFinish.filter((n) => n != null),
-    f2lFinish.filter((n) => n != null)
+    f2lFinish.filter((n) => n != null),
+    crossAvg.filter((n) => n != null),
+    f2lAvg.filter((n) => n != null)
   );
   const min = Math.min(...plotted);
   const max = Math.max(...plotted);
@@ -561,17 +581,27 @@ export function renderProgressChart(records, { width, height, windowSize = DEFAU
   const ao12Path = line(ao12);
   const crossPath = line(crossFinish);
   const f2lPath = line(f2lFinish);
+  const crossAvgPath = showSplitAverages ? line(crossAvg) : "";
+  const f2lAvgPath = showSplitAverages ? line(f2lAvg) : "";
   const windowNote =
     windowSize > 0 && all.length > times.length
       ? ` · last ${times.length} of ${all.length}`
       : "";
   const aria = hasSplitSeries
-    ? `Solve times over session, with Cross and F2L finish times${windowNote}`
+    ? showSplitAverages
+      ? `Solve times over session, with Cross and F2L finish times and averages${windowNote}`
+      : `Solve times over session, with Cross and F2L finish times${windowNote}`
     : `Solve times over session${windowNote}`;
 
   const splitLegend = hasSplitSeries
     ? `<li><span class="swatch swatch-cross"></span>Cross</li>
-    <li><span class="swatch swatch-f2l"></span>F2L</li>`
+    <li><span class="swatch swatch-f2l"></span>F2L</li>${
+      showSplitAverages
+        ? `
+    <li><span class="swatch swatch-cross-avg"></span>Cross avg</li>
+    <li><span class="swatch swatch-f2l-avg"></span>F2L avg</li>`
+        : ""
+    }`
     : "";
 
   const points = times.map((ms, i) => ({
@@ -581,6 +611,8 @@ export function renderProgressChart(records, { width, height, windowSize = DEFAU
     f2l: f2lFinish[i] != null ? formatClock(f2lFinish[i]) : null,
     ao5: ao5[i] != null ? formatClock(ao5[i]) : null,
     ao12: ao12[i] != null ? formatClock(ao12[i]) : null,
+    crossAvg: showSplitAverages && crossAvg[i] != null ? formatClock(crossAvg[i]) : null,
+    f2lAvg: showSplitAverages && f2lAvg[i] != null ? formatClock(f2lAvg[i]) : null,
     x: Number(xAt(i).toFixed(1)),
     y: Number(yAt(ms).toFixed(1)),
     yCross: crossFinish[i] != null ? Number(yAt(crossFinish[i]).toFixed(1)) : null,
@@ -600,6 +632,8 @@ export function renderProgressChart(records, { width, height, windowSize = DEFAU
     ${ao12Path ? `<path class="timer-chart-ao12" d="${ao12Path}" fill="none" />` : ""}
     ${crossPath ? `<path class="timer-chart-cross" d="${crossPath}" fill="none" />` : ""}
     ${f2lPath ? `<path class="timer-chart-f2l" d="${f2lPath}" fill="none" />` : ""}
+    ${crossAvgPath ? `<path class="timer-chart-cross-avg" d="${crossAvgPath}" fill="none" />` : ""}
+    ${f2lAvgPath ? `<path class="timer-chart-f2l-avg" d="${f2lAvgPath}" fill="none" />` : ""}
     ${dots}
     ${crossDots}
     ${f2lDots}

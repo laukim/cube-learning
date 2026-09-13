@@ -12,7 +12,7 @@
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=timer3" />
+    <link rel="stylesheet" href="styles.css?v=timer4" />
   </head>
   <body class="timer-page">
     <div class="ambient" aria-hidden="true"></div>
@@ -52,6 +52,15 @@
               <option value="15">15s</option>
             </select>
           </label>
+          <label class="timer-chart-window">
+            Chart
+            <select id="timer-chart-window" aria-label="Chart solve window">
+              <option value="25">Last 25</option>
+              <option value="50" selected>Last 50</option>
+              <option value="100">Last 100</option>
+              <option value="0">All</option>
+            </select>
+          </label>
           <button type="button" class="btn btn-ghost btn-small" id="timer-clear" disabled>Clear times</button>
         </div>
         <div class="timer-stats" id="timer-stats"></div>
@@ -66,6 +75,6 @@
       <span>Space or tap the clock</span>
     </footer>
 
-    <script type="module" src="js/timer-page.js?v=timer3"></script>
+    <script type="module" src="js/timer-page.js?v=timer4"></script>
   </body>
 </html>

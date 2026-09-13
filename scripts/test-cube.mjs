@@ -827,11 +827,14 @@ const {
   clearPracticeTimes,
   computeStats,
   deletePracticeTime,
+  loadChartWindow,
   loadPracticeTimes,
   memoryStore,
   renderProgressChart,
   renderTimesList,
   rollingAverages,
+  saveChartWindow,
+  sliceChartRecords,
 } = await import("../js/practice-timer.js");
 
 const store = memoryStore();
@@ -864,5 +867,22 @@ assert(
   "times list shows scramble moves"
 );
 assert(!renderTimesList([{ id: "s2", ms: 10000, at: 2, scramble: "" }]).includes("timer-time-scramble"), "blank scramble omitted");
+
+const chartStore = memoryStore();
+assert(loadChartWindow(chartStore) === 50, "default chart window is last 50");
+assert(saveChartWindow(100, chartStore) === 100, "persists last 100");
+assert(loadChartWindow(chartStore) === 100, "loads saved chart window");
+assert(saveChartWindow(999, chartStore) === 50, "invalid chart window falls back to 50");
+const many = Array.from({ length: 80 }, (_, i) => ({ id: `w${i}`, ms: 10000 + i * 10, at: i + 1 }));
+const sliced = sliceChartRecords(many, 25);
+assert(sliced.records.length === 25 && sliced.startIndex === 55, "slice keeps last 25");
+assert(sliceChartRecords(many, 0).records.length === 80, "window 0 keeps all");
+const windowedChart = renderProgressChart(many, { windowSize: 25 });
+assert(windowedChart.includes(">56</text>") && windowedChart.includes(">80</text>"), "chart x-axis uses absolute solve numbers");
+assert(windowedChart.includes("timer-chart-dot"), "last 25 still shows dots");
+const denseChart = renderProgressChart(many, { windowSize: 0 });
+assert(!denseChart.includes("timer-chart-dot"), "all 80 hides dots");
+const sparseChart = renderProgressChart(many.slice(0, 10), { windowSize: 25 });
+assert(sparseChart.includes("timer-chart-dot"), "short sessions still show dots");
 
 console.log("ALL PASS");

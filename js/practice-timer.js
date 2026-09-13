@@ -1,9 +1,13 @@
-import { randomScrambleMoves } from "./cube.js?v=timer3";
-import { formatClock } from "./solve-timer.js?v=timer3";
+import { randomScrambleMoves } from "./cube.js?v=timer4";
+import { formatClock } from "./solve-timer.js?v=timer4";
 
 export const PRACTICE_TIMES_KEY = "cube-coach-practice-times";
 export const PRACTICE_INSPECT_KEY = "cube-coach-practice-inspect";
+export const PRACTICE_CHART_WINDOW_KEY = "cube-coach-practice-chart-window";
 export const PRACTICE_MAX = 500;
+/** Chart window sizes; 0 = all solves in the session. */
+export const CHART_WINDOW_OPTIONS = [25, 50, 100, 0];
+export const DEFAULT_CHART_WINDOW = 50;
 
 function browserStore() {
   try {
@@ -110,6 +114,34 @@ export function saveInspectionSeconds(seconds, store = browserStore()) {
   return value;
 }
 
+export function loadChartWindow(store = browserStore()) {
+  const raw = store?.getItem?.(PRACTICE_CHART_WINDOW_KEY);
+  if (raw == null || raw === "") return DEFAULT_CHART_WINDOW;
+  const n = Number(raw);
+  return CHART_WINDOW_OPTIONS.includes(n) ? n : DEFAULT_CHART_WINDOW;
+}
+
+export function saveChartWindow(windowSize, store = browserStore()) {
+  const n = Number(windowSize);
+  const value = CHART_WINDOW_OPTIONS.includes(n) ? n : DEFAULT_CHART_WINDOW;
+  try {
+    store?.setItem?.(PRACTICE_CHART_WINDOW_KEY, String(value));
+  } catch {
+    /* ignore */
+  }
+  return value;
+}
+
+/** Keep the last `windowSize` records for the chart (0 / falsy = all). */
+export function sliceChartRecords(records, windowSize = DEFAULT_CHART_WINDOW) {
+  const list = Array.isArray(records) ? records : [];
+  const n = Number(windowSize);
+  if (!n || n <= 0 || list.length <= n) {
+    return { records: list, startIndex: 0 };
+  }
+  return { records: list.slice(-n), startIndex: list.length - n };
+}
+
 export function generatePracticeScramble(moves = 20) {
   return randomScrambleMoves(moves);
 }
@@ -157,8 +189,10 @@ export function computeStats(records) {
   };
 }
 
-export function renderProgressChart(records, { width = 420, height = 180 } = {}) {
-  const times = (records || []).map((r) => r.ms).filter((ms) => Number.isFinite(ms) && ms > 0);
+export function renderProgressChart(records, { width = 420, height = 180, windowSize = DEFAULT_CHART_WINDOW } = {}) {
+  const all = Array.isArray(records) ? records : [];
+  const { records: windowed, startIndex } = sliceChartRecords(all, windowSize);
+  const times = windowed.map((r) => r.ms).filter((ms) => Number.isFinite(ms) && ms > 0);
   if (times.length < 2) {
     return `<div class="timer-chart-empty">Solve twice and a progress chart appears here — singles, ao5, and ao12.</div>`;
   }
@@ -175,6 +209,9 @@ export function renderProgressChart(records, { width = 420, height = 180 } = {})
   const lo = min - span * 0.08;
   const hi = max + span * 0.08;
   const range = hi - lo || 1;
+  const firstSolve = startIndex + 1;
+  const lastSolve = startIndex + times.length;
+  const showDots = times.length <= 60;
 
   const xAt = (i) => pad.l + (times.length === 1 ? innerW / 2 : (i / (times.length - 1)) * innerW);
   const yAt = (ms) => pad.t + (1 - (ms - lo) / range) * innerH;
@@ -200,24 +237,30 @@ export function renderProgressChart(records, { width = 420, height = 180 } = {})
     );
   }
 
-  const dots = times
-    .map(
-      (ms, i) =>
-        `<circle class="timer-chart-dot" cx="${xAt(i).toFixed(1)}" cy="${yAt(ms).toFixed(1)}" r="2.4"><title>Solve ${i + 1}: ${formatClock(ms)}</title></circle>`
-    )
-    .join("");
+  const dots = showDots
+    ? times
+        .map(
+          (ms, i) =>
+            `<circle class="timer-chart-dot" cx="${xAt(i).toFixed(1)}" cy="${yAt(ms).toFixed(1)}" r="2.4"><title>Solve ${startIndex + i + 1}: ${formatClock(ms)}</title></circle>`
+        )
+        .join("")
+    : "";
 
   const ao5Path = line(ao5);
   const ao12Path = line(ao12);
+  const windowNote =
+    windowSize > 0 && all.length > times.length
+      ? ` · last ${times.length} of ${all.length}`
+      : "";
 
-  return `<svg class="timer-chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Solve times over session">
+  return `<svg class="timer-chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Solve times over session${windowNote}">
     ${grid.join("")}
     <path class="timer-chart-singles" d="${line(times)}" fill="none" />
     ${ao5Path ? `<path class="timer-chart-ao5" d="${ao5Path}" fill="none" />` : ""}
     ${ao12Path ? `<path class="timer-chart-ao12" d="${ao12Path}" fill="none" />` : ""}
     ${dots}
-    <text class="timer-chart-axis" x="${pad.l}" y="${height - 8}">1</text>
-    <text class="timer-chart-axis timer-chart-axis-end" x="${width - pad.r}" y="${height - 8}">${times.length}</text>
+    <text class="timer-chart-axis" x="${pad.l}" y="${height - 8}">${firstSolve}</text>
+    <text class="timer-chart-axis timer-chart-axis-end" x="${width - pad.r}" y="${height - 8}">${lastSolve}</text>
   </svg>
   <ul class="timer-chart-legend">
     <li><span class="swatch swatch-single"></span>Single</li>
@@ -307,6 +350,7 @@ export function initPracticeTimer({
   const statsEl = document.getElementById("timer-stats");
   const chartEl = document.getElementById("timer-chart");
   const inspectEl = document.getElementById("timer-inspect");
+  const chartWindowEl = document.getElementById("timer-chart-window");
   const clearBtn = document.getElementById("timer-clear");
 
   if (!clockBtn || !clockValue) return { refresh() {}, cancel() {} };
@@ -318,6 +362,7 @@ export function initPracticeTimer({
     scramble: "",
     raf: 0,
     inspectTimer: 0,
+    chartWindow: loadChartWindow(store),
   };
 
   function setPhase(phase) {
@@ -353,7 +398,7 @@ export function initPracticeTimer({
     const stats = computeStats(records);
     if (timesEl) timesEl.innerHTML = renderTimesList(records);
     if (statsEl) statsEl.innerHTML = renderStats(stats);
-    if (chartEl) chartEl.innerHTML = renderProgressChart(records);
+    if (chartEl) chartEl.innerHTML = renderProgressChart(records, { windowSize: state.chartWindow });
     if (clearBtn) clearBtn.disabled = records.length === 0;
   }
 
@@ -444,6 +489,10 @@ export function initPracticeTimer({
   inspectEl?.addEventListener("change", () => {
     saveInspectionSeconds(inspectEl.value, store);
   });
+  chartWindowEl?.addEventListener("change", () => {
+    state.chartWindow = saveChartWindow(chartWindowEl.value, store);
+    renderRecords();
+  });
   clearBtn?.addEventListener("click", () => {
     if (!loadPracticeTimes(store).length) return;
     if (!window.confirm("Clear all timer records?")) return;
@@ -472,6 +521,7 @@ export function initPracticeTimer({
   });
 
   if (inspectEl) inspectEl.value = String(loadInspectionSeconds(store));
+  if (chartWindowEl) chartWindowEl.value = String(state.chartWindow);
   setPhase("idle");
   newScramble();
   paintClock(0);

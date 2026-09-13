@@ -849,6 +849,7 @@ const {
   splitDurationsFromMarks,
   splitFinishTimes,
   stageBest,
+  stageMean,
   TIMER_MODE_SINGLE,
   TIMER_MODE_SPLITS,
 } = await import("../js/practice-timer.js");
@@ -977,7 +978,11 @@ assert(windowedSplitChart.includes(">8</text>") && windowedSplitChart.includes("
 const statsHtml = renderStats(computeStats(splitRows));
 assert(statsHtml.includes("Cross best") && statsHtml.includes("4.00"), "stats grid shows Cross best");
 assert(statsHtml.includes("F2L best") && statsHtml.includes("16.00"), "stats grid shows F2L best");
+assert(statsHtml.includes("Cross avg") && statsHtml.includes("4.50"), "stats grid shows Cross average");
+assert(statsHtml.includes("F2L avg") && statsHtml.includes("17.00"), "stats grid shows F2L average");
 assert(stageBest(computeSplitStats(splitRows), "cross") === 4000, "stageBest reads Cross");
+assert(stageMean(computeSplitStats(splitRows), "f2l") === 17000, "stageMean reads F2L");
+assert(renderStats(computeStats([])).includes("Cross avg") && renderStats(computeStats([])).includes("F2L avg"), "empty stats still list split averages");
 assert(renderStats(computeStats([])).includes("Cross best") && renderStats(computeStats([])).includes("F2L best"), "empty stats still list split records");
 assert(renderProgressChart(many).includes("data-enlarge-chart"), "sidebar chart has Enlarge");
 assert(!renderProgressChart([]).includes("data-enlarge-chart"), "empty chart has no Enlarge");

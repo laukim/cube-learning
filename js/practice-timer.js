@@ -328,8 +328,17 @@ export function computeStats(records) {
   };
 }
 
+export function stageStat(splitStats, id, field = "best") {
+  const value = splitStats?.stages?.find((stage) => stage.id === id)?.[field];
+  return Number.isFinite(value) ? value : null;
+}
+
 export function stageBest(splitStats, id) {
-  return splitStats?.stages?.find((stage) => stage.id === id)?.best ?? null;
+  return stageStat(splitStats, id, "best");
+}
+
+export function stageMean(splitStats, id) {
+  return stageStat(splitStats, id, "mean");
 }
 
 export function nearestChartIndex(x, { width, count, pad = CHART_PAD } = {}) {
@@ -672,6 +681,8 @@ export function renderStats(stats) {
     ["Average", dash(stats.mean), ""],
     ["Best", dash(stats.best), ""],
     ["Worst", dash(stats.worst), ""],
+    ["Cross avg", dash(stageMean(stats.splits, "cross")), "timer-stat-cross"],
+    ["F2L avg", dash(stageMean(stats.splits, "f2l")), "timer-stat-f2l"],
     ["Cross best", dash(stageBest(stats.splits, "cross")), "timer-stat-cross"],
     ["F2L best", dash(stageBest(stats.splits, "f2l")), "timer-stat-f2l"],
     ["Trimmed", dash(stats.trimmed), ""],

@@ -1,4 +1,4 @@
-import { initPracticeTimer } from "./practice-timer.js?v=enlarge2";
+import { initPracticeTimer } from "./practice-timer.js?v=enlarge3";
 
 initPracticeTimer({
   isActive: () => true,

@@ -455,16 +455,16 @@ function isTypingTarget(el) {
 
 function idleStatus(mode) {
   return mode === TIMER_MODE_SPLITS
-    ? "Space or tap to start · tap at Cross, F2L, then solved"
+    ? "Space or tap to start · space or tap again at Cross, F2L, then solved"
     : "Space or tap to start · next scramble appears when you stop";
 }
 
 function runningStatus(mode, marks = []) {
   if (mode !== TIMER_MODE_SPLITS) return "Timing — space or tap to stop";
   const next = SPLIT_STEPS[currentSplitIndex(marks)];
-  if (next.id === "cross") return "Timing — tap when white cross is done";
-  if (next.id === "f2l") return "Timing — tap when F2L is done";
-  return "Timing — tap when solved";
+  if (next.id === "cross") return "Timing — space or tap when white cross is done";
+  if (next.id === "f2l") return "Timing — space or tap when F2L is done";
+  return "Timing — space or tap when solved";
 }
 
 export function initPracticeTimer({

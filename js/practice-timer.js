@@ -1,13 +1,23 @@
 import { randomScrambleMoves } from "./cube.js?v=timer4";
-import { formatClock } from "./solve-timer.js?v=timer4";
+import { formatClock } from "./solve-timer.js?v=splits5";
 
 export const PRACTICE_TIMES_KEY = "cube-coach-practice-times";
 export const PRACTICE_INSPECT_KEY = "cube-coach-practice-inspect";
+export const PRACTICE_MODE_KEY = "cube-coach-practice-mode";
 export const PRACTICE_CHART_WINDOW_KEY = "cube-coach-practice-chart-window";
 export const PRACTICE_MAX = 500;
+export const TIMER_MODE_SINGLE = "single";
+export const TIMER_MODE_SPLITS = "splits";
+export const SPLIT_BOUNCE_MS = 150;
 /** Chart window sizes; 0 = all solves in the session. */
 export const CHART_WINDOW_OPTIONS = [25, 50, 100, 0];
 export const DEFAULT_CHART_WINDOW = 50;
+
+export const SPLIT_STEPS = [
+  { id: "cross", short: "Cross", title: "White cross" },
+  { id: "f2l", short: "F2L", title: "F2L" },
+  { id: "final", short: "Final", title: "Final" },
+];
 
 function browserStore() {
   try {
@@ -57,12 +67,92 @@ function normalizeRecord(row, index) {
   if (!row || typeof row !== "object") return null;
   const ms = Number(row.ms);
   if (!Number.isFinite(ms) || ms < 0) return null;
-  return {
+  const record = {
     id: String(row.id || `t-${index}-${ms}`),
     ms,
     at: Number(row.at) || 0,
     scramble: String(row.scramble || ""),
   };
+  const splits = normalizeSplits(row.splits);
+  if (splits) record.splits = splits;
+  return record;
+}
+
+export function normalizeSplits(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  const cross = Number(raw.cross);
+  const f2l = Number(raw.f2l);
+  const final = Number(raw.final);
+  if (![cross, f2l, final].every((n) => Number.isFinite(n) && n >= 0)) return null;
+  return { cross, f2l, final };
+}
+
+export function loadTimerMode(store = browserStore()) {
+  const raw = store?.getItem?.(PRACTICE_MODE_KEY);
+  return raw === TIMER_MODE_SPLITS ? TIMER_MODE_SPLITS : TIMER_MODE_SINGLE;
+}
+
+export function saveTimerMode(mode, store = browserStore()) {
+  const value = mode === TIMER_MODE_SPLITS ? TIMER_MODE_SPLITS : TIMER_MODE_SINGLE;
+  try {
+    store?.setItem?.(PRACTICE_MODE_KEY, value);
+  } catch {
+    /* ignore */
+  }
+  return value;
+}
+
+/** Elapsed marks at Cross and F2L → per-stage durations including Final. */
+export function splitDurationsFromMarks(marks, totalMs) {
+  const total = Math.max(0, Number(totalMs) || 0);
+  const cross = Math.max(0, Math.min(total, Number(marks?.[0]) || 0));
+  const f2lDone = Math.max(cross, Math.min(total, Number(marks?.[1]) || cross));
+  return {
+    cross,
+    f2l: Math.max(0, f2lDone - cross),
+    final: Math.max(0, total - f2lDone),
+  };
+}
+
+export function currentSplitIndex(marks = []) {
+  return Math.min(SPLIT_STEPS.length - 1, Array.isArray(marks) ? marks.length : 0);
+}
+
+export function applySplitTap({ mode, marks = [], elapsed = 0, lastTapElapsed = 0, bounceMs = SPLIT_BOUNCE_MS } = {}) {
+  if (elapsed - lastTapElapsed < bounceMs) return { action: "ignore", marks };
+  if (mode === TIMER_MODE_SPLITS && marks.length < SPLIT_STEPS.length - 1) {
+    return { action: "split", marks: [...marks, elapsed] };
+  }
+  return { action: "stop", marks };
+}
+
+export function liveSplitDurations(marks = [], elapsed = 0, { running = false, splits = null } = {}) {
+  if (splits) return { ...splits };
+  const out = { cross: null, f2l: null, final: null };
+  const crossMark = marks[0];
+  const f2lMark = marks[1];
+  if (crossMark != null) out.cross = Math.max(0, crossMark);
+  else if (running) out.cross = Math.max(0, elapsed);
+
+  if (f2lMark != null) out.f2l = Math.max(0, f2lMark - (crossMark || 0));
+  else if (running && crossMark != null) out.f2l = Math.max(0, elapsed - crossMark);
+
+  if (f2lMark != null && (running || elapsed >= f2lMark)) {
+    out.final = Math.max(0, elapsed - f2lMark);
+  }
+  return out;
+}
+
+export function renderLiveSplits({ marks = [], elapsed = 0, running = false, splits = null } = {}) {
+  const durations = liveSplitDurations(marks, elapsed, { running, splits });
+  const liveIndex = running ? currentSplitIndex(marks) : -1;
+  return SPLIT_STEPS.map((step, i) => {
+    const ms = durations[step.id];
+    const isLive = i === liveIndex;
+    const shown = ms != null ? formatClock(ms) : "—";
+    const cls = isLive ? "is-live" : ms != null ? "is-done" : "";
+    return `<li${cls ? ` class="${cls}"` : ""}><span>${step.short}</span><strong>${shown}</strong></li>`;
+  }).join("");
 }
 
 export function savePracticeTimes(records, store = browserStore()) {
@@ -79,12 +169,15 @@ export function addPracticeTime(entry, store = browserStore()) {
   const records = loadPracticeTimes(store);
   const ms = Number(entry?.ms);
   if (!Number.isFinite(ms) || ms <= 0) return records;
-  records.push({
+  const record = {
     id: String(entry.id || `t-${Date.now()}-${records.length}`),
     ms,
     at: Number(entry.at) || Date.now(),
     scramble: String(entry.scramble || ""),
-  });
+  };
+  const splits = normalizeSplits(entry.splits);
+  if (splits) record.splits = splits;
+  records.push(record);
   return savePracticeTimes(records, store);
 }
 
@@ -164,6 +257,47 @@ export function rollingAverages(values, n) {
   return values.map((_, i) => (i + 1 < n ? null : averageOf(values.slice(0, i + 1), n)));
 }
 
+/** Clock time when Cross / F2L finished (F2L is Cross + F2L duration). */
+export function splitFinishTimes(splits) {
+  if (!splits) return null;
+  const cross = Number(splits.cross);
+  const f2l = Number(splits.f2l);
+  if (!Number.isFinite(cross) || cross < 0 || !Number.isFinite(f2l) || f2l < 0) return null;
+  return { cross, f2l: cross + f2l };
+}
+
+export function chartRows(records) {
+  return (records || []).filter((row) => Number.isFinite(row?.ms) && row.ms > 0);
+}
+
+export function summarizeStage(values) {
+  const times = (values || []).filter((ms) => Number.isFinite(ms) && ms >= 0);
+  if (!times.length) return null;
+  const sorted = [...times].sort((a, b) => a - b);
+  return {
+    count: times.length,
+    mean: mean(times),
+    best: sorted[0],
+    worst: sorted[sorted.length - 1],
+  };
+}
+
+export function computeSplitStats(records) {
+  const rows = (records || []).filter((r) => r?.splits);
+  if (!rows.length) return null;
+  const stages = SPLIT_STEPS.map((step) => {
+    const summary = summarizeStage(rows.map((r) => r.splits[step.id]));
+    if (!summary) return null;
+    return { ...step, ...summary };
+  }).filter(Boolean);
+  if (!stages.length) return null;
+  let slowest = stages[0];
+  for (const stage of stages) {
+    if (stage.mean > slowest.mean) slowest = stage;
+  }
+  return { count: rows.length, stages, slowestId: slowest.id };
+}
+
 export function computeStats(records) {
   const times = (records || []).map((r) => r.ms).filter((ms) => Number.isFinite(ms) && ms > 0);
   const empty = {
@@ -174,8 +308,9 @@ export function computeStats(records) {
     trimmed: null,
     ao5: null,
     ao12: null,
+    splits: null,
   };
-  if (!times.length) return empty;
+  if (!times.length) return { ...empty, splits: computeSplitStats(records) };
 
   const sorted = [...times].sort((a, b) => a - b);
   return {
@@ -186,23 +321,34 @@ export function computeStats(records) {
     trimmed: times.length >= 3 ? mean(sorted.slice(1, -1)) : null,
     ao5: averageOf(times, 5),
     ao12: averageOf(times, 12),
+    splits: computeSplitStats(records),
   };
 }
 
 export function renderProgressChart(records, { width = 420, height = 180, windowSize = DEFAULT_CHART_WINDOW } = {}) {
   const all = Array.isArray(records) ? records : [];
   const { records: windowed, startIndex } = sliceChartRecords(all, windowSize);
-  const times = windowed.map((r) => r.ms).filter((ms) => Number.isFinite(ms) && ms > 0);
+  const rows = chartRows(windowed);
+  const times = rows.map((row) => row.ms);
   if (times.length < 2) {
-    return `<div class="timer-chart-empty">Solve twice and a progress chart appears here — singles, ao5, and ao12.</div>`;
+    return `<div class="timer-chart-empty">Solve twice and a progress chart appears here — singles, ao5, ao12, and Cross / F2L finish times.</div>`;
   }
+
+  const crossFinish = rows.map((row) => splitFinishTimes(row.splits)?.cross ?? null);
+  const f2lFinish = rows.map((row) => splitFinishTimes(row.splits)?.f2l ?? null);
+  const hasSplitSeries = crossFinish.some((ms) => ms != null) || f2lFinish.some((ms) => ms != null);
 
   const pad = { t: 16, r: 12, b: 28, l: 44 };
   const innerW = width - pad.l - pad.r;
   const innerH = height - pad.t - pad.b;
   const ao5 = rollingAverages(times, 5);
   const ao12 = rollingAverages(times, 12);
-  const plotted = times.concat(ao5.filter((n) => n != null), ao12.filter((n) => n != null));
+  const plotted = times.concat(
+    ao5.filter((n) => n != null),
+    ao12.filter((n) => n != null),
+    crossFinish.filter((n) => n != null),
+    f2lFinish.filter((n) => n != null)
+  );
   const min = Math.min(...plotted);
   const max = Math.max(...plotted);
   const span = Math.max(50, max - min);
@@ -220,7 +366,7 @@ export function renderProgressChart(records, { width = 420, height = 180, window
     const parts = [];
     series.forEach((ms, i) => {
       if (ms == null) return;
-      const cmd = i > 0 && series[i - 1] != null ? "L" : "M";
+      const cmd = parts.length ? "L" : "M";
       parts.push(`${cmd} ${xAt(i).toFixed(1)} ${yAt(ms).toFixed(1)}`);
     });
     return parts.join(" ");
@@ -237,28 +383,47 @@ export function renderProgressChart(records, { width = 420, height = 180, window
     );
   }
 
-  const dots = showDots
-    ? times
-        .map(
-          (ms, i) =>
-            `<circle class="timer-chart-dot" cx="${xAt(i).toFixed(1)}" cy="${yAt(ms).toFixed(1)}" r="2.4"><title>Solve ${startIndex + i + 1}: ${formatClock(ms)}</title></circle>`
-        )
-        .join("")
-    : "";
+  const seriesDots = (series, className, label) =>
+    !showDots
+      ? ""
+      : series
+          .map((ms, i) => {
+            if (ms == null) return "";
+            return `<circle class="${className}" cx="${xAt(i).toFixed(1)}" cy="${yAt(ms).toFixed(1)}" r="2.6"><title>Solve ${startIndex + i + 1} ${label}: ${formatClock(ms)}</title></circle>`;
+          })
+          .join("");
+
+  const dots = seriesDots(times, "timer-chart-dot", "single");
+  const crossDots = seriesDots(crossFinish, "timer-chart-dot-cross", "Cross");
+  const f2lDots = seriesDots(f2lFinish, "timer-chart-dot-f2l", "F2L");
 
   const ao5Path = line(ao5);
   const ao12Path = line(ao12);
+  const crossPath = line(crossFinish);
+  const f2lPath = line(f2lFinish);
   const windowNote =
     windowSize > 0 && all.length > times.length
       ? ` · last ${times.length} of ${all.length}`
       : "";
+  const aria = hasSplitSeries
+    ? `Solve times over session, with Cross and F2L finish times${windowNote}`
+    : `Solve times over session${windowNote}`;
 
-  return `<svg class="timer-chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Solve times over session${windowNote}">
+  const splitLegend = hasSplitSeries
+    ? `<li><span class="swatch swatch-cross"></span>Cross</li>
+    <li><span class="swatch swatch-f2l"></span>F2L</li>`
+    : "";
+
+  return `<svg class="timer-chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${aria}">
     ${grid.join("")}
     <path class="timer-chart-singles" d="${line(times)}" fill="none" />
     ${ao5Path ? `<path class="timer-chart-ao5" d="${ao5Path}" fill="none" />` : ""}
     ${ao12Path ? `<path class="timer-chart-ao12" d="${ao12Path}" fill="none" />` : ""}
+    ${crossPath ? `<path class="timer-chart-cross" d="${crossPath}" fill="none" />` : ""}
+    ${f2lPath ? `<path class="timer-chart-f2l" d="${f2lPath}" fill="none" />` : ""}
     ${dots}
+    ${crossDots}
+    ${f2lDots}
     <text class="timer-chart-axis" x="${pad.l}" y="${height - 8}">${firstSolve}</text>
     <text class="timer-chart-axis timer-chart-axis-end" x="${width - pad.r}" y="${height - 8}">${lastSolve}</text>
   </svg>
@@ -266,6 +431,7 @@ export function renderProgressChart(records, { width = 420, height = 180, window
     <li><span class="swatch swatch-single"></span>Single</li>
     <li><span class="swatch swatch-ao5"></span>ao5</li>
     <li><span class="swatch swatch-ao12"></span>ao12</li>
+    ${splitLegend}
   </ul>`;
 }
 
@@ -301,12 +467,19 @@ export function renderTimesList(records) {
       const scramble = row.scramble
         ? `<code class="timer-time-scramble">${escapeHtml(row.scramble)}</code>`
         : "";
+      const splits = row.splits
+        ? `<div class="timer-time-splits">${SPLIT_STEPS.map(
+            (step) =>
+              `<span><em>${step.short}</em> ${formatClock(row.splits[step.id])}</span>`
+          ).join("")}</div>`
+        : "";
       return `<li data-id="${escapeHtml(row.id)}">
         <div class="timer-time-row">
           <span class="timer-time-index">#${records.length - i}</span>
           <span class="timer-time-ms">${formatClock(row.ms)}</span>
           <button type="button" class="timer-time-delete" data-delete="${escapeHtml(row.id)}" aria-label="Delete ${formatClock(row.ms)}">×</button>
         </div>
+        ${splits}
         ${scramble}
       </li>`;
     })
@@ -334,8 +507,50 @@ export function renderStats(stats) {
     .join("");
 }
 
+export function renderSplitStats(splitStats) {
+  if (!splitStats?.stages?.length) return "";
+  const totalMean = splitStats.stages.reduce((sum, stage) => sum + stage.mean, 0) || 1;
+  const rows = splitStats.stages
+    .map((stage) => {
+      const pct = Math.max(8, Math.round((stage.mean / totalMean) * 100));
+      const slow = stage.id === splitStats.slowestId ? " is-slowest" : "";
+      return `<div class="timer-split-avg${slow}">
+        <span class="timer-split-avg-name">${stage.title}</span>
+        <div class="timer-split-avg-track" aria-hidden="true">
+          <span class="timer-split-avg-fill" style="width:${pct}%"></span>
+        </div>
+        <strong>${formatClock(stage.mean)}</strong>
+        <span class="timer-split-avg-best">best ${formatClock(stage.best)}</span>
+      </div>`;
+    })
+    .join("");
+  const slowest = splitStats.stages.find((stage) => stage.id === splitStats.slowestId);
+  const tip = slowest
+    ? `<p class="timer-split-tip">${slowest.title} is your slowest stage on average — that's the one to drill.</p>`
+    : "";
+  const countLabel = `${splitStats.count} split solve${splitStats.count === 1 ? "" : "s"}`;
+  return `<h2 class="timer-times-title">Stage averages</h2>
+    <p class="timer-split-count">${countLabel}</p>
+    ${rows}
+    ${tip}`;
+}
+
 function isTypingTarget(el) {
   return Boolean(el?.closest?.("input, select, textarea, [contenteditable=true]"));
+}
+
+function idleStatus(mode) {
+  return mode === TIMER_MODE_SPLITS
+    ? "Space or tap to start · space or tap again at Cross, F2L, then solved"
+    : "Space or tap to start · next scramble appears when you stop";
+}
+
+function runningStatus(mode, marks = []) {
+  if (mode !== TIMER_MODE_SPLITS) return "Timing — space or tap to stop";
+  const next = SPLIT_STEPS[currentSplitIndex(marks)];
+  if (next.id === "cross") return "Timing — space or tap when white cross is done";
+  if (next.id === "f2l") return "Timing — space or tap when F2L is done";
+  return "Timing — space or tap when solved";
 }
 
 export function initPracticeTimer({
@@ -348,43 +563,80 @@ export function initPracticeTimer({
   const statusEl = document.getElementById("practice-status");
   const timesEl = document.getElementById("timer-times");
   const statsEl = document.getElementById("timer-stats");
+  const splitStatsEl = document.getElementById("timer-split-stats");
   const chartEl = document.getElementById("timer-chart");
   const inspectEl = document.getElementById("timer-inspect");
   const chartWindowEl = document.getElementById("timer-chart-window");
   const clearBtn = document.getElementById("timer-clear");
+  const splitsEl = document.getElementById("practice-splits");
+  const modeBtns = [...document.querySelectorAll("[data-timer-mode]")];
 
   if (!clockBtn || !clockValue) return { refresh() {}, cancel() {} };
 
   const state = {
     phase: "idle", // idle | inspecting | running
+    mode: loadTimerMode(store),
     startedAt: 0,
     inspectLeft: 0,
     scramble: "",
     raf: 0,
     inspectTimer: 0,
+    marks: [],
+    lastTapElapsed: 0,
+    lastSplits: null,
     chartWindow: loadChartWindow(store),
   };
 
   function setPhase(phase) {
     state.phase = phase;
     clockBtn.dataset.phase = phase;
+    const runningLabel =
+      state.mode === TIMER_MODE_SPLITS ? "Record checkpoint or stop timer" : "Stop timer";
     clockBtn.setAttribute(
       "aria-label",
-      phase === "running" ? "Stop timer" : phase === "inspecting" ? "Cancel inspection" : "Start timer"
+      phase === "running" ? runningLabel : phase === "inspecting" ? "Cancel inspection" : "Start timer"
     );
+    syncModeButtons();
   }
 
   function setStatus(text) {
     if (statusEl) statusEl.textContent = text;
   }
 
+  function syncModeButtons() {
+    const locked = state.phase !== "idle";
+    for (const btn of modeBtns) {
+      const active = btn.dataset.timerMode === state.mode;
+      btn.classList.toggle("is-active", active);
+      btn.setAttribute("aria-pressed", active ? "true" : "false");
+      btn.disabled = locked;
+    }
+  }
+
+  function paintSplits(elapsed = 0) {
+    if (!splitsEl) return;
+    const show = state.mode === TIMER_MODE_SPLITS;
+    splitsEl.hidden = !show;
+    if (!show) return;
+    const running = state.phase === "running";
+    const inspecting = state.phase === "inspecting";
+    splitsEl.innerHTML = renderLiveSplits({
+      marks: inspecting ? [] : state.marks,
+      elapsed: running ? elapsed : elapsed || 0,
+      running,
+      splits: running || inspecting ? null : state.lastSplits,
+    });
+  }
+
   function paintClock(ms, inspecting = false) {
     if (inspecting) {
       clockValue.textContent = String(Math.max(0, ms));
+      paintSplits(0);
       return;
     }
     const { m, s, centi } = formatTimerParts(ms);
     clockValue.innerHTML = `${m}<span class="practice-colon">:</span>${s}<span class="practice-centi">${centi}</span>`;
+    paintSplits(ms);
   }
 
   function newScramble({ announce = false } = {}) {
@@ -398,6 +650,7 @@ export function initPracticeTimer({
     const stats = computeStats(records);
     if (timesEl) timesEl.innerHTML = renderTimesList(records);
     if (statsEl) statsEl.innerHTML = renderStats(stats);
+    if (splitStatsEl) splitStatsEl.innerHTML = renderSplitStats(stats.splits);
     if (chartEl) chartEl.innerHTML = renderProgressChart(records, { windowSize: state.chartWindow });
     if (clearBtn) clearBtn.disabled = records.length === 0;
   }
@@ -413,8 +666,11 @@ export function initPracticeTimer({
     cancelTimers();
     setPhase("idle");
     state.startedAt = 0;
+    state.marks = [];
+    state.lastTapElapsed = 0;
+    state.lastSplits = null;
     paintClock(0);
-    setStatus("Space or tap to start");
+    setStatus(idleStatus(state.mode));
   }
 
   function tickRunning() {
@@ -427,7 +683,10 @@ export function initPracticeTimer({
     cancelTimers();
     setPhase("running");
     state.startedAt = Date.now();
-    setStatus("Timing — space or tap to stop");
+    state.marks = [];
+    state.lastTapElapsed = 0;
+    state.lastSplits = null;
+    setStatus(runningStatus(state.mode, state.marks));
     tickRunning();
   }
 
@@ -460,12 +719,27 @@ export function initPracticeTimer({
     cancelTimers();
     setPhase("idle");
     if (ms > 0) {
+      const splits =
+        state.mode === TIMER_MODE_SPLITS && state.marks.length >= SPLIT_STEPS.length - 1
+          ? splitDurationsFromMarks(state.marks, ms)
+          : null;
+      state.lastSplits = splits;
       paintClock(ms);
-      addPracticeTime({ ms, at: Date.now(), scramble: state.scramble }, store);
+      addPracticeTime({ ms, at: Date.now(), scramble: state.scramble, splits }, store);
       renderRecords();
       newScramble();
-      setStatus(`Stopped at ${formatClock(ms)}. Scramble ready for the next solve.`);
+      const splitBits = splits
+        ? SPLIT_STEPS.map((step) => `${step.short} ${formatClock(splits[step.id])}`).join(" · ")
+        : "";
+      setStatus(
+        splitBits
+          ? `Stopped at ${formatClock(ms)} · ${splitBits}. Scramble ready.`
+          : `Stopped at ${formatClock(ms)}. Scramble ready for the next solve.`
+      );
+      state.marks = [];
+      state.lastTapElapsed = 0;
     } else {
+      state.lastSplits = null;
       paintClock(0);
       setStatus("Inspection cancelled");
     }
@@ -473,9 +747,35 @@ export function initPracticeTimer({
 
   function toggle() {
     if (!isActive()) return;
-    if (state.phase === "running") stopTiming();
-    else if (state.phase === "inspecting") cancelSession();
+    if (state.phase === "running") {
+      const elapsed = Date.now() - state.startedAt;
+      const result = applySplitTap({
+        mode: state.mode,
+        marks: state.marks,
+        elapsed,
+        lastTapElapsed: state.lastTapElapsed,
+      });
+      if (result.action === "ignore") return;
+      state.lastTapElapsed = elapsed;
+      if (result.action === "split") {
+        state.marks = result.marks;
+        setStatus(runningStatus(state.mode, state.marks));
+        paintSplits(elapsed);
+        return;
+      }
+      stopTiming();
+    } else if (state.phase === "inspecting") cancelSession();
     else startInspection();
+  }
+
+  function setMode(mode) {
+    if (state.phase !== "idle") return;
+    state.mode = saveTimerMode(mode, store);
+    state.lastSplits = null;
+    state.marks = [];
+    paintSplits(0);
+    setStatus(idleStatus(state.mode));
+    syncModeButtons();
   }
 
   clockBtn.addEventListener("click", () => {
@@ -497,7 +797,9 @@ export function initPracticeTimer({
     if (!loadPracticeTimes(store).length) return;
     if (!window.confirm("Clear all timer records?")) return;
     clearPracticeTimes(store);
+    state.lastSplits = null;
     renderRecords();
+    paintSplits(0);
     setStatus("All times cleared");
   });
   timesEl?.addEventListener("click", (e) => {
@@ -507,6 +809,9 @@ export function initPracticeTimer({
     renderRecords();
     setStatus("Time deleted");
   });
+  for (const btn of modeBtns) {
+    btn.addEventListener("click", () => setMode(btn.dataset.timerMode));
+  }
 
   document.addEventListener("keydown", (e) => {
     if (!isActive() || e.code !== "Space") return;
@@ -526,10 +831,12 @@ export function initPracticeTimer({
   newScramble();
   paintClock(0);
   renderRecords();
+  setStatus(idleStatus(state.mode));
 
   return {
     refresh: renderRecords,
     cancel: cancelSession,
     getPhase: () => state.phase,
+    getMode: () => state.mode,
   };
 }

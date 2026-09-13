@@ -12,7 +12,7 @@
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=timer4" />
+    <link rel="stylesheet" href="styles.css?v=splits5" />
   </head>
   <body class="timer-page">
     <div class="ambient" aria-hidden="true"></div>
@@ -34,9 +34,18 @@
         <button type="button" class="practice-scramble" id="practice-scramble" title="Tap for a new scramble" aria-label="Current scramble. Tap for a new scramble.">
           —
         </button>
+        <div class="timer-mode" role="group" aria-label="Timer mode">
+          <button type="button" class="timer-mode-btn is-active" data-timer-mode="single" aria-pressed="true">
+            Single
+          </button>
+          <button type="button" class="timer-mode-btn" data-timer-mode="splits" aria-pressed="false">
+            Cross · F2L · Final
+          </button>
+        </div>
         <button type="button" class="practice-clock" id="practice-clock" data-phase="idle" aria-label="Start timer">
           <span class="practice-clock-value" id="practice-clock-value">0.00</span>
         </button>
+        <ol class="practice-splits" id="practice-splits" hidden></ol>
         <p class="practice-status" id="practice-status">Space or tap to start · next scramble appears when you stop</p>
       </section>
 
@@ -64,6 +73,7 @@
           <button type="button" class="btn btn-ghost btn-small" id="timer-clear" disabled>Clear times</button>
         </div>
         <div class="timer-stats" id="timer-stats"></div>
+        <div class="timer-split-stats" id="timer-split-stats"></div>
         <div class="timer-chart" id="timer-chart" aria-live="polite"></div>
         <h2 class="timer-times-title">Times</h2>
         <div class="timer-times" id="timer-times"></div>
@@ -72,9 +82,9 @@
 
     <footer class="foot">
       <span>Works offline · times stay on this device</span>
-      <span>Space or tap the clock</span>
+      <span>Space or tap the clock · in split mode that also records Cross, F2L, then Final</span>
     </footer>
 
-    <script type="module" src="js/timer-page.js?v=timer4"></script>
+    <script type="module" src="js/timer-page.js?v=splits5"></script>
   </body>
 </html>

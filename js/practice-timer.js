@@ -672,11 +672,11 @@ export function renderStats(stats) {
     ["Average", dash(stats.mean), ""],
     ["Best", dash(stats.best), ""],
     ["Worst", dash(stats.worst), ""],
+    ["Cross best", dash(stageBest(stats.splits, "cross")), "timer-stat-cross"],
+    ["F2L best", dash(stageBest(stats.splits, "f2l")), "timer-stat-f2l"],
     ["Trimmed", dash(stats.trimmed), ""],
     ["ao5", dash(stats.ao5), ""],
     ["ao12", dash(stats.ao12), ""],
-    ["Cross best", dash(stageBest(stats.splits, "cross")), "timer-stat-cross"],
-    ["F2L best", dash(stageBest(stats.splits, "f2l")), "timer-stat-f2l"],
   ];
   return rows
     .map(

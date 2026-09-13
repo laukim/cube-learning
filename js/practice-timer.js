@@ -12,6 +12,9 @@ export const SPLIT_BOUNCE_MS = 150;
 /** Chart window sizes; 0 = all solves in the session. */
 export const CHART_WINDOW_OPTIONS = [25, 50, 100, 0];
 export const DEFAULT_CHART_WINDOW = 50;
+export const CHART_PAD = { t: 16, r: 12, b: 28, l: 44 };
+export const DEFAULT_CHART_SIZE = { width: 420, height: 180 };
+export const ENLARGED_CHART_SIZE = { width: 960, height: 440 };
 
 export const SPLIT_STEPS = [
   { id: "cross", short: "Cross", title: "White cross" },
@@ -325,7 +328,150 @@ export function computeStats(records) {
   };
 }
 
-export function renderProgressChart(records, { width = 420, height = 180, windowSize = DEFAULT_CHART_WINDOW } = {}) {
+export function stageBest(splitStats, id) {
+  return splitStats?.stages?.find((stage) => stage.id === id)?.best ?? null;
+}
+
+export function nearestChartIndex(x, { width, count, pad = CHART_PAD } = {}) {
+  const n = Number(count) || 0;
+  if (n <= 1) return 0;
+  const innerW = Math.max(1, width - pad.l - pad.r);
+  const t = (Number(x) - pad.l) / innerW;
+  return Math.max(0, Math.min(n - 1, Math.round(t * (n - 1))));
+}
+
+export function svgPointFromEvent(event, svg) {
+  const rect = svg.getBoundingClientRect();
+  const viewBox = svg.viewBox?.baseVal;
+  const vbW = viewBox?.width || Number(svg.dataset.width) || rect.width || 1;
+  const vbH = viewBox?.height || Number(svg.dataset.height) || rect.height || 1;
+  const w = rect.width || 1;
+  const h = rect.height || 1;
+  return {
+    x: ((event.clientX - rect.left) / w) * vbW,
+    y: ((event.clientY - rect.top) / h) * vbH,
+  };
+}
+
+export function renderChartTooltip(point) {
+  if (!point) return "";
+  const row = (label, value) =>
+    value
+      ? `<div class="timer-chart-tip-row"><span>${label}</span><strong>${value}</strong></div>`
+      : "";
+  return `<div class="timer-chart-tip-solve">Solve ${point.n}</div>
+    ${row("Single", point.single)}
+    ${row("Cross", point.cross)}
+    ${row("F2L", point.f2l)}
+    ${row("ao5", point.ao5)}
+    ${row("ao12", point.ao12)}`;
+}
+
+export function bindChartInteract(root) {
+  if (!root) return () => {};
+  const frame = root.querySelector(".timer-chart-frame") || root;
+  const svg = root.querySelector(".timer-chart-svg");
+  const tooltip = root.querySelector(".timer-chart-tooltip");
+  const dataEl = root.querySelector(".timer-chart-data");
+  const hover = root.querySelector(".timer-chart-hover");
+  const guide = root.querySelector(".timer-chart-guide");
+  const markSingle = root.querySelector(".timer-chart-hover-single");
+  const markCross = root.querySelector(".timer-chart-hover-cross");
+  const markF2l = root.querySelector(".timer-chart-hover-f2l");
+  if (!svg || !tooltip || !dataEl) return () => {};
+
+  let points = [];
+  try {
+    points = JSON.parse(dataEl.textContent || "[]");
+  } catch {
+    points = [];
+  }
+  if (points.length < 2) return () => {};
+
+  const width = Number(svg.dataset.width) || DEFAULT_CHART_SIZE.width;
+  const pad = {
+    t: Number(svg.dataset.padT) || CHART_PAD.t,
+    r: Number(svg.dataset.padR) || CHART_PAD.r,
+    b: Number(svg.dataset.padB) || CHART_PAD.b,
+    l: Number(svg.dataset.padL) || CHART_PAD.l,
+  };
+  const plotTop = pad.t;
+  const plotBottom = (Number(svg.dataset.height) || DEFAULT_CHART_SIZE.height) - pad.b;
+  let active = -1;
+
+  function hide() {
+    active = -1;
+    tooltip.hidden = true;
+    tooltip.innerHTML = "";
+    if (hover) hover.setAttribute("opacity", "0");
+  }
+
+  function placeTooltip(point) {
+    const svgRect = svg.getBoundingClientRect();
+    const frameRect = frame.getBoundingClientRect();
+    const scaleX = svgRect.width / (width || 1);
+    const scaleY = svgRect.height / (Number(svg.dataset.height) || 1);
+    const tipW = tooltip.offsetWidth || 148;
+    const tipH = tooltip.offsetHeight || 88;
+    let left = svgRect.left - frameRect.left + point.x * scaleX + 14;
+    let top = svgRect.top - frameRect.top + point.y * scaleY - tipH - 8;
+    if (left + tipW > frameRect.width - 8) left = left - tipW - 28;
+    if (left < 8) left = 8;
+    if (top < 8) top = svgRect.top - frameRect.top + point.y * scaleY + 16;
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${top}px`;
+  }
+
+  function show(index) {
+    const point = points[index];
+    if (!point) return;
+    active = index;
+    tooltip.hidden = false;
+    tooltip.innerHTML = renderChartTooltip(point);
+    placeTooltip(point);
+    if (hover) hover.setAttribute("opacity", "1");
+    if (guide) {
+      guide.setAttribute("x1", point.x.toFixed(1));
+      guide.setAttribute("x2", point.x.toFixed(1));
+      guide.setAttribute("y1", String(plotTop));
+      guide.setAttribute("y2", String(plotBottom));
+    }
+    if (markSingle) {
+      markSingle.setAttribute("cx", point.x.toFixed(1));
+      markSingle.setAttribute("cy", point.y.toFixed(1));
+    }
+    if (markCross) {
+      markCross.setAttribute("opacity", point.yCross == null ? "0" : "1");
+      if (point.yCross != null) {
+        markCross.setAttribute("cx", point.x.toFixed(1));
+        markCross.setAttribute("cy", Number(point.yCross).toFixed(1));
+      }
+    }
+    if (markF2l) {
+      markF2l.setAttribute("opacity", point.yF2l == null ? "0" : "1");
+      if (point.yF2l != null) {
+        markF2l.setAttribute("cx", point.x.toFixed(1));
+        markF2l.setAttribute("cy", Number(point.yF2l).toFixed(1));
+      }
+    }
+  }
+
+  function fromEvent(event) {
+    const pt = svgPointFromEvent(event, svg);
+    show(nearestChartIndex(pt.x, { width, count: points.length, pad }));
+  }
+
+  svg.addEventListener("pointermove", fromEvent);
+  svg.addEventListener("pointerdown", fromEvent);
+  svg.addEventListener("pointerleave", (event) => {
+    if (event.pointerType === "touch" && active >= 0) return;
+    hide();
+  });
+
+  return hide;
+}
+
+export function renderProgressChart(records, { width, height, windowSize = DEFAULT_CHART_WINDOW, enlarged = false } = {}) {
   const all = Array.isArray(records) ? records : [];
   const { records: windowed, startIndex } = sliceChartRecords(all, windowSize);
   const rows = chartRows(windowed);
@@ -334,11 +480,15 @@ export function renderProgressChart(records, { width = 420, height = 180, window
     return `<div class="timer-chart-empty">Solve twice and a progress chart appears here — singles, ao5, ao12, and Cross / F2L finish times.</div>`;
   }
 
+  const size = enlarged ? ENLARGED_CHART_SIZE : DEFAULT_CHART_SIZE;
+  width = Number(width) || size.width;
+  height = Number(height) || size.height;
+
   const crossFinish = rows.map((row) => splitFinishTimes(row.splits)?.cross ?? null);
   const f2lFinish = rows.map((row) => splitFinishTimes(row.splits)?.f2l ?? null);
   const hasSplitSeries = crossFinish.some((ms) => ms != null) || f2lFinish.some((ms) => ms != null);
 
-  const pad = { t: 16, r: 12, b: 28, l: 44 };
+  const pad = CHART_PAD;
   const innerW = width - pad.l - pad.r;
   const innerH = height - pad.t - pad.b;
   const ao5 = rollingAverages(times, 5);
@@ -357,7 +507,8 @@ export function renderProgressChart(records, { width = 420, height = 180, window
   const range = hi - lo || 1;
   const firstSolve = startIndex + 1;
   const lastSolve = startIndex + times.length;
-  const showDots = times.length <= 60;
+  const showDots = enlarged || times.length <= 60;
+  const dotR = enlarged ? (times.length > 80 ? 2.2 : 3.2) : 2.6;
 
   const xAt = (i) => pad.l + (times.length === 1 ? innerW / 2 : (i / (times.length - 1)) * innerW);
   const yAt = (ms) => pad.t + (1 - (ms - lo) / range) * innerH;
@@ -372,7 +523,7 @@ export function renderProgressChart(records, { width = 420, height = 180, window
     return parts.join(" ");
   };
 
-  const ticks = 3;
+  const ticks = enlarged ? 5 : 3;
   const grid = [];
   for (let t = 0; t <= ticks; t++) {
     const ms = lo + (range * t) / ticks;
@@ -389,7 +540,7 @@ export function renderProgressChart(records, { width = 420, height = 180, window
       : series
           .map((ms, i) => {
             if (ms == null) return "";
-            return `<circle class="${className}" cx="${xAt(i).toFixed(1)}" cy="${yAt(ms).toFixed(1)}" r="2.6"><title>Solve ${startIndex + i + 1} ${label}: ${formatClock(ms)}</title></circle>`;
+            return `<circle class="${className}" cx="${xAt(i).toFixed(1)}" cy="${yAt(ms).toFixed(1)}" r="${dotR}"><title>Solve ${startIndex + i + 1} ${label}: ${formatClock(ms)}</title></circle>`;
           })
           .join("");
 
@@ -414,7 +565,26 @@ export function renderProgressChart(records, { width = 420, height = 180, window
     <li><span class="swatch swatch-f2l"></span>F2L</li>`
     : "";
 
-  return `<svg class="timer-chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${aria}">
+  const points = times.map((ms, i) => ({
+    n: startIndex + i + 1,
+    single: formatClock(ms),
+    cross: crossFinish[i] != null ? formatClock(crossFinish[i]) : null,
+    f2l: f2lFinish[i] != null ? formatClock(f2lFinish[i]) : null,
+    ao5: ao5[i] != null ? formatClock(ao5[i]) : null,
+    ao12: ao12[i] != null ? formatClock(ao12[i]) : null,
+    x: Number(xAt(i).toFixed(1)),
+    y: Number(yAt(ms).toFixed(1)),
+    yCross: crossFinish[i] != null ? Number(yAt(crossFinish[i]).toFixed(1)) : null,
+    yF2l: f2lFinish[i] != null ? Number(yAt(f2lFinish[i]).toFixed(1)) : null,
+  }));
+
+  const enlargeBtn = enlarged
+    ? ""
+    : `<button type="button" class="btn btn-ghost btn-small timer-chart-enlarge" data-enlarge-chart aria-haspopup="dialog" aria-controls="timer-chart-dialog">Enlarge</button>`;
+
+  return `<div class="timer-chart-frame${enlarged ? " is-enlarged" : ""}">
+    ${enlargeBtn}
+    <svg class="timer-chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${aria}" data-width="${width}" data-height="${height}" data-pad-t="${pad.t}" data-pad-r="${pad.r}" data-pad-b="${pad.b}" data-pad-l="${pad.l}">
     ${grid.join("")}
     <path class="timer-chart-singles" d="${line(times)}" fill="none" />
     ${ao5Path ? `<path class="timer-chart-ao5" d="${ao5Path}" fill="none" />` : ""}
@@ -424,15 +594,24 @@ export function renderProgressChart(records, { width = 420, height = 180, window
     ${dots}
     ${crossDots}
     ${f2lDots}
+    <g class="timer-chart-hover" opacity="0" pointer-events="none">
+      <line class="timer-chart-guide" x1="${pad.l}" x2="${pad.l}" y1="${pad.t}" y2="${height - pad.b}" />
+      <circle class="timer-chart-hover-single" r="${enlarged ? 5.5 : 4.2}" cx="0" cy="0" />
+      <circle class="timer-chart-hover-cross" r="${enlarged ? 4.5 : 3.6}" cx="0" cy="0" opacity="0" />
+      <circle class="timer-chart-hover-f2l" r="${enlarged ? 4.5 : 3.6}" cx="0" cy="0" opacity="0" />
+    </g>
     <text class="timer-chart-axis" x="${pad.l}" y="${height - 8}">${firstSolve}</text>
     <text class="timer-chart-axis timer-chart-axis-end" x="${width - pad.r}" y="${height - 8}">${lastSolve}</text>
   </svg>
+    <div class="timer-chart-tooltip" hidden></div>
+    <div class="timer-chart-data" hidden>${escapeHtml(JSON.stringify(points))}</div>
   <ul class="timer-chart-legend">
     <li><span class="swatch swatch-single"></span>Single</li>
     <li><span class="swatch swatch-ao5"></span>ao5</li>
     <li><span class="swatch swatch-ao12"></span>ao12</li>
     ${splitLegend}
-  </ul>`;
+  </ul>
+  </div>`;
 }
 
 function dash(ms) {
@@ -489,17 +668,19 @@ export function renderTimesList(records) {
 
 export function renderStats(stats) {
   const rows = [
-    ["Solves", String(stats.count || 0)],
-    ["Average", dash(stats.mean)],
-    ["Best", dash(stats.best)],
-    ["Worst", dash(stats.worst)],
-    ["Trimmed", dash(stats.trimmed)],
-    ["ao5", dash(stats.ao5)],
-    ["ao12", dash(stats.ao12)],
+    ["Solves", String(stats.count || 0), ""],
+    ["Average", dash(stats.mean), ""],
+    ["Best", dash(stats.best), ""],
+    ["Worst", dash(stats.worst), ""],
+    ["Cross best", dash(stageBest(stats.splits, "cross")), "timer-stat-cross"],
+    ["F2L best", dash(stageBest(stats.splits, "f2l")), "timer-stat-f2l"],
+    ["Trimmed", dash(stats.trimmed), ""],
+    ["ao5", dash(stats.ao5), ""],
+    ["ao12", dash(stats.ao12), ""],
   ];
   return rows
     .map(
-      ([label, value]) => `<div class="timer-stat">
+      ([label, value, extra]) => `<div class="timer-stat${extra ? ` ${extra}` : ""}">
         <span>${label}</span>
         <strong>${value}</strong>
       </div>`
@@ -536,7 +717,7 @@ export function renderSplitStats(splitStats) {
 }
 
 function isTypingTarget(el) {
-  return Boolean(el?.closest?.("input, select, textarea, [contenteditable=true]"));
+  return Boolean(el?.closest?.("input, select, textarea, [contenteditable=true], dialog"));
 }
 
 function idleStatus(mode) {
@@ -565,6 +746,9 @@ export function initPracticeTimer({
   const statsEl = document.getElementById("timer-stats");
   const splitStatsEl = document.getElementById("timer-split-stats");
   const chartEl = document.getElementById("timer-chart");
+  const chartDialog = document.getElementById("timer-chart-dialog");
+  const enlargedEl = document.getElementById("timer-chart-enlarged");
+  const chartCloseBtn = document.getElementById("timer-chart-dialog-close");
   const inspectEl = document.getElementById("timer-inspect");
   const chartWindowEl = document.getElementById("timer-chart-window");
   const clearBtn = document.getElementById("timer-clear");
@@ -645,13 +829,42 @@ export function initPracticeTimer({
     if (announce) setStatus("New scramble");
   }
 
+  function paintEnlargedChart(records) {
+    if (!enlargedEl) return;
+    enlargedEl.innerHTML = renderProgressChart(records, {
+      windowSize: state.chartWindow,
+      enlarged: true,
+    });
+    bindChartInteract(enlargedEl);
+  }
+
+  function openEnlargedChart() {
+    if (!chartDialog) return;
+    const records = loadPracticeTimes(store);
+    const { records: windowed } = sliceChartRecords(records, state.chartWindow);
+    if (chartRows(windowed).length < 2) return;
+    paintEnlargedChart(records);
+    if (typeof chartDialog.showModal === "function") chartDialog.showModal();
+    else chartDialog.setAttribute("open", "");
+  }
+
+  function closeEnlargedChart() {
+    if (!chartDialog) return;
+    if (typeof chartDialog.close === "function" && chartDialog.open) chartDialog.close();
+    else chartDialog.removeAttribute("open");
+  }
+
   function renderRecords() {
     const records = loadPracticeTimes(store);
     const stats = computeStats(records);
     if (timesEl) timesEl.innerHTML = renderTimesList(records);
     if (statsEl) statsEl.innerHTML = renderStats(stats);
     if (splitStatsEl) splitStatsEl.innerHTML = renderSplitStats(stats.splits);
-    if (chartEl) chartEl.innerHTML = renderProgressChart(records, { windowSize: state.chartWindow });
+    if (chartEl) {
+      chartEl.innerHTML = renderProgressChart(records, { windowSize: state.chartWindow });
+      bindChartInteract(chartEl);
+    }
+    if (chartDialog?.open) paintEnlargedChart(records);
     if (clearBtn) clearBtn.disabled = records.length === 0;
   }
 
@@ -793,6 +1006,17 @@ export function initPracticeTimer({
     state.chartWindow = saveChartWindow(chartWindowEl.value, store);
     renderRecords();
   });
+  chartEl?.addEventListener("click", (e) => {
+    if (!e.target.closest("[data-enlarge-chart]")) return;
+    openEnlargedChart();
+  });
+  chartCloseBtn?.addEventListener("click", () => closeEnlargedChart());
+  chartDialog?.addEventListener("click", (e) => {
+    if (e.target === chartDialog) closeEnlargedChart();
+  });
+  chartDialog?.addEventListener("close", () => {
+    if (enlargedEl) enlargedEl.innerHTML = "";
+  });
   clearBtn?.addEventListener("click", () => {
     if (!loadPracticeTimes(store).length) return;
     if (!window.confirm("Clear all timer records?")) return;
@@ -815,12 +1039,12 @@ export function initPracticeTimer({
 
   document.addEventListener("keydown", (e) => {
     if (!isActive() || e.code !== "Space") return;
-    if (isTypingTarget(e.target)) return;
+    if (chartDialog?.open || isTypingTarget(e.target)) return;
     e.preventDefault();
   });
   document.addEventListener("keyup", (e) => {
     if (!isActive() || e.repeat || e.code !== "Space") return;
-    if (isTypingTarget(e.target)) return;
+    if (chartDialog?.open || isTypingTarget(e.target)) return;
     e.preventDefault();
     toggle();
   });

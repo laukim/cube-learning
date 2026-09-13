@@ -823,15 +823,24 @@ assert(toAtomics(analyzePll(zCube).hint.alg)[0] === "M'", "Z-perm remaining star
 
 const {
   addPracticeTime,
+  applySplitTap,
   averageOf,
   clearPracticeTimes,
+  computeSplitStats,
   computeStats,
   deletePracticeTime,
   loadPracticeTimes,
+  loadTimerMode,
   memoryStore,
+  renderLiveSplits,
   renderProgressChart,
+  renderSplitStats,
   renderTimesList,
   rollingAverages,
+  saveTimerMode,
+  splitDurationsFromMarks,
+  TIMER_MODE_SINGLE,
+  TIMER_MODE_SPLITS,
 } = await import("../js/practice-timer.js");
 
 const store = memoryStore();
@@ -864,5 +873,48 @@ assert(
   "times list shows scramble moves"
 );
 assert(!renderTimesList([{ id: "s2", ms: 10000, at: 2, scramble: "" }]).includes("timer-time-scramble"), "blank scramble omitted");
+
+assert(loadTimerMode(store) === TIMER_MODE_SINGLE, "default timer mode is single");
+assert(saveTimerMode("splits", store) === TIMER_MODE_SPLITS, "saves split mode");
+assert(loadTimerMode(store) === TIMER_MODE_SPLITS, "loads split mode");
+assert(saveTimerMode("nope", store) === TIMER_MODE_SINGLE, "unknown mode falls back to single");
+
+const fromMarks = splitDurationsFromMarks([4120, 22460], 30680);
+assert(fromMarks.cross === 4120, "cross duration from first mark");
+assert(fromMarks.f2l === 18340, "f2l duration is mark gap");
+assert(fromMarks.final === 8220, "final duration is remainder");
+
+let tap = applySplitTap({ mode: TIMER_MODE_SPLITS, marks: [], elapsed: 50, lastTapElapsed: 0 });
+assert(tap.action === "ignore", "bounce ignores instant first split");
+tap = applySplitTap({ mode: TIMER_MODE_SPLITS, marks: [], elapsed: 4120, lastTapElapsed: 0 });
+assert(tap.action === "split" && tap.marks[0] === 4120, "first tap records white cross");
+tap = applySplitTap({ mode: TIMER_MODE_SPLITS, marks: tap.marks, elapsed: 22460, lastTapElapsed: 4120 });
+assert(tap.action === "split" && tap.marks[1] === 22460, "second tap records F2L");
+tap = applySplitTap({ mode: TIMER_MODE_SPLITS, marks: tap.marks, elapsed: 30680, lastTapElapsed: 22460 });
+assert(tap.action === "stop", "third tap stops for final");
+tap = applySplitTap({ mode: TIMER_MODE_SINGLE, marks: [], elapsed: 9000, lastTapElapsed: 0 });
+assert(tap.action === "stop", "single mode still stops on first tap");
+
+const liveHtml = renderLiveSplits({ marks: [4120], elapsed: 9000, running: true });
+assert(liveHtml.includes("is-live") && liveHtml.includes("F2L"), "live split highlights F2L");
+assert(liveHtml.includes("4.12"), "completed cross split is shown live");
+
+addPracticeTime(
+  { id: "split-a", ms: 30000, at: 10, scramble: "R U", splits: { cross: 4000, f2l: 18000, final: 8000 } },
+  store
+);
+addPracticeTime(
+  { id: "split-b", ms: 28000, at: 11, scramble: "U R", splits: { cross: 5000, f2l: 16000, final: 7000 } },
+  store
+);
+const splitRows = loadPracticeTimes(store);
+assert(splitRows[0].splits.cross === 4000, "stored cross split");
+assert(renderTimesList(splitRows).includes("F2L") && renderTimesList(splitRows).includes("18.00"), "times list shows F2L split");
+const splitStats = computeSplitStats(splitRows);
+assert(splitStats.count === 2, "two split solves");
+assert(splitStats.slowestId === "f2l", "F2L is the slowest average stage");
+assert(Math.abs(splitStats.stages.find((s) => s.id === "cross").mean - 4500) < 0.001, "mean white cross");
+assert(renderSplitStats(splitStats).includes("White cross"), "stage averages mention white cross");
+assert(renderSplitStats(splitStats).includes("F2L is your slowest stage"), "coaching tip names slowest stage");
 
 console.log("ALL PASS");

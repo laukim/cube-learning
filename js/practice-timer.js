@@ -273,13 +273,13 @@ export function runningMean(series) {
   });
 }
 
-/** Clock time when Cross / F2L finished (F2L is Cross + F2L duration). */
-export function splitFinishTimes(splits) {
+/** Stage durations for the chart. F2L is pair time only — it does not include Cross. */
+export function splitStageTimes(splits) {
   if (!splits) return null;
   const cross = Number(splits.cross);
   const f2l = Number(splits.f2l);
   if (!Number.isFinite(cross) || cross < 0 || !Number.isFinite(f2l) || f2l < 0) return null;
-  return { cross, f2l: cross + f2l };
+  return { cross, f2l };
 }
 
 export function chartRows(records) {
@@ -501,16 +501,16 @@ export function renderProgressChart(records, { width, height, windowSize = DEFAU
   const rows = chartRows(windowed);
   const times = rows.map((row) => row.ms);
   if (times.length < 2) {
-    return `<div class="timer-chart-empty">Solve twice and a progress chart appears here — singles, ao5, ao12, and Cross / F2L finish times.</div>`;
+    return `<div class="timer-chart-empty">Solve twice and a progress chart appears here — singles, ao5, ao12, and Cross / F2L times.</div>`;
   }
 
   const size = enlarged ? ENLARGED_CHART_SIZE : DEFAULT_CHART_SIZE;
   width = Number(width) || size.width;
   height = Number(height) || size.height;
 
-  const crossFinish = rows.map((row) => splitFinishTimes(row.splits)?.cross ?? null);
-  const f2lFinish = rows.map((row) => splitFinishTimes(row.splits)?.f2l ?? null);
-  const hasSplitSeries = crossFinish.some((ms) => ms != null) || f2lFinish.some((ms) => ms != null);
+  const crossTimes = rows.map((row) => splitStageTimes(row.splits)?.cross ?? null);
+  const f2lTimes = rows.map((row) => splitStageTimes(row.splits)?.f2l ?? null);
+  const hasSplitSeries = crossTimes.some((ms) => ms != null) || f2lTimes.some((ms) => ms != null);
 
   const pad = CHART_PAD;
   const innerW = width - pad.l - pad.r;
@@ -518,13 +518,13 @@ export function renderProgressChart(records, { width, height, windowSize = DEFAU
   const ao5 = rollingAverages(times, 5);
   const ao12 = rollingAverages(times, 12);
   const showSplitAverages = Boolean(enlarged && hasSplitSeries);
-  const crossAvg = showSplitAverages ? runningMean(crossFinish) : [];
-  const f2lAvg = showSplitAverages ? runningMean(f2lFinish) : [];
+  const crossAvg = showSplitAverages ? runningMean(crossTimes) : [];
+  const f2lAvg = showSplitAverages ? runningMean(f2lTimes) : [];
   const plotted = times.concat(
     ao5.filter((n) => n != null),
     ao12.filter((n) => n != null),
-    crossFinish.filter((n) => n != null),
-    f2lFinish.filter((n) => n != null),
+    crossTimes.filter((n) => n != null),
+    f2lTimes.filter((n) => n != null),
     crossAvg.filter((n) => n != null),
     f2lAvg.filter((n) => n != null)
   );
@@ -574,13 +574,13 @@ export function renderProgressChart(records, { width, height, windowSize = DEFAU
           .join("");
 
   const dots = seriesDots(times, "timer-chart-dot", "single");
-  const crossDots = seriesDots(crossFinish, "timer-chart-dot-cross", "Cross");
-  const f2lDots = seriesDots(f2lFinish, "timer-chart-dot-f2l", "F2L");
+  const crossDots = seriesDots(crossTimes, "timer-chart-dot-cross", "Cross");
+  const f2lDots = seriesDots(f2lTimes, "timer-chart-dot-f2l", "F2L");
 
   const ao5Path = line(ao5);
   const ao12Path = line(ao12);
-  const crossPath = line(crossFinish);
-  const f2lPath = line(f2lFinish);
+  const crossPath = line(crossTimes);
+  const f2lPath = line(f2lTimes);
   const crossAvgPath = showSplitAverages ? line(crossAvg) : "";
   const f2lAvgPath = showSplitAverages ? line(f2lAvg) : "";
   const windowNote =
@@ -589,8 +589,8 @@ export function renderProgressChart(records, { width, height, windowSize = DEFAU
       : "";
   const aria = hasSplitSeries
     ? showSplitAverages
-      ? `Solve times over session, with Cross and F2L finish times and averages${windowNote}`
-      : `Solve times over session, with Cross and F2L finish times${windowNote}`
+      ? `Solve times over session, with Cross and F2L times and averages${windowNote}`
+      : `Solve times over session, with Cross and F2L times${windowNote}`
     : `Solve times over session${windowNote}`;
 
   const splitLegend = hasSplitSeries
@@ -607,16 +607,16 @@ export function renderProgressChart(records, { width, height, windowSize = DEFAU
   const points = times.map((ms, i) => ({
     n: startIndex + i + 1,
     single: formatClock(ms),
-    cross: crossFinish[i] != null ? formatClock(crossFinish[i]) : null,
-    f2l: f2lFinish[i] != null ? formatClock(f2lFinish[i]) : null,
+    cross: crossTimes[i] != null ? formatClock(crossTimes[i]) : null,
+    f2l: f2lTimes[i] != null ? formatClock(f2lTimes[i]) : null,
     ao5: ao5[i] != null ? formatClock(ao5[i]) : null,
     ao12: ao12[i] != null ? formatClock(ao12[i]) : null,
     crossAvg: showSplitAverages && crossAvg[i] != null ? formatClock(crossAvg[i]) : null,
     f2lAvg: showSplitAverages && f2lAvg[i] != null ? formatClock(f2lAvg[i]) : null,
     x: Number(xAt(i).toFixed(1)),
     y: Number(yAt(ms).toFixed(1)),
-    yCross: crossFinish[i] != null ? Number(yAt(crossFinish[i]).toFixed(1)) : null,
-    yF2l: f2lFinish[i] != null ? Number(yAt(f2lFinish[i]).toFixed(1)) : null,
+    yCross: crossTimes[i] != null ? Number(yAt(crossTimes[i]).toFixed(1)) : null,
+    yF2l: f2lTimes[i] != null ? Number(yAt(f2lTimes[i]).toFixed(1)) : null,
   }));
 
   const enlargeBtn = enlarged

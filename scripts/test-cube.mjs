@@ -848,7 +848,7 @@ const {
   saveTimerMode,
   sliceChartRecords,
   splitDurationsFromMarks,
-  splitFinishTimes,
+  splitStageTimes,
   stageBest,
   stageMean,
   TIMER_MODE_SINGLE,
@@ -929,14 +929,15 @@ assert(Math.abs(splitStats.stages.find((s) => s.id === "cross").mean - 4500) < 0
 assert(renderSplitStats(splitStats).includes("White cross"), "stage averages mention white cross");
 assert(renderSplitStats(splitStats).includes("F2L is your slowest stage"), "coaching tip names slowest stage");
 
-const finish = splitFinishTimes({ cross: 4000, f2l: 18000, final: 8000 });
-assert(finish.cross === 4000, "cross finish is the cross clock");
-assert(finish.f2l === 22000, "f2l finish is cross plus f2l");
+const stages = splitStageTimes({ cross: 4000, f2l: 18000, final: 8000 });
+assert(stages.cross === 4000, "chart Cross is the Cross duration");
+assert(stages.f2l === 18000, "chart F2L excludes Cross");
 const splitChart = renderProgressChart(splitRows);
-assert(splitChart.includes("timer-chart-cross") && splitChart.includes("timer-chart-f2l"), "chart plots Cross and F2L finish");
+assert(splitChart.includes("timer-chart-cross") && splitChart.includes("timer-chart-f2l"), "chart plots Cross and F2L times");
 assert(splitChart.includes("Cross") && splitChart.includes("F2L"), "chart legend includes split series");
 assert(!splitChart.includes("timer-chart-cross-avg") && !splitChart.includes("Cross avg"), "small chart omits Cross/F2L averages");
-assert(splitChart.includes("22.00"), "chart includes F2L finish clock time");
+assert(splitChart.includes("18.00"), "chart includes F2L pair time");
+assert(!splitChart.includes("22.00"), "chart F2L does not add Cross onto F2L");
 assert(
   !renderProgressChart([
     { id: "n1", ms: 12000 },
@@ -950,7 +951,7 @@ const gappedChart = renderProgressChart([
   { id: "g3", ms: 28000, splits: { cross: 5000, f2l: 16000, final: 7000 } },
 ]);
 assert(/class="timer-chart-cross" d="M [\d.]+ [\d.]+ L /.test(gappedChart), "cross line continues across a single-mode solve");
-assert(gappedChart.includes("Solve 3 Cross: 5.00"), "later split still plots a Cross finish point");
+assert(gappedChart.includes("Solve 3 Cross: 5.00"), "later split still plots a Cross point");
 
 const chartStore = memoryStore();
 assert(loadChartWindow(chartStore) === 50, "default chart window is last 50");
@@ -974,7 +975,7 @@ const windowedSplits = [
   { id: "ws2", ms: 28000, splits: { cross: 5000, f2l: 16000, final: 7000 } },
 ];
 const windowedSplitChart = renderProgressChart(windowedSplits, { windowSize: 25 });
-assert(windowedSplitChart.includes("timer-chart-cross"), "last-N window still plots Cross finish");
+assert(windowedSplitChart.includes("timer-chart-cross"), "last-N window still plots Cross");
 assert(windowedSplitChart.includes(">8</text>") && windowedSplitChart.includes(">32</text>"), "windowed split chart keeps absolute solve numbers");
 
 const statsHtml = renderStats(computeStats(splitRows));

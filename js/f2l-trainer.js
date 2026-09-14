@@ -388,6 +388,9 @@ export function getF2lDrillInfo() {
     group: c.group,
     hand: c.hand,
     slot: c.slot,
+    alg: c.alg,
+    setup: c.setup,
+    scramble: c.scramble,
     started: f2lDrillStarted,
     random: false,
     nextId: next.id,
@@ -882,7 +885,11 @@ function bothOnUHint(facelets, corner, edge) {
 export const F2L_TIPS = [
   {
     title: "How this drill works",
-    body: "Each case is one pair. The other three stay in. When it’s in, stay on this ID until you tap Next or Prev. Again = same ID. Jump to picks a starting ID (e.g. 10R); Next F2L then follows the 41-case list from there. Random also jumps once.",
+    body: "Each case is one pair. The other three stay in. When it’s in, stay on this ID until you tap Next or Prev. Again = same ID. Jump to picks a starting ID (e.g. 10R); Next F2L then follows the 41-case list from there. Random also jumps once. After the case, the setup scramble is the inverse from a solved cube — do it on a real cube (white D, blue F) to practise the same slot.",
+  },
+  {
+    title: "Practise on a real cube",
+    body: "The on-screen cube is already at the case. Under the insert you’ll also see the scramble that gets a solved cube there. Hold white on D and blue on F, do those moves, then insert the pair.",
   },
   {
     title: "IDs: R and L share a number",

@@ -1497,6 +1497,41 @@ body {
   margin: 0.85rem 0 0.5rem;
 }
 
+.setup-scramble {
+  margin: 0.85rem 0 0.35rem;
+  padding: 0.7rem 0.8rem 0.55rem;
+  border-radius: 14px;
+  border: 1px dashed rgba(255, 200, 87, 0.4);
+  background: rgba(255, 200, 87, 0.06);
+}
+
+.setup-scramble[hidden] {
+  display: none !important;
+}
+
+.setup-scramble-kicker {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #ffc857;
+}
+
+.setup-scramble-note {
+  margin: 0.2rem 0 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.setup-scramble .alg-block {
+  margin: 0.55rem 0 0.15rem;
+}
+
+.scramble-card.is-f2l-setup .scramble-card-hit {
+  border-style: dashed;
+}
+
 .alg {
   display: inline-block;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;

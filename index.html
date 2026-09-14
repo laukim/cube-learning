@@ -12,8 +12,8 @@
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=timer3" />
-    <link rel="stylesheet" href="vendor/erno-cube.css?v=2look5" />
+    <link rel="stylesheet" href="styles.css?v=f2lscram1" />
+    <link rel="stylesheet" href="vendor/erno-cube.css?v=f2lscram1" />
   </head>
   <body class="hints-open">
     <div class="ambient" aria-hidden="true"></div>
@@ -278,7 +278,9 @@
               <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong> follow the list.
               Twins share a number (<strong>1R</strong> / <strong>1L</strong>); no left twin → just
               <strong>11</strong>. One pair per case — stay on this ID until Next or Prev.
-              <strong>Random</strong> also jumps once. Reference:
+              <strong>Random</strong> also jumps once. After each case you’ll see a
+              <strong>scramble from solved</strong> so you can set it up on a real cube
+              (white D · blue F). Reference:
               <a
                 class="ext-link"
                 href="https://www.youtube.com/watch?v=3tYj-9f4dA0"
@@ -290,6 +292,14 @@
             <div class="alg-block">
               <code class="alg" id="f2l-hint-alg"></code>
               <button type="button" class="btn btn-small" id="btn-f2l-apply" hidden>Apply on cube</button>
+            </div>
+            <div class="setup-scramble" id="f2l-setup-block" hidden>
+              <p class="setup-scramble-kicker">Scramble on a real cube</p>
+              <p class="setup-scramble-note">From solved · white on D · blue on F</p>
+              <div class="alg-block">
+                <code class="alg" id="f2l-setup-alg"></code>
+                <button type="button" class="btn btn-small" id="btn-f2l-copy-setup">Copy</button>
+              </div>
             </div>
             <p class="hint-note" id="f2l-hint-note"></p>
           </div>
@@ -507,8 +517,8 @@
       <kbd>Pieces</kbd> turn · <kbd>Around</kbd> look · <kbd>Z</kbd> undo
     </footer>
 
-    <script src="vendor/cubejs.js?v=2look5"></script>
-    <script src="vendor/erno.js?v=2look5"></script>
-    <script type="module" src="js/main.js?v=2look5"></script>
+    <script src="vendor/cubejs.js?v=f2lscram1"></script>
+    <script src="vendor/erno.js?v=f2lscram1"></script>
+    <script type="module" src="js/main.js?v=f2lscram1"></script>
   </body>
 </html>

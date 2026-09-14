@@ -7,7 +7,7 @@
  * List: https://www.cube.academy/intuitive-f2l-algs
  */
 
-import { invertAlg } from "./alg.js";
+import { invertAlg, invertAlgNotation } from "./alg.js";
 
 /** [n, hand, group, short name, alg] — 41 rows, CubeHead 1–41. */
 const ROWS = [
@@ -75,6 +75,7 @@ function makeDrill(n, hand, group, name, alg) {
     name: `${id} · ${name}`,
     alg,
     setup: invertAlg(alg),
+    scramble: invertAlgNotation(alg),
     copy:
       hand === "R"
         ? "Slot is front-right (red–blue). Use R and U (F if the alg has it). Don’t turn L or B — other pairs stay in."

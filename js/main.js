@@ -9,9 +9,9 @@ import {
   solvedFacelets,
 } from "./cube.js";
 import { consumeAlgMove, initAlgProgress, restoreAlgMove } from "./alg-progress.js?v=2look5";
-import { createErnoCube } from "./erno-view.js?v=2look5";
+import { createErnoCube } from "./erno-view.js?v=f2lscram1";
 import { analyzeCross, CROSS_TIPS, scrambleCross } from "./cross-trainer.js";
-import { analyzeF2lDrill, countSlotsSolved, F2L_TIPS, getF2lDrillInfo, popBaselineIds, poppedSolvedSlots, scrambleF2L, shouldFlashPop, solvedSlotIds, stableSolvedSlotIds } from "./f2l-trainer.js?v=jump1";
+import { analyzeF2lDrill, countSlotsSolved, F2L_TIPS, getF2lDrillInfo, popBaselineIds, poppedSolvedSlots, scrambleF2L, shouldFlashPop, solvedSlotIds, stableSolvedSlotIds } from "./f2l-trainer.js?v=f2lscram1";
 import { F2L_DRILL_CASES } from "./f2l-cases.js";
 import { renderCaseDiagram } from "./case-diagram.js";
 import { analyzeOll, expandWideAlg, getOllDrillInfo, getOllLook, OLL_TIPS, scrambleOll, setOllLook } from "./oll-trainer.js";
@@ -451,6 +451,10 @@ function markCopyButton(btn, ok) {
   }, 2200);
 }
 
+/** idle | full | f2l-setup — click copies an F2L setup, or issues a new full scramble. */
+let scrambleCardMode = "idle";
+let lastShownScramble = "";
+
 function syncScrambleCardVisibility() {
   const card = document.getElementById("scramble-card");
   if (!card) return;
@@ -460,20 +464,74 @@ function syncScrambleCardVisibility() {
   card.setAttribute("aria-hidden", hide ? "true" : "false");
 }
 
-function paintScrambleCard(alg) {
+function paintScrambleCard(alg, { mode = "full", caseId = "" } = {}) {
   const card = document.getElementById("scramble-card");
   const kicker = document.getElementById("scramble-kicker");
   const el = document.getElementById("scramble-alg");
+  const hit = document.getElementById("btn-scramble-card");
   if (!card || !el) return;
   const shown = String(alg || "").trim();
+  lastShownScramble = shown;
+  scrambleCardMode = shown ? mode : "idle";
   card.classList.toggle("has-scramble", Boolean(shown));
+  card.classList.toggle("is-f2l-setup", mode === "f2l-setup" && Boolean(shown));
   if (kicker) {
-    kicker.textContent = shown
-      ? "Do this on your cube · white D · blue F · tap for a new one"
-      : "Real cube";
+    if (!shown) {
+      kicker.textContent = "Real cube";
+    } else if (mode === "f2l-setup") {
+      kicker.textContent = caseId
+        ? `F2L ${caseId} · from solved · white D · blue F · tap to copy`
+        : "From solved · white D · blue F · tap to copy";
+    } else {
+      kicker.textContent = "Do this on your cube · white D · blue F · tap for a new one";
+    }
+  }
+  if (hit) {
+    hit.title =
+      mode === "f2l-setup" && shown
+        ? "Copy this F2L setup scramble for a real cube"
+        : "New scramble to do on a real cube";
   }
   el.textContent = shown || "Tap for a scramble";
   syncScrambleCardVisibility();
+}
+
+function copyScrambleText(text, btn) {
+  const value = String(text || "").trim();
+  if (!value) return;
+  const kicker = document.getElementById("scramble-kicker");
+  const prevKicker = kicker?.textContent;
+  const finish = (ok) => {
+    if (btn) markCopyButton(btn, ok);
+    if (ok && kicker && scrambleCardMode === "f2l-setup") {
+      kicker.textContent = "Copied · from solved · white D · blue F";
+      window.setTimeout(() => {
+        if (scrambleCardMode === "f2l-setup" && prevKicker) kicker.textContent = prevKicker;
+      }, 2200);
+    }
+  };
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(value).then(() => finish(true)).catch(() => finish(false));
+    return;
+  }
+  finish(false);
+}
+
+function paintF2lSetupScramble() {
+  const block = document.getElementById("f2l-setup-block");
+  const algEl = document.getElementById("f2l-setup-alg");
+  const d = getF2lDrillInfo();
+  const scramble = d.started ? String(d.scramble || "").trim() : "";
+  const show = appMode === "f2l" && Boolean(scramble);
+  if (block) block.hidden = !show;
+  if (algEl) algEl.textContent = show ? scramble : "";
+  if (show) {
+    paintScrambleCard(scramble, { mode: "f2l-setup", caseId: d.id });
+    return;
+  }
+  if (scrambleCardMode === "f2l-setup") {
+    paintScrambleCard(timedScramble, timedScramble ? { mode: "full" } : {});
+  }
 }
 
 function openGuideTab() {
@@ -930,7 +988,10 @@ function paintF2lCaseChrome() {
   if (solveTimerEl) solveTimerEl.hidden = on;
   if (overlay) overlay.hidden = !on;
   if (badge) badge.hidden = !on;
-  if (!on) return;
+  if (!on) {
+    paintF2lSetupScramble();
+    return;
+  }
 
   const d = getF2lDrillInfo();
   const id = d.started ? d.id : "—";
@@ -940,6 +1001,7 @@ function paintF2lCaseChrome() {
   if (badgeId) badgeId.textContent = id;
   if (badgeHand) badgeHand.textContent = hand;
   if (jumpSelect) jumpSelect.value = d.started ? d.id : "";
+  paintF2lSetupScramble();
 }
 
 function refreshF2L() {
@@ -1323,8 +1385,8 @@ function setPanelCopy(mode) {
     const d = getF2lDrillInfo();
     title.textContent = "F2L — 41 standard cases";
     blurb.innerHTML = d.started
-      ? `Now <strong>${d.id}</strong> · ${d.index + 1}/${d.total} · ${d.group}. <strong>Jump to</strong> picks a starting ID; <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong> follow CubeHead’s list order from there.`
-      : `Drill the <strong>41 standard F2L cases</strong> (CubeHead order). Twins share a number: 1R then 1L. No left twin → just 11. <strong>Jump to</strong> starts at any ID (e.g. 10R); then <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong> walk the list. <strong>Random</strong> also jumps once. Reference: <a class="ext-link" href="https://www.youtube.com/watch?v=3tYj-9f4dA0" target="_blank" rel="noopener">CubeHead F2L</a>.`;
+      ? `Now <strong>${d.id}</strong> · ${d.index + 1}/${d.total} · ${d.group}. After the case, scramble from a solved cube (white D · blue F) to practise it on a real cube. <strong>Jump to</strong> picks a starting ID; <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong> follow CubeHead’s list order from there.`
+      : `Drill the <strong>41 standard F2L cases</strong> (CubeHead order). Twins share a number: 1R then 1L. No left twin → just 11. <strong>Jump to</strong> starts at any ID (e.g. 10R); then <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong> walk the list. <strong>Random</strong> also jumps once. Each case shows a <strong>setup scramble</strong> for a real cube. Reference: <a class="ext-link" href="https://www.youtube.com/watch?v=3tYj-9f4dA0" target="_blank" rel="noopener">CubeHead F2L</a>.`;
     btnF2l.hidden = false;
     btnF2lPrev.hidden = false;
     btnF2lAgain.hidden = false;
@@ -1624,7 +1686,16 @@ document.getElementById("btn-scramble").addEventListener("click", () => {
   issueFullScramble();
 });
 document.getElementById("btn-scramble-card")?.addEventListener("click", () => {
+  if (scrambleCardMode === "f2l-setup" && lastShownScramble) {
+    copyScrambleText(lastShownScramble);
+    return;
+  }
   issueFullScramble();
+});
+
+document.getElementById("btn-f2l-copy-setup")?.addEventListener("click", () => {
+  const alg = document.getElementById("f2l-setup-alg")?.textContent;
+  copyScrambleText(alg, document.getElementById("btn-f2l-copy-setup"));
 });
 
 document.getElementById("btn-cross-case").addEventListener("click", () => {

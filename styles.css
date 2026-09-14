@@ -1526,6 +1526,14 @@ body {
 
 .setup-scramble .alg-block {
   margin: 0.55rem 0 0.15rem;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.setup-scramble .alg {
+  display: block;
+  max-width: 100%;
+  white-space: pre-wrap;
 }
 
 .scramble-card.is-f2l-setup .scramble-card-hit {

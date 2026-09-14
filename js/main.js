@@ -11,7 +11,8 @@ import {
 import { consumeAlgMove, initAlgProgress, restoreAlgMove } from "./alg-progress.js?v=2look5";
 import { createErnoCube } from "./erno-view.js?v=2look5";
 import { analyzeCross, CROSS_TIPS, scrambleCross } from "./cross-trainer.js";
-import { analyzeF2lDrill, countSlotsSolved, F2L_TIPS, getF2lDrillInfo, popBaselineIds, poppedSolvedSlots, scrambleF2L, shouldFlashPop, solvedSlotIds, stableSolvedSlotIds } from "./f2l-trainer.js?v=conn1";
+import { analyzeF2lDrill, countSlotsSolved, F2L_TIPS, getF2lDrillInfo, popBaselineIds, poppedSolvedSlots, scrambleF2L, shouldFlashPop, solvedSlotIds, stableSolvedSlotIds } from "./f2l-trainer.js?v=jump1";
+import { F2L_DRILL_CASES } from "./f2l-cases.js";
 import { renderCaseDiagram } from "./case-diagram.js";
 import { analyzeOll, expandWideAlg, getOllDrillInfo, getOllLook, OLL_TIPS, scrambleOll, setOllLook } from "./oll-trainer.js";
 import { analyzePll, getPllDrillInfo, PLL_TIPS, scramblePll } from "./pll-trainer.js";
@@ -924,6 +925,7 @@ function paintF2lCaseChrome() {
   const badge = document.getElementById("f2l-case-badge");
   const badgeId = document.getElementById("f2l-case-id");
   const badgeHand = document.getElementById("f2l-case-hand");
+  const jumpSelect = document.getElementById("f2l-jump-select");
   const on = appMode === "f2l";
   if (solveTimerEl) solveTimerEl.hidden = on;
   if (overlay) overlay.hidden = !on;
@@ -937,6 +939,7 @@ function paintF2lCaseChrome() {
   if (overlayHand) overlayHand.textContent = hand;
   if (badgeId) badgeId.textContent = id;
   if (badgeHand) badgeHand.textContent = hand;
+  if (jumpSelect) jumpSelect.value = d.started ? d.id : "";
 }
 
 function refreshF2L() {
@@ -1248,6 +1251,26 @@ function buildF2LTips() {
   ).join("");
 }
 
+function buildF2lJumpSelect() {
+  const sel = document.getElementById("f2l-jump-select");
+  if (!sel || sel.dataset.ready === "1") return;
+  const groups = new Map();
+  for (const c of F2L_DRILL_CASES) {
+    if (!groups.has(c.group)) groups.set(c.group, []);
+    groups.get(c.group).push(c);
+  }
+  const parts = ['<option value="">Case…</option>'];
+  for (const [group, cases] of groups) {
+    parts.push(`<optgroup label="${group}">`);
+    for (const c of cases) {
+      parts.push(`<option value="${c.id}">${c.id}</option>`);
+    }
+    parts.push("</optgroup>");
+  }
+  sel.innerHTML = parts.join("");
+  sel.dataset.ready = "1";
+}
+
 function setPanelCopy(mode) {
   paintF2lCaseChrome();
   const title = document.getElementById("panel-title");
@@ -1258,6 +1281,7 @@ function setPanelCopy(mode) {
   const btnF2lPrev = document.getElementById("btn-f2l-prev");
   const btnF2lAgain = document.getElementById("btn-f2l-again");
   const btnF2lRandom = document.getElementById("btn-f2l-random");
+  const f2lJump = document.getElementById("f2l-jump");
   const btnOll = document.getElementById("btn-oll-case");
   const btnOllAgain = document.getElementById("btn-oll-again");
   const btnPll = document.getElementById("btn-pll-case");
@@ -1270,6 +1294,7 @@ function setPanelCopy(mode) {
   btnF2lPrev.hidden = true;
   btnF2lAgain.hidden = true;
   btnF2lRandom.hidden = true;
+  if (f2lJump) f2lJump.hidden = true;
   btnOll.hidden = true;
   btnOllAgain.hidden = true;
   btnPll.hidden = true;
@@ -1298,12 +1323,13 @@ function setPanelCopy(mode) {
     const d = getF2lDrillInfo();
     title.textContent = "F2L — 41 standard cases";
     blurb.innerHTML = d.started
-      ? `Now <strong>${d.id}</strong> · ${d.index + 1}/${d.total} · ${d.group}. <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong> follow CubeHead’s list order.`
-      : `Drill the <strong>41 standard F2L cases</strong> (CubeHead order). Twins share a number: 1R then 1L. No left twin → just 11. <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong> walk the list; <strong>Random</strong> jumps once. Reference: <a class="ext-link" href="https://www.youtube.com/watch?v=3tYj-9f4dA0" target="_blank" rel="noopener">CubeHead F2L</a>.`;
+      ? `Now <strong>${d.id}</strong> · ${d.index + 1}/${d.total} · ${d.group}. <strong>Jump to</strong> picks a starting ID; <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong> follow CubeHead’s list order from there.`
+      : `Drill the <strong>41 standard F2L cases</strong> (CubeHead order). Twins share a number: 1R then 1L. No left twin → just 11. <strong>Jump to</strong> starts at any ID (e.g. 10R); then <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong> walk the list. <strong>Random</strong> also jumps once. Reference: <a class="ext-link" href="https://www.youtube.com/watch?v=3tYj-9f4dA0" target="_blank" rel="noopener">CubeHead F2L</a>.`;
     btnF2l.hidden = false;
     btnF2lPrev.hidden = false;
     btnF2lAgain.hidden = false;
     btnF2lRandom.hidden = false;
+    if (f2lJump) f2lJump.hidden = false;
     btnHint.textContent = "F2L hint";
   } else if (mode === "oll") {
     const d = getOllDrillInfo();
@@ -1631,6 +1657,15 @@ document.getElementById("btn-f2l-case").addEventListener("click", () => {
 document.getElementById("btn-f2l-random").addEventListener("click", () => {
   const draft = solvedFacelets();
   const alg = scrambleF2L(draft, "random");
+  playScrambleAlg(alg);
+  setPanelCopy("f2l");
+});
+
+document.getElementById("f2l-jump-select")?.addEventListener("change", (e) => {
+  const id = e.target?.value;
+  if (!id) return;
+  const draft = solvedFacelets();
+  const alg = scrambleF2L(draft, "goto", id);
   playScrambleAlg(alg);
   setPanelCopy("f2l");
 });
@@ -2068,6 +2103,7 @@ buildCmllTips();
 buildLseTips();
 buildAlgList();
 buildF2LTips();
+buildF2lJumpSelect();
 syncMethodChrome();
 try {
   localStorage.removeItem("f2l-drill-random");

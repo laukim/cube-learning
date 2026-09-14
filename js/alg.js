@@ -40,14 +40,23 @@ function invertMove(move) {
   return `${m}'`;
 }
 
-export function invertAlg(alg) {
-  return expandWideAlg(alg)
+function invertTokenList(alg) {
+  return String(alg)
     .trim()
     .split(/\s+/)
     .filter(Boolean)
     .reverse()
     .map(invertMove)
     .join(" ");
+}
+
+export function invertAlg(alg) {
+  return invertTokenList(expandWideAlg(alg));
+}
+
+/** Inverse without expanding wide/slice letters — for a real-cube scramble. */
+export function invertAlgNotation(alg) {
+  return invertTokenList(alg);
 }
 
 const LR = {

@@ -22,7 +22,7 @@ const {
 } = await import("../js/solve-timer.js");
 const { analyzeF2lFlow, formatF2lFlow, popBaselineIds, poppedSolvedSlots, scrambleF2L, getF2lDrillInfo, resetF2lDrill, shouldFlashPop, slotSolved, solvedSlotIds, stableSolvedSlotIds, whiteCrossIntact, SLOTS } = await import("../js/f2l-trainer.js");
 const { F2L_DRILL_CASES } = await import("../js/f2l-cases.js");
-const { invertAlg, expandWideAlg } = await import("../js/alg.js");
+const { invertAlg, invertAlgNotation, expandWideAlg } = await import("../js/alg.js");
 const { consumeAlgMove, initAlgProgress, toAtomics } = await import("../js/alg-progress.js");
 const { analyzeOll, OLL_DRILL_CASES, OLL_CROSS_ALG, getOllDrillInfo, getOllLook, resetOllDrill, scrambleOll, setOllLook } = await import("../js/oll-trainer.js");
 const { analyzePll, PLL_DRILL_CASES, PLL_T, PLL_Y, PLL_H, PLL_Z } = await import("../js/pll-trainer.js");
@@ -382,6 +382,22 @@ for (const c of F2L_DRILL_CASES) {
   assert(SLOTS.every((s) => slotSolved(cube, s)), `${c.id} alg inserts the pair`);
 }
 
+assert(invertAlgNotation("U R U' R'") === "R U R' U'", "1R real-cube scramble is the inverse insert");
+assert(
+  invertAlgNotation("r U' r' U2 r U r' R U R'") === "R U' R' r U' r' U2 r U r'",
+  "wide-turn F2L scramble keeps r notation"
+);
+for (const c of F2L_DRILL_CASES) {
+  assert(c.scramble, `${c.id} has a real-cube scramble`);
+  assert(invertAlgNotation(c.scramble) === c.alg, `${c.id} scramble inverts back to the insert`);
+  const fromScramble = solvedFacelets();
+  applyAlg(fromScramble, expandWideAlg(c.scramble));
+  applyAlg(fromScramble, expandWideAlg(c.alg));
+  assert(SLOTS.every((s) => slotSolved(fromScramble, s)), `${c.id} scramble then insert solves the pair`);
+}
+const wideCase = F2L_DRILL_CASES.find((c) => c.id === "24");
+assert(wideCase.scramble.includes("r") && !/\bM/.test(wideCase.scramble), "case 24 scramble uses r, not M slices");
+
 function setEq(a, b) {
   return a.size === b.size && [...a].every((x) => b.has(x));
 }
@@ -467,6 +483,7 @@ assert(relByN.size === 26, "26 distinct R shapes (some CubeHead numbers are L-on
 const drill = solvedFacelets();
 scrambleF2L(drill, "next");
 assert(getF2lDrillInfo().id === "1R", "first Next F2L is 1R");
+assert(getF2lDrillInfo().scramble === F2L_DRILL_CASES[0].scramble, "drill info exposes the real-cube scramble");
 scrambleF2L(drill, "again");
 assert(getF2lDrillInfo().id === "1R", "Again stays on 1R");
 scrambleF2L(drill, "next");
@@ -539,6 +556,9 @@ assert(mainSrc.includes('scrambleF2L(draft, "random")'), "Random is a one-shot j
 assert(mainSrc.includes('scrambleF2L(draft, "goto", id)'), "Jump to select uses goto mode");
 assert(mainSrc.includes("f2l-jump-select"), "F2L toolbar has a Jump to case select");
 assert(mainSrc.includes("buildF2lJumpSelect"), "Jump to options are built from the 41-case list");
+assert(mainSrc.includes("paintF2lSetupScramble"), "F2L paints a real-cube setup scramble after the case");
+assert(mainSrc.includes('mode: "f2l-setup"'), "dock scramble card can show the F2L setup");
+assert(mainSrc.includes('scrambleCardMode === "f2l-setup"'), "tapping the F2L setup copies it, not a full scramble");
 
 assert(FLICK_MIN_PX === 28, "verified flick deadzone is 28px, not a looser twitch");
 assert(TAP_PX === 10, "tap snap-back stays 10px");
@@ -738,6 +758,8 @@ assert(
   assert(htmlSrc.includes('data-move="M"'), "M move on pad");
   assert(htmlSrc.includes('data-oll-look="corners"'), "OLL look 2 switch in html");
   assert(htmlSrc.includes('id="btn-scramble-card"'), "real-cube scramble tap in html");
+  assert(htmlSrc.includes('id="f2l-setup-block"') && htmlSrc.includes('id="f2l-setup-alg"'), "F2L case card shows a real-cube setup scramble");
+  assert(htmlSrc.includes('id="btn-f2l-copy-setup"'), "F2L setup scramble can be copied");
   assert(
     mainSrc.includes("syncScrambleCardVisibility") &&
       mainSrc.includes('solveTimer.phase === "running"'),

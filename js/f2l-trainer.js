@@ -367,6 +367,13 @@ export function resetF2lDrill() {
   f2lDrillStarted = false;
 }
 
+/** Index of a CubeHead case id (e.g. 10R), or -1 if unknown. */
+export function f2lCaseIndexById(caseId) {
+  const id = String(caseId || "").trim();
+  if (!id) return -1;
+  return F2L_DRILL_CASES.findIndex((c) => c.id === id);
+}
+
 export function getF2lDrillInfo() {
   const n = F2L_DRILL_CASES.length;
   const i = ((f2lDrillIndex % n) + n) % n;
@@ -409,7 +416,7 @@ export function analyzeF2lDrill(facelets) {
       case: c,
       hint: hint(
         "41 standard F2L cases",
-        "Prev / Again / Next F2L. Twins share a number: 1R then 1L, then 2R…. No L twin → just 11, 12…. Random jumps once — Next stays in list order. One pair only — the other three stay in.",
+        "Jump to a case (e.g. 10R), then Prev / Again / Next follow list order from there. Twins share a number: 1R then 1L, then 2R…. No L twin → just 11, 12…. Random also jumps once. One pair only — the other three stay in.",
         "",
         "CubeHead order: easy inserts → disconnected → corner in slot → edge in slot → connected → both in slot. Sledge is another way on 1R, not its own case."
       ),
@@ -449,10 +456,23 @@ export function analyzeF2lDrill(facelets) {
   };
 }
 
-/** Scramble one standard F2L case (keeps cross + the other three pairs). */
-export function scrambleF2L(facelets, mode = "next") {
+/**
+ * Scramble one standard F2L case (keeps cross + the other three pairs).
+ * @param {"next"|"prev"|"again"|"random"|"goto"} mode
+ * @param {string} [caseId] required for mode "goto" (e.g. "10R")
+ */
+export function scrambleF2L(facelets, mode = "next", caseId = null) {
   const n = F2L_DRILL_CASES.length;
-  if (!f2lDrillStarted) {
+  if (mode === "goto") {
+    const idx = f2lCaseIndexById(caseId);
+    if (idx >= 0) {
+      f2lDrillIndex = idx;
+      f2lDrillStarted = true;
+    } else if (!f2lDrillStarted) {
+      f2lDrillStarted = true;
+      f2lDrillIndex = 0;
+    }
+  } else if (!f2lDrillStarted) {
     f2lDrillStarted = true;
     if (mode === "random") {
       f2lDrillIndex = Math.floor(Math.random() * n);
@@ -460,7 +480,7 @@ export function scrambleF2L(facelets, mode = "next") {
       f2lDrillIndex = 0;
     }
   } else if (mode === "next") {
-    // Always CubeHead list order. Random is a one-shot jump, never a Next mode.
+    // Always CubeHead list order. Random / Jump are one-shot; Next stays in order.
     f2lDrillIndex = (f2lDrillIndex + 1) % n;
   } else if (mode === "prev") {
     // Do not wrap past 1R — that jumped to the last case and made later Next look shuffled.
@@ -862,7 +882,7 @@ function bothOnUHint(facelets, corner, edge) {
 export const F2L_TIPS = [
   {
     title: "How this drill works",
-    body: "Each case is one pair. The other three stay in. When it’s in, stay on this ID until you tap Next or Prev. Again = same ID. Next F2L follows the 41-case list (1R, 1L, 2R…). Random jumps once; Next stays in order after that.",
+    body: "Each case is one pair. The other three stay in. When it’s in, stay on this ID until you tap Next or Prev. Again = same ID. Jump to picks a starting ID (e.g. 10R); Next F2L then follows the 41-case list from there. Random also jumps once.",
   },
   {
     title: "IDs: R and L share a number",

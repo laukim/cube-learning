@@ -14,7 +14,7 @@ import {
   sticker,
 } from "./cube.js";
 import { expandWideAlg, invertAlg } from "./alg.js";
-import { f2lComplete } from "./f2l-trainer.js?v=conn1";
+import { f2lComplete } from "./f2l-trainer.js?v=jump1";
 import { ollTopDiagram } from "./case-diagram.js";
 
 export { expandWideAlg, invertAlg };

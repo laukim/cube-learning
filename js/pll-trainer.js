@@ -17,7 +17,7 @@ import {
   solvedFacelets,
   sticker,
 } from "./cube.js";
-import { f2lComplete } from "./f2l-trainer.js?v=conn1";
+import { f2lComplete } from "./f2l-trainer.js?v=jump1";
 import { expandWideAlg, invertAlg } from "./alg.js";
 import { pllEdgesDiagram, pllHeadlightsDiagram } from "./case-diagram.js";
 

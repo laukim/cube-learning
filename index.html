@@ -144,6 +144,12 @@
             <button type="button" class="btn btn-ghost" id="btn-f2l-prev" hidden>Prev</button>
             <button type="button" class="btn btn-ghost" id="btn-f2l-again" hidden>Again</button>
             <button type="button" class="btn btn-ghost" id="btn-f2l-case" hidden>Next F2L</button>
+            <label class="f2l-jump" id="f2l-jump" hidden>
+              <span class="f2l-jump-label">Jump to</span>
+              <select id="f2l-jump-select" aria-label="Jump to F2L case, then continue in CubeHead order">
+                <option value="">Case…</option>
+              </select>
+            </label>
             <button type="button" class="btn btn-ghost" id="btn-f2l-random" hidden title="Jump to a random case. Prev and Next stay in the 41-case order (CubeHead).">
               Random
             </button>
@@ -268,10 +274,11 @@
             <h2 class="hint-title" id="f2l-hint-title">Ready</h2>
             <p class="hint-copy" id="f2l-hint-copy">
               Drill the <strong>41 standard F2L cases</strong> (CubeHead order).
-              Tap <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong>.
+              Use <strong>Jump to</strong> to start at any ID (e.g. <strong>10R</strong>), then
+              <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong> follow the list.
               Twins share a number (<strong>1R</strong> / <strong>1L</strong>); no left twin → just
               <strong>11</strong>. One pair per case — stay on this ID until Next or Prev.
-              <strong>Random</strong> jumps once; Next stays in list order. Reference:
+              <strong>Random</strong> also jumps once. Reference:
               <a
                 class="ext-link"
                 href="https://www.youtube.com/watch?v=3tYj-9f4dA0"

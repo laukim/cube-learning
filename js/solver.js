@@ -4,7 +4,7 @@ import {
   isSolved,
   sticker,
 } from "./cube.js";
-import { analyzeF2L, f2lComplete } from "./f2l-trainer.js?v=conn1";
+import { analyzeF2L, f2lComplete } from "./f2l-trainer.js?v=jump1";
 import { analyzeOll, OLL_CROSS_ALG, OLL_FINISH_ALGS } from "./oll-trainer.js";
 import { analyzePll, PLL_H, PLL_T, PLL_U, PLL_UB, PLL_Y, PLL_Z } from "./pll-trainer.js";
 

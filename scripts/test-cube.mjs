@@ -505,6 +505,21 @@ if (afterRandom.index < F2L_DRILL_CASES.length - 1) {
   assert(getF2lDrillInfo().id === afterRandom.id, "Prev after that Random+Next returns to the random case, not a shuffle");
 }
 
+resetF2lDrill();
+scrambleF2L(drill, "goto", "10R");
+assert(getF2lDrillInfo().id === "10R", "Jump to 10R starts on 10R");
+assert(getF2lDrillInfo().started === true, "Jump to marks the drill started");
+scrambleF2L(drill, "next");
+assert(getF2lDrillInfo().id === "10L", "Next after Jump to 10R is 10L");
+scrambleF2L(drill, "next");
+assert(getF2lDrillInfo().id === "11", "then 11 (no L twin)");
+scrambleF2L(drill, "prev");
+assert(getF2lDrillInfo().id === "10L", "Prev after Jump+Next stays in list order");
+scrambleF2L(drill, "goto", "22");
+assert(getF2lDrillInfo().id === "22", "Jump to 22 works mid-session");
+scrambleF2L(drill, "next");
+assert(getF2lDrillInfo().id === "23", "Next after Jump to 22 is 23");
+
 assert(shouldFlashPop("guide", { timerPhase: "running", lastDone: 1 }) === true, "POP flash during timed full-cube F2L");
 assert(shouldFlashPop("guide", { timerPhase: "idle", lastDone: 1 }) === false, "no POP flash until the full-cube timer runs");
 assert(shouldFlashPop("guide", { timerPhase: "running", lastDone: 2 }) === false, "no POP flash after F2L is done on a full solve");
@@ -521,6 +536,9 @@ assert(mainSrc.includes("shouldFlashPop(appMode"), "live POP flash uses the Guid
 assert(!mainSrc.includes('watchDrill = appMode === "f2l"'), "F2L drill must not subscribe to the POP overlay");
 assert(!mainSrc.includes("setF2lRandom"), "Next F2L is not a sticky random mode");
 assert(mainSrc.includes('scrambleF2L(draft, "random")'), "Random is a one-shot jump");
+assert(mainSrc.includes('scrambleF2L(draft, "goto", id)'), "Jump to select uses goto mode");
+assert(mainSrc.includes("f2l-jump-select"), "F2L toolbar has a Jump to case select");
+assert(mainSrc.includes("buildF2lJumpSelect"), "Jump to options are built from the 41-case list");
 
 assert(FLICK_MIN_PX === 28, "verified flick deadzone is 28px, not a looser twitch");
 assert(TAP_PX === 10, "tap snap-back stays 10px");

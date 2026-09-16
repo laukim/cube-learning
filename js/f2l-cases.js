@@ -85,3 +85,6 @@ function makeDrill(n, hand, group, name, alg) {
 }
 
 export const F2L_DRILL_CASES = ROWS.map((row) => makeDrill(...row));
+
+/** CubeHead sections, in list order — used to include/exclude cases from Random. */
+export const F2L_GROUPS = [...new Set(F2L_DRILL_CASES.map((c) => c.group))];

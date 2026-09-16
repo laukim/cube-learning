@@ -86,10 +86,12 @@ function syncSlicePad() {
 }
 
 function syncMethodChrome() {
-  const tag = document.getElementById("brand-tag");
-  if (tag) {
-    tag.textContent =
-      solveMethod === "roux" ? "FB · SB · CMLL · LSE" : "Cross · F2L · OLL · PLL";
+  const audience = document.getElementById("panel-audience");
+  if (audience) {
+    audience.textContent =
+      solveMethod === "roux"
+        ? "Roux practice if you already know the method — not a from-zero tutorial. White on bottom, yellow on top."
+        : "CFOP practice if you already know the method — not a from-zero tutorial. White on bottom, yellow on top.";
   }
   document.querySelectorAll(".method-btn").forEach((btn) => {
     const on = btn.dataset.method === solveMethod;
@@ -477,7 +479,7 @@ function paintScrambleCard(alg, { mode = "full", caseId = "" } = {}) {
   card.classList.toggle("is-f2l-setup", mode === "f2l-setup" && Boolean(shown));
   if (kicker) {
     if (!shown) {
-      kicker.textContent = "Real cube";
+      kicker.textContent = "Scramble";
     } else if (mode === "f2l-setup") {
       kicker.textContent = caseId
         ? `F2L ${caseId} · from solved · white D · blue F · tap to copy`
@@ -494,6 +496,7 @@ function paintScrambleCard(alg, { mode = "full", caseId = "" } = {}) {
   }
   el.textContent = shown || "Tap for a scramble";
   syncScrambleCardVisibility();
+  syncPrimaryActions();
 }
 
 function copyScrambleText(text, btn) {
@@ -531,6 +534,46 @@ function paintF2lSetupScramble() {
   }
   if (scrambleCardMode === "f2l-setup") {
     paintScrambleCard(timedScramble, timedScramble ? { mode: "full" } : {});
+  }
+}
+
+function guideSolving() {
+  if (solveTimer.phase === "armed" || solveTimer.phase === "running") return true;
+  // Scramble is applied before the timer arms (wait for cube idle).
+  return Boolean(timedScramble) && solveTimer.phase !== "done";
+}
+
+/** Guide idle/reset: scramble is the CTA. Next hint waits until a scramble is armed. */
+function syncPrimaryActions() {
+  const btnScramble = document.getElementById("btn-scramble");
+  const btnHint = document.getElementById("btn-hint");
+  const card = document.getElementById("scramble-card");
+  const onGuide = appMode === "guide";
+  const solving = onGuide && guideSolving();
+
+  if (btnHint) {
+    if (onGuide) {
+      btnHint.disabled = !solving;
+      btnHint.classList.toggle("btn-primary", solving);
+      btnHint.classList.toggle("btn-ghost", !solving);
+      btnHint.title = solving
+        ? "Show the next coaching step for this stage"
+        : "Scramble first — then this shows the next coaching step";
+    } else {
+      btnHint.disabled = false;
+      btnHint.classList.add("btn-primary");
+      btnHint.classList.remove("btn-ghost");
+      btnHint.title = "Show the next coaching step for this stage";
+    }
+  }
+
+  if (btnScramble && onGuide) {
+    btnScramble.classList.toggle("btn-primary", !solving);
+    btnScramble.classList.toggle("btn-ghost", solving);
+  }
+
+  if (card) {
+    card.classList.toggle("is-idle-cta", onGuide && scrambleCardMode === "idle" && !solving);
   }
 }
 
@@ -747,6 +790,7 @@ function mountErno() {
 function refreshGuide() {
   syncSolveTimer();
   paintF2lCaseChrome();
+  syncPrimaryActions();
 
   if (appMode === "cross") {
     refreshCross();
@@ -784,9 +828,10 @@ function refreshGuide() {
   const guideSteps = activeSteps();
   const result = activeAnalyze(facelets);
   const splitByIndex = new Map(solveTimer.splits.map((s) => [s.index, s]));
+  const idleSolved = result.solved && solveTimer.phase !== "done";
   stepsEl.innerHTML = guideSteps.map((step, i) => {
-    const done = result.stepsDone[i];
-    const current = !result.solved && result.stepIndex === i;
+    const done = !idleSolved && result.stepsDone[i];
+    const current = !idleSolved && !result.solved && result.stepIndex === i;
     const cls = ["step", done ? "is-done" : "", current ? "is-current" : ""].filter(Boolean).join(" ");
     const split = splitByIndex.get(i);
     const timeHtml = split ? `<span class="step-time">${formatClock(split.ms)}</span>` : "";
@@ -798,6 +843,13 @@ function refreshGuide() {
       </div>
     </li>`;
   }).join("");
+
+  if (idleSolved) {
+    hintCard.hidden = true;
+    solvedBanner.hidden = true;
+    lastHintAlg = "";
+    return;
+  }
 
   if (result.solved) {
     hintCard.hidden = true;
@@ -1451,6 +1503,7 @@ function setPanelCopy(mode) {
     btnScramble.hidden = false;
     btnHint.textContent = "Next hint";
   }
+  syncPrimaryActions();
 }
 
 function render() {

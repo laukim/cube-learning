@@ -149,12 +149,6 @@ body {
   letter-spacing: 0.04em;
 }
 
-.brand-tag {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.92rem;
-}
-
 .site-nav {
   display: inline-flex;
   align-items: center;
@@ -505,6 +499,16 @@ body {
   border-style: solid;
   border-color: rgba(255, 200, 87, 0.4);
   background: rgba(255, 200, 87, 0.06);
+}
+
+.scramble-card.is-idle-cta .scramble-card-hit {
+  border-color: rgba(109, 255, 176, 0.48);
+  background: var(--accent-dim);
+}
+
+.scramble-card.is-idle-cta .scramble-card-kicker,
+.scramble-card.is-idle-cta .scramble-card-alg {
+  color: var(--accent);
 }
 
 .scramble-card-kicker {
@@ -1071,7 +1075,7 @@ body {
   font-family: var(--font-display);
   font-size: clamp(1.35rem, 2.6vw, 1.7rem);
   line-height: 1.15;
-  margin: 0 0 0.65rem;
+  margin: 0 0 0.35rem;
   letter-spacing: -0.01em;
 }
 
@@ -1079,6 +1083,11 @@ body {
   margin: 0;
   color: var(--muted);
   font-size: 0.98rem;
+}
+
+.panel-audience {
+  margin: 0 0 0.55rem;
+  font-size: 0.9rem;
 }
 
 .mode-tabs {
@@ -1729,10 +1738,6 @@ kbd {
     font-size: 1.05rem;
   }
 
-  .brand-tag {
-    font-size: 0.68rem;
-  }
-
   .stage {
     grid-column: 1;
     grid-row: 1;
@@ -1960,6 +1965,11 @@ kbd {
     font-size: 0.82rem;
   }
 
+  .panel-audience {
+    font-size: 0.8rem;
+    margin-bottom: 0.4rem;
+  }
+
   .mode-tabs {
     margin: 0.55rem 0 0.55rem;
     padding: 0.2rem;
@@ -2018,6 +2028,12 @@ kbd {
 
   .panel-intro p {
     display: none;
+  }
+
+  .panel-intro .panel-audience {
+    display: block;
+    font-size: 0.78rem;
+    margin-bottom: 0.4rem;
   }
 }
 

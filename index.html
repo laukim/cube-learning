@@ -12,7 +12,7 @@
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=f2lscram2" />
+      <link rel="stylesheet" href="styles.css?v=ready1" />
     <link rel="stylesheet" href="vendor/erno-cube.css?v=f2lscram1" />
   </head>
   <body class="hints-open">
@@ -31,7 +31,6 @@
         <span class="brand-mark" aria-hidden="true"></span>
         <span class="brand-name">3×3 Coach</span>
       </a>
-      <p class="brand-tag" id="brand-tag">Cross · F2L · OLL · PLL</p>
       <nav class="site-nav" aria-label="App pages">
         <a class="site-nav-link is-active" href="./" aria-current="page">Coach</a>
         <a class="site-nav-link" href="./timer.html">Timer</a>
@@ -102,9 +101,9 @@
         </div>
 
         <div class="stage-dock">
-          <div class="scramble-card" id="scramble-card">
+          <div class="scramble-card is-idle-cta" id="scramble-card">
             <button type="button" class="scramble-card-hit" id="btn-scramble-card" title="New scramble to do on a real cube">
-              <span class="scramble-card-kicker" id="scramble-kicker">Real cube</span>
+              <span class="scramble-card-kicker" id="scramble-kicker">Scramble</span>
               <code class="scramble-card-alg" id="scramble-alg">Tap for a scramble</code>
             </button>
           </div>
@@ -137,7 +136,7 @@
               Hide moves
             </button>
             <button type="button" class="btn btn-ghost" id="btn-reset">Reset</button>
-            <button type="button" class="btn btn-ghost" id="btn-scramble">Scramble</button>
+            <button type="button" class="btn btn-primary" id="btn-scramble">Scramble</button>
             <button type="button" class="btn btn-ghost" id="btn-cross-case" hidden>New cross</button>
             <button type="button" class="btn btn-ghost" id="btn-fb-case" hidden>New FB</button>
             <button type="button" class="btn btn-ghost" id="btn-sb-case" hidden>New SB</button>
@@ -164,7 +163,7 @@
             <button type="button" class="btn btn-ghost" id="btn-hints" aria-pressed="false" title="Show or hide the guide panel">
               Guide
             </button>
-            <button type="button" class="btn btn-primary" id="btn-hint" title="Show the next coaching step for this stage">Next hint</button>
+            <button type="button" class="btn btn-ghost" id="btn-hint" disabled title="Scramble first — then this shows the next coaching step">Next hint</button>
           </div>
         </div>
       </section>
@@ -178,6 +177,9 @@
         </div>
         <div class="panel-intro" id="panel-intro">
           <h1 id="panel-title">CFOP drills. White bottom, yellow top.</h1>
+          <p class="panel-audience" id="panel-audience">
+            CFOP practice if you already know the method — not a from-zero tutorial. White on bottom, yellow on top.
+          </p>
           <p id="panel-blurb">
             Scramble a timed solve, or open a tab to drill one stage. Cross → F2L → 2-look OLL → 2-look PLL. First turn
             starts the timer.
@@ -519,7 +521,7 @@
 
     <script src="vendor/cubejs.js?v=f2lscram1"></script>
     <script src="vendor/erno.js?v=f2lscram1"></script>
-    <script type="module" src="js/main.js?v=f2lscram1"></script>
+    <script type="module" src="js/main.js?v=ready1"></script>
     <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "fd680e4c7f304be681f2fca80e8000e2"}'></script><!-- End Cloudflare Web Analytics -->
   </body>
 </html>

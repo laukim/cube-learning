@@ -848,6 +848,7 @@ function refreshGuide() {
     hintCard.hidden = true;
     solvedBanner.hidden = true;
     lastHintAlg = "";
+    if (guidePanel) guidePanel.scrollTop = 0;
     return;
   }
 

@@ -487,9 +487,9 @@ export function analyzeF2lDrill(facelets) {
       case: c,
       hint: hint(
         "41 standard F2L cases",
-        "Jump to a case (e.g. 10R), then Prev / Again / Next follow list order from there. Twins share a number: 1R then 1L, then 2R…. No L twin → just 11, 12…. Random jumps once from the groups you tick (Disconnected pairs, Edge in slot, …). One pair only — the other three stay in.",
+        "Jump to a case (e.g. 10R), then Prev / Again / Next follow list order from there. Twins share a number: 1R then 1L, then 2R…. No L twin → just 11, 12…. Random jumps once from the groups you tick (Disconnected, Edge in slot, …). One pair only — the other three stay in.",
         "",
-        "CubeHead order: easy inserts → disconnected pairs → corner in slot → edge in slot → connected → both in slot. Sledge is another way on 1R, not its own case."
+        "CubeHead order: easy inserts → disconnected → corner in slot → edge in slot → connected → both in slot. Sledge is another way on 1R, not its own case."
       ),
     };
   }
@@ -949,7 +949,7 @@ function bothOnUHint(facelets, corner, edge) {
 export const F2L_TIPS = [
   {
     title: "How this drill works",
-    body: "Each case is one pair. The other three stay in. When it’s in, stay on this ID until you tap Next or Prev. Again = same ID. Jump to picks a starting ID (e.g. 10R); Next F2L then follows the 41-case list from there. Random also jumps once, from the groups you tick — Disconnected pairs, Edge in slot, and the rest. After the case, the setup scramble is the inverse from a solved cube — do it on a real cube (white D, blue F) to practise the same slot.",
+    body: "Each case is one pair. The other three stay in. When it’s in, stay on this ID until you tap Next or Prev. Again = same ID. Jump to picks a starting ID (e.g. 10R); Next F2L then follows the 41-case list from there. Random also jumps once, from the groups you tick — Disconnected, Edge in slot, and the rest. After the case, the setup scramble is the inverse from a solved cube — do it on a real cube (white D, blue F) to practise the same slot.",
   },
   {
     title: "Practise on a real cube",

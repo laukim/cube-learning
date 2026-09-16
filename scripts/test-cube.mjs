@@ -258,7 +258,7 @@ assert(
   "1R–2L count as easy connected inserts"
 );
 assert(
-  F2L_DRILL_CASES.filter((c) => c.group === "Disconnected pairs").every(
+  F2L_DRILL_CASES.filter((c) => c.group === "Disconnected").every(
     (c) => !analyzeF2lFlow(c.setup, "", c.alg).inserts[0]?.easy
   ),
   "disconnected cases are not easy inserts"
@@ -350,11 +350,11 @@ assert(F2L_DRILL_CASES.find((c) => c.id === "1R").alg === "U R U' R'", "1R is Cu
 assert(F2L_DRILL_CASES.find((c) => c.id === "1L").alg === "U' L' U L", "1L is CubeHead 2");
 assert(F2L_DRILL_CASES.find((c) => c.id === "2R").alg === "R U R'", "2R is CubeHead 3 (split insert)");
 assert(F2L_DRILL_CASES.find((c) => c.id === "2L").alg === "L' U' L", "2L is CubeHead 4");
-assert(F2L_DRILL_CASES.find((c) => c.id === "3R").group === "Disconnected pairs", "disconnected starts at 3R");
-assert(F2L_DRILL_CASES.find((c) => c.id === "7R").group === "Disconnected pairs", "disconnected runs through 7");
+assert(F2L_DRILL_CASES.find((c) => c.id === "3R").group === "Disconnected", "disconnected starts at 3R");
+assert(F2L_DRILL_CASES.find((c) => c.id === "7R").group === "Disconnected", "disconnected runs through 7");
 assert(F2L_DRILL_CASES.find((c) => c.id === "8R").group === "Corner in slot", "8R is first corner-in-slot");
 assert(F2L_DRILL_CASES.find((c) => c.id === "11").group === "Edge in slot", "11 is first edge-in-slot (no L twin)");
-assert(F2L_GROUPS.includes("Disconnected pairs"), "Disconnected pairs is a CubeHead group name");
+assert(F2L_GROUPS.includes("Disconnected"), "Disconnected is a CubeHead group name");
 assert(F2L_GROUPS.includes("Edge in slot"), "Edge in slot is a CubeHead group name");
 assert(getF2lGroups().join("|") === F2L_GROUPS.join("|"), "trainer exposes groups in CubeHead order");
 assert(
@@ -552,17 +552,17 @@ for (let n = 0; n < 24; n++) {
   scrambleF2L(drill, "random");
   assert(edgeIds.has(getF2lDrillInfo().id), "Random stays in Edge in slot when that group is selected");
 }
-setF2lGroupFilter(["Disconnected pairs", "Edge in slot"]);
+setF2lGroupFilter(["Disconnected", "Edge in slot"]);
 const mixedIds = new Set(
-  F2L_DRILL_CASES.filter((c) => c.group === "Disconnected pairs" || c.group === "Edge in slot").map((c) => c.id)
+  F2L_DRILL_CASES.filter((c) => c.group === "Disconnected" || c.group === "Edge in slot").map((c) => c.id)
 );
-assert(getF2lGroupFilter().join("|") === "Disconnected pairs|Edge in slot", "Disconnected pairs and Edge in slot can both be on");
+assert(getF2lGroupFilter().join("|") === "Disconnected|Edge in slot", "Disconnected and Edge in slot can both be on");
 for (let n = 0; n < 24; n++) {
   scrambleF2L(drill, "random");
-  assert(mixedIds.has(getF2lDrillInfo().id), "Random stays in Disconnected pairs / Edge in slot");
+  assert(mixedIds.has(getF2lDrillInfo().id), "Random stays in Disconnected / Edge in slot");
 }
-toggleF2lGroupFilter("Disconnected pairs");
-assert(getF2lGroupFilter().join("|") === "Edge in slot", "unticking Disconnected pairs leaves Edge in slot");
+toggleF2lGroupFilter("Disconnected");
+assert(getF2lGroupFilter().join("|") === "Edge in slot", "unticking Disconnected leaves Edge in slot");
 const kept = getF2lGroupFilter();
 toggleF2lGroupFilter("Edge in slot");
 assert(getF2lGroupFilter().join("|") === kept.join("|"), "the last Random group cannot be unselected");
@@ -742,7 +742,7 @@ assert(
 
 const htmlSrc = readFileSync(join(root, "index.html"), "utf8");
 assert(htmlSrc.includes('id="f2l-group-filter"'), "F2L panel has a Random group filter");
-assert(htmlSrc.includes("Disconnected pairs"), "Disconnected pairs is used as a group name");
+assert(htmlSrc.includes("Disconnected"), "Disconnected is used as a group name");
 const erNoVer = htmlSrc.match(/src="vendor\/erno\.js\?v=([^"]+)"/)?.[1];
 const mainVer = htmlSrc.match(/src="js\/main\.js\?v=([^"]+)"/)?.[1];
 assert(erNoVer && erNoVer === mainVer, "phone must cache-bust vendored ERNO snap + main entry together");

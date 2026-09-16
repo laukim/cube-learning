@@ -12,7 +12,9 @@ import {
   solvedFacelets,
   sticker,
 } from "./cube.js";
-import { F2L_DRILL_CASES } from "./f2l-cases.js";
+import { F2L_DRILL_CASES, F2L_GROUPS } from "./f2l-cases.js?v=f2lgrp1";
+
+export { F2L_GROUPS };
 
 export const RIGHTY = "R U R' U'";
 export const LEFTY = "L' U' L U";
@@ -350,6 +352,69 @@ function ejectSlotAlg(slotId) {
 
 let f2lDrillIndex = 0;
 let f2lDrillStarted = false;
+/** Groups included when tapping Random. Empty is treated as all groups. */
+let f2lGroupFilter = new Set(F2L_GROUPS);
+
+function knownF2lGroups(groups) {
+  const next = new Set();
+  for (const g of groups || []) {
+    if (F2L_GROUPS.includes(g)) next.add(g);
+  }
+  return next;
+}
+
+function f2lRandomPoolIndices() {
+  const useAll = f2lGroupFilter.size === 0 || f2lGroupFilter.size === F2L_GROUPS.length;
+  const idxs = [];
+  for (let i = 0; i < F2L_DRILL_CASES.length; i++) {
+    if (useAll || f2lGroupFilter.has(F2L_DRILL_CASES[i].group)) idxs.push(i);
+  }
+  return idxs;
+}
+
+function pickRandomF2lIndex(avoidIndex = -1) {
+  const pool = f2lRandomPoolIndices();
+  if (!pool.length) return 0;
+  if (pool.length === 1) return pool[0];
+  let i = pool[Math.floor(Math.random() * pool.length)];
+  if (avoidIndex >= 0 && pool.includes(avoidIndex)) {
+    let guard = 0;
+    while (i === avoidIndex && guard++ < 48) {
+      i = pool[Math.floor(Math.random() * pool.length)];
+    }
+  }
+  return i;
+}
+
+export function getF2lGroups() {
+  return F2L_GROUPS.slice();
+}
+
+export function getF2lGroupFilter() {
+  if (f2lGroupFilter.size === 0) return F2L_GROUPS.slice();
+  return F2L_GROUPS.filter((g) => f2lGroupFilter.has(g));
+}
+
+export function f2lRandomPoolSize() {
+  return f2lRandomPoolIndices().length;
+}
+
+/** Replace the Random pool. Unknown names are ignored; empty restores every group. */
+export function setF2lGroupFilter(groups) {
+  const next = knownF2lGroups(groups);
+  f2lGroupFilter = next.size ? next : new Set(F2L_GROUPS);
+  return getF2lGroupFilter();
+}
+
+/** Toggle one CubeHead group in the Random pool. The last selected group stays on. */
+export function toggleF2lGroupFilter(group) {
+  if (!F2L_GROUPS.includes(group)) return getF2lGroupFilter();
+  const on = f2lGroupFilter.has(group);
+  if (on && f2lGroupFilter.size <= 1) return getF2lGroupFilter();
+  if (on) f2lGroupFilter.delete(group);
+  else f2lGroupFilter.add(group);
+  return getF2lGroupFilter();
+}
 
 /**
  * Red POP flash is for timed full-cube Guide solves only.
@@ -365,6 +430,7 @@ export function shouldFlashPop(appMode, { timerPhase, lastDone = 0, f2lLocked = 
 export function resetF2lDrill() {
   f2lDrillIndex = 0;
   f2lDrillStarted = false;
+  f2lGroupFilter = new Set(F2L_GROUPS);
 }
 
 /** Index of a CubeHead case id (e.g. 10R), or -1 if unknown. */
@@ -393,6 +459,8 @@ export function getF2lDrillInfo() {
     scramble: c.scramble,
     started: f2lDrillStarted,
     random: false,
+    randomGroups: getF2lGroupFilter(),
+    randomPoolSize: f2lRandomPoolSize(),
     nextId: next.id,
     prevId: prev?.id || "",
     atStart: i === 0,
@@ -419,9 +487,9 @@ export function analyzeF2lDrill(facelets) {
       case: c,
       hint: hint(
         "41 standard F2L cases",
-        "Jump to a case (e.g. 10R), then Prev / Again / Next follow list order from there. Twins share a number: 1R then 1L, then 2R…. No L twin → just 11, 12…. Random also jumps once. One pair only — the other three stay in.",
+        "Jump to a case (e.g. 10R), then Prev / Again / Next follow list order from there. Twins share a number: 1R then 1L, then 2R…. No L twin → just 11, 12…. Random jumps once from the groups you tick (Disconnected pairs, Edge in slot, …). One pair only — the other three stay in.",
         "",
-        "CubeHead order: easy inserts → disconnected → corner in slot → edge in slot → connected → both in slot. Sledge is another way on 1R, not its own case."
+        "CubeHead order: easy inserts → disconnected pairs → corner in slot → edge in slot → connected → both in slot. Sledge is another way on 1R, not its own case."
       ),
     };
   }
@@ -478,7 +546,7 @@ export function scrambleF2L(facelets, mode = "next", caseId = null) {
   } else if (!f2lDrillStarted) {
     f2lDrillStarted = true;
     if (mode === "random") {
-      f2lDrillIndex = Math.floor(Math.random() * n);
+      f2lDrillIndex = pickRandomF2lIndex();
     } else {
       f2lDrillIndex = 0;
     }
@@ -489,11 +557,7 @@ export function scrambleF2L(facelets, mode = "next", caseId = null) {
     // Do not wrap past 1R — that jumped to the last case and made later Next look shuffled.
     if (f2lDrillIndex > 0) f2lDrillIndex -= 1;
   } else if (mode === "random") {
-    let i = f2lDrillIndex;
-    if (n > 1) {
-      while (i === f2lDrillIndex) i = Math.floor(Math.random() * n);
-    }
-    f2lDrillIndex = i;
+    f2lDrillIndex = pickRandomF2lIndex(f2lDrillIndex);
   }
 
   const c = F2L_DRILL_CASES[((f2lDrillIndex % n) + n) % n];
@@ -885,7 +949,7 @@ function bothOnUHint(facelets, corner, edge) {
 export const F2L_TIPS = [
   {
     title: "How this drill works",
-    body: "Each case is one pair. The other three stay in. When it’s in, stay on this ID until you tap Next or Prev. Again = same ID. Jump to picks a starting ID (e.g. 10R); Next F2L then follows the 41-case list from there. Random also jumps once. After the case, the setup scramble is the inverse from a solved cube — do it on a real cube (white D, blue F) to practise the same slot.",
+    body: "Each case is one pair. The other three stay in. When it’s in, stay on this ID until you tap Next or Prev. Again = same ID. Jump to picks a starting ID (e.g. 10R); Next F2L then follows the 41-case list from there. Random also jumps once, from the groups you tick — Disconnected pairs, Edge in slot, and the rest. After the case, the setup scramble is the inverse from a solved cube — do it on a real cube (white D, blue F) to practise the same slot.",
   },
   {
     title: "Practise on a real cube",

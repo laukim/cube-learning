@@ -20,8 +20,8 @@ const {
   renderAnalysisHtml,
   startTimer,
 } = await import("../js/solve-timer.js");
-const { analyzeF2lFlow, formatF2lFlow, popBaselineIds, poppedSolvedSlots, scrambleF2L, getF2lDrillInfo, resetF2lDrill, shouldFlashPop, slotSolved, solvedSlotIds, stableSolvedSlotIds, whiteCrossIntact, SLOTS } = await import("../js/f2l-trainer.js");
-const { F2L_DRILL_CASES } = await import("../js/f2l-cases.js");
+const { analyzeF2lFlow, formatF2lFlow, f2lRandomPoolSize, getF2lGroupFilter, getF2lGroups, popBaselineIds, poppedSolvedSlots, scrambleF2L, getF2lDrillInfo, resetF2lDrill, setF2lGroupFilter, shouldFlashPop, slotSolved, solvedSlotIds, stableSolvedSlotIds, toggleF2lGroupFilter, whiteCrossIntact, SLOTS } = await import("../js/f2l-trainer.js");
+const { F2L_DRILL_CASES, F2L_GROUPS } = await import("../js/f2l-cases.js");
 const { invertAlg, invertAlgNotation, expandWideAlg } = await import("../js/alg.js");
 const { consumeAlgMove, initAlgProgress, toAtomics } = await import("../js/alg-progress.js");
 const { analyzeOll, OLL_DRILL_CASES, OLL_CROSS_ALG, getOllDrillInfo, getOllLook, resetOllDrill, scrambleOll, setOllLook } = await import("../js/oll-trainer.js");
@@ -258,7 +258,7 @@ assert(
   "1R–2L count as easy connected inserts"
 );
 assert(
-  F2L_DRILL_CASES.filter((c) => c.group === "Disconnected").every(
+  F2L_DRILL_CASES.filter((c) => c.group === "Disconnected pairs").every(
     (c) => !analyzeF2lFlow(c.setup, "", c.alg).inserts[0]?.easy
   ),
   "disconnected cases are not easy inserts"
@@ -350,10 +350,13 @@ assert(F2L_DRILL_CASES.find((c) => c.id === "1R").alg === "U R U' R'", "1R is Cu
 assert(F2L_DRILL_CASES.find((c) => c.id === "1L").alg === "U' L' U L", "1L is CubeHead 2");
 assert(F2L_DRILL_CASES.find((c) => c.id === "2R").alg === "R U R'", "2R is CubeHead 3 (split insert)");
 assert(F2L_DRILL_CASES.find((c) => c.id === "2L").alg === "L' U' L", "2L is CubeHead 4");
-assert(F2L_DRILL_CASES.find((c) => c.id === "3R").group === "Disconnected", "disconnected starts at 3R");
-assert(F2L_DRILL_CASES.find((c) => c.id === "7R").group === "Disconnected", "disconnected runs through 7");
+assert(F2L_DRILL_CASES.find((c) => c.id === "3R").group === "Disconnected pairs", "disconnected starts at 3R");
+assert(F2L_DRILL_CASES.find((c) => c.id === "7R").group === "Disconnected pairs", "disconnected runs through 7");
 assert(F2L_DRILL_CASES.find((c) => c.id === "8R").group === "Corner in slot", "8R is first corner-in-slot");
 assert(F2L_DRILL_CASES.find((c) => c.id === "11").group === "Edge in slot", "11 is first edge-in-slot (no L twin)");
+assert(F2L_GROUPS.includes("Disconnected pairs"), "Disconnected pairs is a CubeHead group name");
+assert(F2L_GROUPS.includes("Edge in slot"), "Edge in slot is a CubeHead group name");
+assert(getF2lGroups().join("|") === F2L_GROUPS.join("|"), "trainer exposes groups in CubeHead order");
 assert(
   F2L_DRILL_CASES.find((c) => c.id === "11").alg === "U R U' R' U R U' R' U R U' R'",
   "11 is CubeHead’s first edge-in-slot (solved edge, white up)"
@@ -537,6 +540,42 @@ assert(getF2lDrillInfo().id === "22", "Jump to 22 works mid-session");
 scrambleF2L(drill, "next");
 assert(getF2lDrillInfo().id === "23", "Next after Jump to 22 is 23");
 
+resetF2lDrill();
+setF2lGroupFilter(["Edge in slot"]);
+assert(getF2lGroupFilter().join("|") === "Edge in slot", "Random pool can be only Edge in slot");
+assert(
+  f2lRandomPoolSize() === F2L_DRILL_CASES.filter((c) => c.group === "Edge in slot").length,
+  "pool size matches Edge in slot cases"
+);
+const edgeIds = new Set(F2L_DRILL_CASES.filter((c) => c.group === "Edge in slot").map((c) => c.id));
+for (let n = 0; n < 24; n++) {
+  scrambleF2L(drill, "random");
+  assert(edgeIds.has(getF2lDrillInfo().id), "Random stays in Edge in slot when that group is selected");
+}
+setF2lGroupFilter(["Disconnected pairs", "Edge in slot"]);
+const mixedIds = new Set(
+  F2L_DRILL_CASES.filter((c) => c.group === "Disconnected pairs" || c.group === "Edge in slot").map((c) => c.id)
+);
+assert(getF2lGroupFilter().join("|") === "Disconnected pairs|Edge in slot", "Disconnected pairs and Edge in slot can both be on");
+for (let n = 0; n < 24; n++) {
+  scrambleF2L(drill, "random");
+  assert(mixedIds.has(getF2lDrillInfo().id), "Random stays in Disconnected pairs / Edge in slot");
+}
+toggleF2lGroupFilter("Disconnected pairs");
+assert(getF2lGroupFilter().join("|") === "Edge in slot", "unticking Disconnected pairs leaves Edge in slot");
+const kept = getF2lGroupFilter();
+toggleF2lGroupFilter("Edge in slot");
+assert(getF2lGroupFilter().join("|") === kept.join("|"), "the last Random group cannot be unselected");
+setF2lGroupFilter([]);
+assert(getF2lGroupFilter().length === F2L_GROUPS.length, "empty filter restores every group");
+setF2lGroupFilter(["Edge in slot"]);
+scrambleF2L(drill, "random");
+const filteredRandom = getF2lDrillInfo();
+scrambleF2L(drill, "next");
+const expectAfterFiltered = F2L_DRILL_CASES[(filteredRandom.index + 1) % F2L_DRILL_CASES.length].id;
+assert(getF2lDrillInfo().id === expectAfterFiltered, "Next after a filtered Random still walks CubeHead order");
+resetF2lDrill();
+
 assert(shouldFlashPop("guide", { timerPhase: "running", lastDone: 1 }) === true, "POP flash during timed full-cube F2L");
 assert(shouldFlashPop("guide", { timerPhase: "idle", lastDone: 1 }) === false, "no POP flash until the full-cube timer runs");
 assert(shouldFlashPop("guide", { timerPhase: "running", lastDone: 2 }) === false, "no POP flash after F2L is done on a full solve");
@@ -553,6 +592,10 @@ assert(mainSrc.includes("shouldFlashPop(appMode"), "live POP flash uses the Guid
 assert(!mainSrc.includes('watchDrill = appMode === "f2l"'), "F2L drill must not subscribe to the POP overlay");
 assert(!mainSrc.includes("setF2lRandom"), "Next F2L is not a sticky random mode");
 assert(mainSrc.includes('scrambleF2L(draft, "random")'), "Random is a one-shot jump");
+assert(mainSrc.includes("buildF2lGroupFilter"), "F2L panel builds Random group chips");
+assert(mainSrc.includes("toggleF2lGroupFilter"), "tapping a group chip includes or excludes it from Random");
+assert(mainSrc.includes("f2l-group-filter"), "Random group chips live in the F2L panel");
+assert(mainSrc.includes('dataset.f2lGroupAll'), "All chip restores every Random group");
 assert(mainSrc.includes('scrambleF2L(draft, "goto", id)'), "Jump to select uses goto mode");
 assert(mainSrc.includes("f2l-jump-select"), "F2L toolbar has a Jump to case select");
 assert(mainSrc.includes("buildF2lJumpSelect"), "Jump to options are built from the 41-case list");
@@ -698,6 +741,8 @@ assert(
 );
 
 const htmlSrc = readFileSync(join(root, "index.html"), "utf8");
+assert(htmlSrc.includes('id="f2l-group-filter"'), "F2L panel has a Random group filter");
+assert(htmlSrc.includes("Disconnected pairs"), "Disconnected pairs is used as a group name");
 const erNoVer = htmlSrc.match(/src="vendor\/erno\.js\?v=([^"]+)"/)?.[1];
 const mainVer = htmlSrc.match(/src="js\/main\.js\?v=([^"]+)"/)?.[1];
 assert(erNoVer && erNoVer === mainVer, "phone must cache-bust vendored ERNO snap + main entry together");

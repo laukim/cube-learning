@@ -9,10 +9,10 @@ import {
   solvedFacelets,
 } from "./cube.js";
 import { consumeAlgMove, initAlgProgress, restoreAlgMove } from "./alg-progress.js?v=2look5";
-import { createErnoCube } from "./erno-view.js?v=f2lscram1";
+import { createErnoCube } from "./erno-view.js?v=f2lgrp1";
 import { analyzeCross, CROSS_TIPS, scrambleCross } from "./cross-trainer.js";
-import { analyzeF2lDrill, countSlotsSolved, F2L_TIPS, getF2lDrillInfo, popBaselineIds, poppedSolvedSlots, scrambleF2L, shouldFlashPop, solvedSlotIds, stableSolvedSlotIds } from "./f2l-trainer.js?v=f2lscram1";
-import { F2L_DRILL_CASES } from "./f2l-cases.js";
+import { analyzeF2lDrill, countSlotsSolved, F2L_TIPS, getF2lDrillInfo, getF2lGroupFilter, getF2lGroups, f2lRandomPoolSize, popBaselineIds, poppedSolvedSlots, scrambleF2L, shouldFlashPop, solvedSlotIds, stableSolvedSlotIds, setF2lGroupFilter, toggleF2lGroupFilter } from "./f2l-trainer.js?v=f2lgrp1";
+import { F2L_DRILL_CASES } from "./f2l-cases.js?v=f2lgrp1";
 import { renderCaseDiagram } from "./case-diagram.js";
 import { analyzeOll, expandWideAlg, getOllDrillInfo, getOllLook, OLL_TIPS, scrambleOll, setOllLook } from "./oll-trainer.js";
 import { analyzePll, getPllDrillInfo, PLL_TIPS, scramblePll } from "./pll-trainer.js";
@@ -203,6 +203,7 @@ let analysisShownForSolve = false;
 const MOVE_PAD_KEY = "bylayer-show-move-pad";
 const PHONE_PAD_KEY = "bylayer-phone-move-pad";
 const OLL_LOOK_KEY = "bylayer-oll-look";
+const F2L_GROUP_FILTER_KEY = "bylayer-f2l-group-filter";
 
 function isCompactLayout() {
   return window.matchMedia("(max-width: 920px)").matches;
@@ -1366,6 +1367,88 @@ function buildF2LTips() {
   ).join("");
 }
 
+function persistF2lGroupFilter() {
+  try {
+    localStorage.setItem(F2L_GROUP_FILTER_KEY, JSON.stringify(getF2lGroupFilter()));
+  } catch {
+    /* ignore */
+  }
+}
+
+function loadF2lGroupFilter() {
+  try {
+    const raw = localStorage.getItem(F2L_GROUP_FILTER_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) setF2lGroupFilter(parsed);
+  } catch {
+    /* keep defaults */
+  }
+}
+
+function paintF2lGroupFilter() {
+  const list = document.getElementById("f2l-group-filter-list");
+  const label = document.getElementById("f2l-group-filter-label");
+  const btnRandom = document.getElementById("btn-f2l-random");
+  const selected = new Set(getF2lGroupFilter());
+  const allOn = selected.size === getF2lGroups().length;
+  const pool = f2lRandomPoolSize();
+  if (list) {
+    list.querySelectorAll("[data-f2l-group]").forEach((btn) => {
+      const on = selected.has(btn.dataset.f2lGroup);
+      btn.classList.toggle("is-on", on);
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    const allBtn = list.querySelector("[data-f2l-group-all]");
+    if (allBtn) {
+      allBtn.classList.toggle("is-on", allOn);
+      allBtn.setAttribute("aria-pressed", allOn ? "true" : "false");
+    }
+  }
+  if (label) {
+    label.textContent = allOn
+      ? `Random includes · ${pool} cases`
+      : `Random includes · ${pool} case${pool === 1 ? "" : "s"}`;
+  }
+  if (btnRandom) {
+    const names = getF2lGroupFilter().join(", ");
+    btnRandom.title = `Jump to a random case from: ${names}. Prev and Next stay in CubeHead order.`;
+  }
+}
+
+function buildF2lGroupFilter() {
+  const list = document.getElementById("f2l-group-filter-list");
+  if (!list || list.dataset.ready === "1") return;
+  const allBtn = document.createElement("button");
+  allBtn.type = "button";
+  allBtn.className = "f2l-group-chip is-on";
+  allBtn.dataset.f2lGroupAll = "1";
+  allBtn.textContent = "All";
+  allBtn.setAttribute("aria-pressed", "true");
+  allBtn.addEventListener("click", () => {
+    setF2lGroupFilter(getF2lGroups());
+    persistF2lGroupFilter();
+    paintF2lGroupFilter();
+  });
+  list.appendChild(allBtn);
+  for (const group of getF2lGroups()) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "f2l-group-chip is-on";
+    btn.dataset.f2lGroup = group;
+    btn.textContent = group;
+    btn.setAttribute("aria-pressed", "true");
+    btn.addEventListener("click", () => {
+      toggleF2lGroupFilter(group);
+      persistF2lGroupFilter();
+      paintF2lGroupFilter();
+    });
+    list.appendChild(btn);
+  }
+  list.dataset.ready = "1";
+  paintF2lGroupFilter();
+}
+
 function buildF2lJumpSelect() {
   const sel = document.getElementById("f2l-jump-select");
   if (!sel || sel.dataset.ready === "1") return;
@@ -1439,12 +1522,13 @@ function setPanelCopy(mode) {
     title.textContent = "F2L — 41 standard cases";
     blurb.innerHTML = d.started
       ? `Now <strong>${d.id}</strong> · ${d.index + 1}/${d.total} · ${d.group}. After the case, scramble from a solved cube (white D · blue F) to practise it on a real cube. <strong>Jump to</strong> picks a starting ID; <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong> follow CubeHead’s list order from there.`
-      : `Drill the <strong>41 standard F2L cases</strong> (CubeHead order). Twins share a number: 1R then 1L. No left twin → just 11. <strong>Jump to</strong> starts at any ID (e.g. 10R); then <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong> walk the list. <strong>Random</strong> also jumps once. Each case shows a <strong>setup scramble</strong> for a real cube. Reference: <a class="ext-link" href="https://www.youtube.com/watch?v=3tYj-9f4dA0" target="_blank" rel="noopener">CubeHead F2L</a>.`;
+      : `Drill the <strong>41 standard F2L cases</strong> (CubeHead order). Twins share a number: 1R then 1L. No left twin → just 11. <strong>Jump to</strong> starts at any ID (e.g. 10R); then <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong> walk the list. <strong>Random</strong> jumps once from the groups you tick — <strong>Disconnected pairs</strong>, <strong>Edge in slot</strong>, and the rest. Each case shows a <strong>setup scramble</strong> for a real cube. Reference: <a class="ext-link" href="https://www.youtube.com/watch?v=3tYj-9f4dA0" target="_blank" rel="noopener">CubeHead F2L</a>.`;
     btnF2l.hidden = false;
     btnF2lPrev.hidden = false;
     btnF2lAgain.hidden = false;
     btnF2lRandom.hidden = false;
     if (f2lJump) f2lJump.hidden = false;
+    paintF2lGroupFilter();
     btnHint.textContent = "F2L hint";
   } else if (mode === "oll") {
     const d = getOllDrillInfo();
@@ -2228,10 +2312,17 @@ buildCmllTips();
 buildLseTips();
 buildAlgList();
 buildF2LTips();
+buildF2lGroupFilter();
 buildF2lJumpSelect();
 syncMethodChrome();
 try {
   localStorage.removeItem("f2l-drill-random");
+} catch {
+  /* ignore */
+}
+try {
+  loadF2lGroupFilter();
+  paintF2lGroupFilter();
 } catch {
   /* ignore */
 }

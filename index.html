@@ -12,8 +12,8 @@
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
       rel="stylesheet"
     />
-      <link rel="stylesheet" href="styles.css?v=ready1" />
-    <link rel="stylesheet" href="vendor/erno-cube.css?v=f2lscram1" />
+      <link rel="stylesheet" href="styles.css?v=f2lgrp1" />
+    <link rel="stylesheet" href="vendor/erno-cube.css?v=f2lgrp1" />
   </head>
   <body class="hints-open">
     <div class="ambient" aria-hidden="true"></div>
@@ -149,7 +149,7 @@
                 <option value="">Case…</option>
               </select>
             </label>
-            <button type="button" class="btn btn-ghost" id="btn-f2l-random" hidden title="Jump to a random case. Prev and Next stay in the 41-case order (CubeHead).">
+            <button type="button" class="btn btn-ghost" id="btn-f2l-random" hidden title="Jump to a random case from the groups you tick. Prev and Next stay in CubeHead order.">
               Random
             </button>
             <button type="button" class="btn btn-ghost" id="btn-oll-again" hidden>Again</button>
@@ -269,6 +269,15 @@
         </div>
 
         <div class="panel-body" id="panel-f2l" data-panel="f2l" hidden>
+          <div class="f2l-group-filter" id="f2l-group-filter">
+            <p class="f2l-group-filter-label" id="f2l-group-filter-label">Random includes</p>
+            <div
+              class="f2l-group-filter-list"
+              id="f2l-group-filter-list"
+              role="group"
+              aria-label="F2L groups included in Random"
+            ></div>
+          </div>
           <div class="f2l-progress" id="f2l-progress" aria-label="Slots solved"></div>
 
           <div class="hint-card" id="f2l-hint-card">
@@ -280,7 +289,8 @@
               <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong> follow the list.
               Twins share a number (<strong>1R</strong> / <strong>1L</strong>); no left twin → just
               <strong>11</strong>. One pair per case — stay on this ID until Next or Prev.
-              <strong>Random</strong> also jumps once. After each case you’ll see a
+              <strong>Random</strong> jumps once from the groups you tick (Disconnected pairs,
+              Edge in slot, …). After each case you’ll see a
               <strong>scramble from solved</strong> so you can set it up on a real cube
               (white D · blue F). Reference:
               <a
@@ -519,9 +529,9 @@
       <kbd>Pieces</kbd> turn · <kbd>Around</kbd> look · <kbd>Z</kbd> undo
     </footer>
 
-    <script src="vendor/cubejs.js?v=f2lscram1"></script>
-    <script src="vendor/erno.js?v=f2lscram1"></script>
-    <script type="module" src="js/main.js?v=ready1"></script>
+    <script src="vendor/cubejs.js?v=f2lgrp1"></script>
+    <script src="vendor/erno.js?v=f2lgrp1"></script>
+    <script type="module" src="js/main.js?v=f2lgrp1"></script>
     <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "fd680e4c7f304be681f2fca80e8000e2"}'></script><!-- End Cloudflare Web Analytics -->
   </body>
 </html>

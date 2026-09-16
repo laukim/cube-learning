@@ -12,7 +12,7 @@ import {
   solvedFacelets,
   sticker,
 } from "./cube.js";
-import { F2L_DRILL_CASES, F2L_GROUPS } from "./f2l-cases.js?v=f2lgrp1";
+import { F2L_DRILL_CASES, F2L_GROUPS } from "./f2l-cases.js?v=f2lgrp2";
 
 export { F2L_GROUPS };
 

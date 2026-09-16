@@ -9,10 +9,10 @@ import {
   solvedFacelets,
 } from "./cube.js";
 import { consumeAlgMove, initAlgProgress, restoreAlgMove } from "./alg-progress.js?v=2look5";
-import { createErnoCube } from "./erno-view.js?v=f2lgrp1";
+import { createErnoCube } from "./erno-view.js?v=f2lgrp2";
 import { analyzeCross, CROSS_TIPS, scrambleCross } from "./cross-trainer.js";
-import { analyzeF2lDrill, countSlotsSolved, F2L_TIPS, getF2lDrillInfo, getF2lGroupFilter, getF2lGroups, f2lRandomPoolSize, popBaselineIds, poppedSolvedSlots, scrambleF2L, shouldFlashPop, solvedSlotIds, stableSolvedSlotIds, setF2lGroupFilter, toggleF2lGroupFilter } from "./f2l-trainer.js?v=f2lgrp1";
-import { F2L_DRILL_CASES } from "./f2l-cases.js?v=f2lgrp1";
+import { analyzeF2lDrill, countSlotsSolved, F2L_TIPS, getF2lDrillInfo, getF2lGroupFilter, getF2lGroups, f2lRandomPoolSize, popBaselineIds, poppedSolvedSlots, scrambleF2L, shouldFlashPop, solvedSlotIds, stableSolvedSlotIds, setF2lGroupFilter, toggleF2lGroupFilter } from "./f2l-trainer.js?v=f2lgrp2";
+import { F2L_DRILL_CASES } from "./f2l-cases.js?v=f2lgrp2";
 import { renderCaseDiagram } from "./case-diagram.js";
 import { analyzeOll, expandWideAlg, getOllDrillInfo, getOllLook, OLL_TIPS, scrambleOll, setOllLook } from "./oll-trainer.js";
 import { analyzePll, getPllDrillInfo, PLL_TIPS, scramblePll } from "./pll-trainer.js";

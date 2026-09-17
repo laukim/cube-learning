@@ -367,6 +367,22 @@ assert(
 );
 assert(!F2L_DRILL_CASES.some((c) => c.id === "11R" || c.id === "11L"), "no L twin → ID is 11, not 11R");
 assert(F2L_DRILL_CASES.find((c) => c.id === "17R").group === "Connected", "connected pairs start at 17");
+{
+  // 17R is CubeHead’s first connected case (SpeedCubeDB F2L 12): white on R, edge on UF, flipped.
+  const c17 = F2L_DRILL_CASES.find((c) => c.id === "17R");
+  assert(c17.alg === "R U' R' U R U' R' U2 R U' R'", "17R keeps CubeHead’s connected-pair alg");
+  assert(c17.name.includes("White right, edge front"), "17R name matches white-on-R + edge-on-UF");
+  const open17 = solvedFacelets();
+  applyAlg(open17, c17.setup);
+  assert(sticker(open17, "R", 0) === "white", "17R setup has white on the right of UFR");
+  assert(sticker(open17, "U", 8) !== "white", "17R is not the white-up connected case");
+  assert(sticker(open17, "U", 7) === "blue" && sticker(open17, "F", 1) === "red", "17R edge sits on UF, flipped");
+  const c20 = F2L_DRILL_CASES.find((c) => c.id === "20R");
+  const open20 = solvedFacelets();
+  applyAlg(open20, c20.setup);
+  assert(sticker(open20, "U", 8) === "white", "20R is the white-up connected case with flipped edge");
+  assert(c20.name.includes("White up, edge flipped"), "20R name is white up, edge flipped");
+}
 assert(F2L_DRILL_CASES.find((c) => c.id === "22").group === "Both in slot", "both-in-slot starts at 22");
 assert(!F2L_DRILL_CASES.some((c) => c.id === "22R" || c.id === "22L"), "both-in-slot has no L twin");
 assert(F2L_DRILL_CASES.at(-1).id === "26", "last case is 26");

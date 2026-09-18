@@ -590,6 +590,52 @@ const filteredRandom = getF2lDrillInfo();
 scrambleF2L(drill, "next");
 const expectAfterFiltered = F2L_DRILL_CASES[(filteredRandom.index + 1) % F2L_DRILL_CASES.length].id;
 assert(getF2lDrillInfo().id === expectAfterFiltered, "Next after a filtered Random still walks CubeHead order");
+
+function randomPassIds(facelets, count) {
+  const ids = [];
+  for (let n = 0; n < count; n++) {
+    scrambleF2L(facelets, "random");
+    ids.push(getF2lDrillInfo().id);
+  }
+  return ids;
+}
+
+resetF2lDrill();
+setF2lGroupFilter(["Edge in slot"]);
+const edgePoolIds = F2L_DRILL_CASES.filter((c) => c.group === "Edge in slot").map((c) => c.id);
+assert(edgePoolIds.length > 1, "Edge in slot has more than one case for a no-repeat pass");
+const firstPass = randomPassIds(drill, edgePoolIds.length);
+assert(new Set(firstPass).size === edgePoolIds.length, `first Random pass has no repeats, got ${firstPass.join(" ")}`);
+assert(
+  edgePoolIds.every((id) => firstPass.includes(id)),
+  "first Random pass shows every selected case before repeating"
+);
+assert(firstPass[firstPass.length - 1] !== firstPass[0] || edgePoolIds.length === 1, "a Random pass is not stuck on one case");
+const secondPass = randomPassIds(drill, edgePoolIds.length);
+assert(new Set(secondPass).size === edgePoolIds.length, `second Random pass has no repeats, got ${secondPass.join(" ")}`);
+assert(
+  edgePoolIds.every((id) => secondPass.includes(id)),
+  "Random only repeats after every selected case has been shown"
+);
+assert(
+  secondPass[0] !== firstPass[firstPass.length - 1],
+  "a new Random pass does not start on the last case of the previous pass"
+);
+
+resetF2lDrill();
+setF2lGroupFilter(["Easy insert"]);
+scrambleF2L(drill, "random");
+setF2lGroupFilter(["Edge in slot"]);
+const afterFilterChange = randomPassIds(drill, edgePoolIds.length);
+assert(
+  new Set(afterFilterChange).size === edgePoolIds.length,
+  "changing Random groups starts a fresh no-repeat pass"
+);
+assert(
+  afterFilterChange.every((id) => edgePoolIds.includes(id)),
+  "the fresh pass stays in the newly selected groups"
+);
+
 resetF2lDrill();
 
 assert(shouldFlashPop("guide", { timerPhase: "running", lastDone: 1 }) === true, "POP flash during timed full-cube F2L");
@@ -608,6 +654,14 @@ assert(mainSrc.includes("shouldFlashPop(appMode"), "live POP flash uses the Guid
 assert(!mainSrc.includes('watchDrill = appMode === "f2l"'), "F2L drill must not subscribe to the POP overlay");
 assert(!mainSrc.includes("setF2lRandom"), "Next F2L is not a sticky random mode");
 assert(mainSrc.includes('scrambleF2L(draft, "random")'), "Random is a one-shot jump");
+assert(
+  mainSrc.includes("with no repeats until every selected case has been shown"),
+  "F2L blurb says Random waits until every selected case has been shown"
+);
+assert(
+  mainSrc.includes("Each selected case appears once before any repeat"),
+  "Random button title describes the no-repeat pass"
+);
 assert(mainSrc.includes("buildF2lGroupFilter"), "F2L panel builds Random group chips");
 assert(mainSrc.includes("toggleF2lGroupFilter"), "tapping a group chip includes or excludes it from Random");
 assert(mainSrc.includes("f2l-group-filter"), "Random group chips live in the F2L panel");
@@ -759,6 +813,10 @@ assert(
 const htmlSrc = readFileSync(join(root, "index.html"), "utf8");
 assert(htmlSrc.includes('id="f2l-group-filter"'), "F2L panel has a Random group filter");
 assert(htmlSrc.includes("Disconnected"), "Disconnected is used as a group name");
+assert(
+  htmlSrc.includes("with no repeats until every selected case has been shown"),
+  "F2L panel copy says Random does not repeat until every selected case is shown"
+);
 const erNoVer = htmlSrc.match(/src="vendor\/erno\.js\?v=([^"]+)"/)?.[1];
 const mainVer = htmlSrc.match(/src="js\/main\.js\?v=([^"]+)"/)?.[1];
 assert(erNoVer && erNoVer === mainVer, "phone must cache-bust vendored ERNO snap + main entry together");

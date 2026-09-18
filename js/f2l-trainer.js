@@ -12,7 +12,7 @@ import {
   solvedFacelets,
   sticker,
 } from "./cube.js";
-import { F2L_DRILL_CASES, F2L_GROUPS } from "./f2l-cases.js?v=f2l17r";
+import { F2L_DRILL_CASES, F2L_GROUPS } from "./f2l-cases.js?v=f2l18r";
 
 export { F2L_GROUPS };
 
@@ -354,6 +354,8 @@ let f2lDrillIndex = 0;
 let f2lDrillStarted = false;
 /** Groups included when tapping Random. Empty is treated as all groups. */
 let f2lGroupFilter = new Set(F2L_GROUPS);
+/** Remaining case indices for the current Random pass. Refilled when empty. */
+let f2lRandomBag = [];
 
 function knownF2lGroups(groups) {
   const next = new Set();
@@ -372,18 +374,44 @@ function f2lRandomPoolIndices() {
   return idxs;
 }
 
+function shuffleIndices(items) {
+  const a = items.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function takeFromRandomBag(avoidIndex) {
+  if (!f2lRandomBag.length) return -1;
+  if (f2lRandomBag.length === 1) return f2lRandomBag.pop();
+  let pickAt = f2lRandomBag.length - 1;
+  if (avoidIndex >= 0 && f2lRandomBag[pickAt] === avoidIndex) {
+    pickAt = Math.floor(Math.random() * (f2lRandomBag.length - 1));
+  }
+  const [picked] = f2lRandomBag.splice(pickAt, 1);
+  return picked;
+}
+
+/**
+ * Next Random case: shuffle the selected pool and deal without repeats.
+ * A new shuffled pass starts only after every selected case has been shown.
+ */
 function pickRandomF2lIndex(avoidIndex = -1) {
   const pool = f2lRandomPoolIndices();
   if (!pool.length) return 0;
-  if (pool.length === 1) return pool[0];
-  let i = pool[Math.floor(Math.random() * pool.length)];
-  if (avoidIndex >= 0 && pool.includes(avoidIndex)) {
-    let guard = 0;
-    while (i === avoidIndex && guard++ < 48) {
-      i = pool[Math.floor(Math.random() * pool.length)];
-    }
+  if (pool.length === 1) {
+    f2lRandomBag = [];
+    return pool[0];
   }
-  return i;
+
+  const poolSet = new Set(pool);
+  f2lRandomBag = f2lRandomBag.filter((i) => poolSet.has(i));
+  if (!f2lRandomBag.length) f2lRandomBag = shuffleIndices(pool);
+
+  const picked = takeFromRandomBag(avoidIndex);
+  return picked >= 0 ? picked : pool[0];
 }
 
 export function getF2lGroups() {
@@ -403,6 +431,7 @@ export function f2lRandomPoolSize() {
 export function setF2lGroupFilter(groups) {
   const next = knownF2lGroups(groups);
   f2lGroupFilter = next.size ? next : new Set(F2L_GROUPS);
+  f2lRandomBag = [];
   return getF2lGroupFilter();
 }
 
@@ -413,6 +442,7 @@ export function toggleF2lGroupFilter(group) {
   if (on && f2lGroupFilter.size <= 1) return getF2lGroupFilter();
   if (on) f2lGroupFilter.delete(group);
   else f2lGroupFilter.add(group);
+  f2lRandomBag = [];
   return getF2lGroupFilter();
 }
 
@@ -431,6 +461,7 @@ export function resetF2lDrill() {
   f2lDrillIndex = 0;
   f2lDrillStarted = false;
   f2lGroupFilter = new Set(F2L_GROUPS);
+  f2lRandomBag = [];
 }
 
 /** Index of a CubeHead case id (e.g. 10R), or -1 if unknown. */
@@ -487,7 +518,7 @@ export function analyzeF2lDrill(facelets) {
       case: c,
       hint: hint(
         "41 standard F2L cases",
-        "Jump to a case (e.g. 10R), then Prev / Again / Next follow list order from there. Twins share a number: 1R then 1L, then 2R…. No L twin → just 11, 12…. Random jumps once from the groups you tick (Disconnected, Edge in slot, …). One pair only — the other three stay in.",
+        "Jump to a case (e.g. 10R), then Prev / Again / Next follow list order from there. Twins share a number: 1R then 1L, then 2R…. No L twin → just 11, 12…. Random walks the groups you tick (Disconnected, Edge in slot, …) with no repeats until every selected case has been shown. One pair only — the other three stay in.",
         "",
         "CubeHead order: easy inserts → disconnected → corner in slot → edge in slot → connected → both in slot. Sledge is another way on 1R, not its own case."
       ),
@@ -949,7 +980,7 @@ function bothOnUHint(facelets, corner, edge) {
 export const F2L_TIPS = [
   {
     title: "How this drill works",
-    body: "Each case is one pair. The other three stay in. When it’s in, stay on this ID until you tap Next or Prev. Again = same ID. Jump to picks a starting ID (e.g. 10R); Next F2L then follows the 41-case list from there. Random also jumps once, from the groups you tick — Disconnected, Edge in slot, and the rest. After the case, the setup scramble is the inverse from a solved cube — do it on a real cube (white D, blue F) to practise the same slot.",
+    body: "Each case is one pair. The other three stay in. When it’s in, stay on this ID until you tap Next or Prev. Again = same ID. Jump to picks a starting ID (e.g. 10R); Next F2L then follows the 41-case list from there. Random walks the groups you tick — Disconnected, Edge in slot, and the rest — in a shuffled order, and only repeats after every selected case has been shown. After the case, the setup scramble is the inverse from a solved cube — do it on a real cube (white D, blue F) to practise the same slot.",
   },
   {
     title: "Practise on a real cube",

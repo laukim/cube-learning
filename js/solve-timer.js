@@ -1,6 +1,6 @@
 import { STEPS } from "./solver.js";
 import { countNamedAlgs, countYTurns, formatAlgCounts } from "./coach-report.js";
-import { analyzeF2lFlow, formatF2lFlow } from "./f2l-trainer.js?v=f2l17r";
+import { analyzeF2lFlow, formatF2lFlow } from "./f2l-trainer.js?v=f2l18r";
 import {
   ROUX_SPLIT_GROUPS,
   ROUX_SPLIT_SHORT,

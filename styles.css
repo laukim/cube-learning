@@ -16,6 +16,9 @@
   --green: #0b9e4a;
   --timer-cross: color-mix(in srgb, var(--blue) 52%, #ffffff);
   --timer-f2l: var(--orange);
+  --timer-ao25: #6dc8ff;
+  --timer-ao50: #c4a0ff;
+  --timer-ao100: #ff8aa8;
   --plastic: #111111;
   --shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
   --radius: 18px;
@@ -2436,6 +2439,83 @@ body.timer-page .topbar {
   color: var(--timer-f2l);
 }
 
+.timer-averages-wrap {
+  grid-column: 1 / -1;
+  padding: 0.55rem 0.65rem 0.4rem;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.timer-averages {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.timer-averages caption {
+  caption-side: top;
+  text-align: left;
+  margin-bottom: 0.28rem;
+  color: var(--ink);
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.timer-averages th,
+.timer-averages td {
+  padding: 0.28rem 0.2rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  border-bottom: 1px solid var(--line);
+}
+
+.timer-averages thead th {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.timer-averages th[scope="row"] {
+  text-align: left;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.timer-averages td {
+  color: var(--ink);
+}
+
+.timer-averages tbody tr:last-child th,
+.timer-averages tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.timer-avg-ao5 {
+  color: var(--accent) !important;
+}
+
+.timer-avg-ao12 {
+  color: var(--warn) !important;
+}
+
+.timer-avg-ao25 {
+  color: var(--timer-ao25) !important;
+}
+
+.timer-avg-ao50 {
+  color: var(--timer-ao50) !important;
+}
+
+.timer-avg-ao100 {
+  color: var(--timer-ao100) !important;
+}
+
 .timer-chart {
   margin: 0 0 1rem;
   padding: 0.65rem 0.45rem 0.4rem;
@@ -2629,6 +2709,21 @@ body.timer-page .topbar {
   stroke-width: 2;
 }
 
+.timer-chart-ao25 {
+  stroke: var(--timer-ao25);
+  stroke-width: 1.85;
+}
+
+.timer-chart-ao50 {
+  stroke: var(--timer-ao50);
+  stroke-width: 1.85;
+}
+
+.timer-chart-ao100 {
+  stroke: var(--timer-ao100);
+  stroke-width: 1.85;
+}
+
 .timer-chart-cross {
   stroke: var(--timer-cross);
   stroke-width: 1.75;
@@ -2696,6 +2791,18 @@ body.timer-page .topbar {
 
 .swatch-ao12 {
   background: var(--warn);
+}
+
+.swatch-ao25 {
+  background: var(--timer-ao25);
+}
+
+.swatch-ao50 {
+  background: var(--timer-ao50);
+}
+
+.swatch-ao100 {
+  background: var(--timer-ao100);
 }
 
 .swatch-cross {

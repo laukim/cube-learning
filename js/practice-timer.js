@@ -12,6 +12,10 @@ export const SPLIT_BOUNCE_MS = 150;
 /** Chart window sizes; 0 = all solves in the session. */
 export const CHART_WINDOW_OPTIONS = [25, 50, 100, 0];
 export const DEFAULT_CHART_WINDOW = 50;
+/** csTimer-style session averages (WCA ao5 plus the usual longer windows). */
+export const AVERAGE_WINDOWS = [5, 12, 25, 50, 100];
+/** Mean of 3 — no trim. The usual short-session companion to ao5. */
+export const MEAN_WINDOWS = [3];
 export const CHART_PAD = { t: 16, r: 12, b: 28, l: 44 };
 export const DEFAULT_CHART_SIZE = { width: 420, height: 180 };
 export const ENLARGED_CHART_SIZE = { width: 960, height: 440 };
@@ -262,17 +266,72 @@ export function mean(values) {
   return values.reduce((sum, n) => sum + n, 0) / values.length;
 }
 
-/** WCA-style average: drop best and worst, mean of the rest. Needs at least 5. */
+/** Mean of the last `n` values (mo3, session mean of a window). */
+export function meanOf(values, n) {
+  if (!Array.isArray(values) || values.length < n || n < 1) return null;
+  return mean(values.slice(-n));
+}
+
+/**
+ * Solves dropped from each end of an aoN.
+ * Same 5% rule as csTimer: 1 for ao5/ao12, 2 for ao25, 3 for ao50, 5 for ao100.
+ */
+export function averageTrimCount(n) {
+  const size = Number(n) || 0;
+  if (size < 5) return 0;
+  return Math.ceil(size / 20);
+}
+
+/** WCA/csTimer average: drop trim from each end, mean of the rest. Needs at least 5. */
 export function averageOf(values, n) {
-  if (!Array.isArray(values) || values.length < n || n < 3) return null;
+  if (!Array.isArray(values) || values.length < n || n < 5) return null;
   const window = values.slice(-n);
+  const trim = averageTrimCount(n);
+  if (trim * 2 >= n) return null;
   const sorted = [...window].sort((a, b) => a - b);
-  const trimmed = sorted.slice(1, -1);
-  return mean(trimmed);
+  return mean(sorted.slice(trim, n - trim));
 }
 
 export function rollingAverages(values, n) {
   return values.map((_, i) => (i + 1 < n ? null : averageOf(values.slice(0, i + 1), n)));
+}
+
+export function rollingMeans(values, n) {
+  return values.map((_, i) => (i + 1 < n ? null : meanOf(values.slice(0, i + 1), n)));
+}
+
+export function bestOfRolling(series) {
+  const nums = (series || []).filter((n) => Number.isFinite(n));
+  if (!nums.length) return null;
+  return Math.min(...nums);
+}
+
+function emptyWindowStats() {
+  const out = {};
+  for (const n of MEAN_WINDOWS) {
+    out[`mo${n}`] = null;
+    out[`bestMo${n}`] = null;
+  }
+  for (const n of AVERAGE_WINDOWS) {
+    out[`ao${n}`] = null;
+    out[`bestAo${n}`] = null;
+  }
+  return out;
+}
+
+function computeWindowStats(times) {
+  const out = emptyWindowStats();
+  for (const n of MEAN_WINDOWS) {
+    const series = rollingMeans(times, n);
+    out[`mo${n}`] = series[series.length - 1] ?? null;
+    out[`bestMo${n}`] = bestOfRolling(series);
+  }
+  for (const n of AVERAGE_WINDOWS) {
+    const series = rollingAverages(times, n);
+    out[`ao${n}`] = series[series.length - 1] ?? null;
+    out[`bestAo${n}`] = bestOfRolling(series);
+  }
+  return out;
 }
 
 /** Cumulative mean of a series, carrying the current mean across gaps. */
@@ -337,8 +396,7 @@ export function computeStats(records) {
     best: null,
     worst: null,
     trimmed: null,
-    ao5: null,
-    ao12: null,
+    ...emptyWindowStats(),
     splits: null,
   };
   if (!times.length) return { ...empty, splits: computeSplitStats(records) };
@@ -350,8 +408,7 @@ export function computeStats(records) {
     best: sorted[0],
     worst: sorted[sorted.length - 1],
     trimmed: times.length >= 3 ? mean(sorted.slice(1, -1)) : null,
-    ao5: averageOf(times, 5),
-    ao12: averageOf(times, 12),
+    ...computeWindowStats(times),
     splits: computeSplitStats(records),
   };
 }
@@ -402,8 +459,7 @@ export function renderChartTooltip(point) {
     ${row("F2L", point.f2l, "tip-f2l")}
     ${row("Cross avg", point.crossAvg, "tip-cross")}
     ${row("F2L avg", point.f2lAvg, "tip-f2l")}
-    ${row("ao5", point.ao5)}
-    ${row("ao12", point.ao12)}`;
+    ${AVERAGE_WINDOWS.map((n) => row(`ao${n}`, point[`ao${n}`])).join("")}`;
 }
 
 export function bindChartInteract(root) {
@@ -516,7 +572,7 @@ export function renderProgressChart(records, { width, height, windowSize = DEFAU
   const rows = chartRows(windowed);
   const times = rows.map((row) => row.ms);
   if (times.length < 2) {
-    return `<div class="timer-chart-empty">Solve twice and a progress chart appears here — singles, ao5, ao12, and Cross / F2L times.</div>`;
+    return `<div class="timer-chart-empty">Solve twice and a progress chart appears here — singles, ao5–ao100, and Cross / F2L times.</div>`;
   }
 
   const size = enlarged ? ENLARGED_CHART_SIZE : DEFAULT_CHART_SIZE;
@@ -530,14 +586,12 @@ export function renderProgressChart(records, { width, height, windowSize = DEFAU
   const pad = CHART_PAD;
   const innerW = width - pad.l - pad.r;
   const innerH = height - pad.t - pad.b;
-  const ao5 = rollingAverages(times, 5);
-  const ao12 = rollingAverages(times, 12);
+  const aoSeries = Object.fromEntries(AVERAGE_WINDOWS.map((n) => [n, rollingAverages(times, n)]));
   const showSplitAverages = Boolean(enlarged && hasSplitSeries);
   const crossAvg = showSplitAverages ? runningMean(crossTimes) : [];
   const f2lAvg = showSplitAverages ? runningMean(f2lTimes) : [];
   const plotted = times.concat(
-    ao5.filter((n) => n != null),
-    ao12.filter((n) => n != null),
+    AVERAGE_WINDOWS.flatMap((n) => aoSeries[n].filter((ms) => ms != null)),
     crossTimes.filter((n) => n != null),
     f2lTimes.filter((n) => n != null),
     crossAvg.filter((n) => n != null),
@@ -592,8 +646,7 @@ export function renderProgressChart(records, { width, height, windowSize = DEFAU
   const crossDots = seriesDots(crossTimes, "timer-chart-dot-cross", "Cross");
   const f2lDots = seriesDots(f2lTimes, "timer-chart-dot-f2l", "F2L");
 
-  const ao5Path = line(ao5);
-  const ao12Path = line(ao12);
+  const aoPaths = Object.fromEntries(AVERAGE_WINDOWS.map((n) => [n, line(aoSeries[n])]));
   const crossPath = line(crossTimes);
   const f2lPath = line(f2lTimes);
   const crossAvgPath = showSplitAverages ? line(crossAvg) : "";
@@ -624,8 +677,12 @@ export function renderProgressChart(records, { width, height, windowSize = DEFAU
     single: formatClock(ms),
     cross: crossTimes[i] != null ? formatClock(crossTimes[i]) : null,
     f2l: f2lTimes[i] != null ? formatClock(f2lTimes[i]) : null,
-    ao5: ao5[i] != null ? formatClock(ao5[i]) : null,
-    ao12: ao12[i] != null ? formatClock(ao12[i]) : null,
+    ...Object.fromEntries(
+      AVERAGE_WINDOWS.map((n) => [
+        `ao${n}`,
+        aoSeries[n][i] != null ? formatClock(aoSeries[n][i]) : null,
+      ])
+    ),
     crossAvg: showSplitAverages && crossAvg[i] != null ? formatClock(crossAvg[i]) : null,
     f2lAvg: showSplitAverages && f2lAvg[i] != null ? formatClock(f2lAvg[i]) : null,
     x: Number(xAt(i).toFixed(1)),
@@ -643,8 +700,9 @@ export function renderProgressChart(records, { width, height, windowSize = DEFAU
     <svg class="timer-chart-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${aria}" data-width="${width}" data-height="${height}" data-pad-t="${pad.t}" data-pad-r="${pad.r}" data-pad-b="${pad.b}" data-pad-l="${pad.l}">
     ${grid.join("")}
     <path class="timer-chart-singles" d="${line(times)}" fill="none" />
-    ${ao5Path ? `<path class="timer-chart-ao5" d="${ao5Path}" fill="none" />` : ""}
-    ${ao12Path ? `<path class="timer-chart-ao12" d="${ao12Path}" fill="none" />` : ""}
+    ${AVERAGE_WINDOWS.map((n) =>
+      aoPaths[n] ? `<path class="timer-chart-ao${n}" d="${aoPaths[n]}" fill="none" />` : ""
+    ).join("")}
     ${crossPath ? `<path class="timer-chart-cross" d="${crossPath}" fill="none" />` : ""}
     ${f2lPath ? `<path class="timer-chart-f2l" d="${f2lPath}" fill="none" />` : ""}
     ${crossAvgPath ? `<path class="timer-chart-cross-avg" d="${crossAvgPath}" fill="none" />` : ""}
@@ -665,8 +723,7 @@ export function renderProgressChart(records, { width, height, windowSize = DEFAU
     <div class="timer-chart-data" hidden>${escapeHtml(JSON.stringify(points))}</div>
   <ul class="timer-chart-legend">
     <li><span class="swatch swatch-single"></span>Single</li>
-    <li><span class="swatch swatch-ao5"></span>ao5</li>
-    <li><span class="swatch swatch-ao12"></span>ao12</li>
+    ${AVERAGE_WINDOWS.map((n) => `<li><span class="swatch swatch-ao${n}"></span>ao${n}</li>`).join("")}
     ${splitLegend}
   </ul>
   </div>`;
@@ -739,10 +796,8 @@ export function renderStats(stats) {
     ["Cross best", dash(stageBest(stats.splits, "cross")), "timer-stat-cross"],
     ["F2L best", dash(stageBest(stats.splits, "f2l")), "timer-stat-f2l"],
     ["Trimmed", dash(stats.trimmed), ""],
-    ["ao5", dash(stats.ao5), ""],
-    ["ao12", dash(stats.ao12), ""],
   ];
-  return rows
+  const cards = rows
     .map(
       ([label, value, extra]) => `<div class="timer-stat${extra ? ` ${extra}` : ""}">
         <span>${label}</span>
@@ -750,6 +805,36 @@ export function renderStats(stats) {
       </div>`
     )
     .join("");
+  return `${cards}${renderAverageTable(stats)}`;
+}
+
+export function renderAverageTable(stats) {
+  const metrics = [
+    ...MEAN_WINDOWS.map((n) => [`mo${n}`, stats[`mo${n}`], stats[`bestMo${n}`]]),
+    ...AVERAGE_WINDOWS.map((n) => [`ao${n}`, stats[`ao${n}`], stats[`bestAo${n}`]]),
+  ];
+  const body = metrics
+    .map(
+      ([label, current, best]) => `<tr>
+        <th scope="row" class="timer-avg-${label}">${label}</th>
+        <td>${dash(current)}</td>
+        <td>${dash(best)}</td>
+      </tr>`
+    )
+    .join("");
+  return `<div class="timer-averages-wrap">
+    <table class="timer-averages">
+      <caption>Averages</caption>
+      <thead>
+        <tr>
+          <th scope="col"></th>
+          <th scope="col">now</th>
+          <th scope="col">best</th>
+        </tr>
+      </thead>
+      <tbody>${body}</tbody>
+    </table>
+  </div>`;
 }
 
 export function renderSplitStats(splitStats) {

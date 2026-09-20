@@ -10,6 +10,10 @@ python3 -m http.server 5173
 
 Open `http://127.0.0.1:5173/`.
 
+## Cloudflare
+
+Deploy uses Wrangler static assets (`npx wrangler deploy`); `.assetsignore` excludes `node_modules` (and `.git` / `.wrangler`) so they are not uploaded.
+
 ## Methods
 
 Same colour orientation for both: white on bottom, yellow on top, blue = F.

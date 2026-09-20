@@ -1,0 +1,8 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "3x3coach",
+  "compatibility_date": "2026-09-20",
+  "assets": {
+    "directory": "."
+  }
+}

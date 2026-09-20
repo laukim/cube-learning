@@ -983,7 +983,9 @@ assert(toAtomics(analyzePll(zCube).hint.alg)[0] === "M'", "Z-perm remaining star
 const {
   addPracticeTime,
   applySplitTap,
+  AVERAGE_WINDOWS,
   averageOf,
+  averageTrimCount,
   bindChartInteract,
   CHART_PAD,
   clearPracticeTimes,
@@ -994,8 +996,11 @@ const {
   loadChartWindow,
   loadPracticeTimes,
   loadTimerMode,
+  meanOf,
+  MEAN_WINDOWS,
   memoryStore,
   nearestChartIndex,
+  renderAverageTable,
   renderChartTooltip,
   renderLiveSplits,
   renderProgressChart,
@@ -1028,14 +1033,32 @@ assert(stats.worst === 14000, "worst single");
 assert(stats.mean === 12000, "mean of three");
 assert(stats.trimmed === 12000, "trimmed drops best and worst");
 assert(stats.ao5 == null, "ao5 needs five");
+assert(stats.ao12 == null && stats.ao25 == null && stats.ao50 == null && stats.ao100 == null, "longer averages wait for a full window");
+assert(stats.mo3 === 12000, "mo3 is mean of three");
+assert(stats.bestMo3 === 12000, "best mo3 matches the only window");
+assert(MEAN_WINDOWS.includes(3) && AVERAGE_WINDOWS.join() === "5,12,25,50,100", "standard cubing windows");
 assert(renderProgressChart(loadPracticeTimes(store)).includes("timer-chart-svg"), "chart after two+ solves");
 addPracticeTime({ id: "d", ms: 11000, at: 4 }, store);
 addPracticeTime({ id: "e", ms: 13000, at: 5 }, store);
 stats = computeStats(loadPracticeTimes(store));
 assert(Math.abs(stats.ao5 - 12000) < 0.001, "ao5 drops 10s and 14s");
 assert(averageOf([12, 10, 14, 11, 13].map((s) => s * 1000), 5) === 12000, "ao5 helper");
+assert(Math.abs(stats.mo3 - (14000 + 11000 + 13000) / 3) < 0.001, "mo3 uses the last three");
+assert(Math.abs(stats.bestMo3 - (10000 + 14000 + 11000) / 3) < 0.001, "best mo3 is the fastest window");
+assert(stats.bestAo5 === stats.ao5, "first ao5 is also the best");
+assert(stats.ao12 == null, "ao12 needs twelve");
 const ao5s = rollingAverages([12000, 10000, 14000, 11000, 13000, 9000], 5);
 assert(ao5s[3] == null && ao5s[4] === 12000, "rolling ao5 starts at solve 5");
+assert(Math.abs(ao5s[5] - (10000 + 11000 + 13000) / 3) < 0.001, "next ao5 drops 9s and 14s");
+assert(averageTrimCount(5) === 1 && averageTrimCount(12) === 1, "ao5 and ao12 trim one each end");
+assert(averageTrimCount(25) === 2 && averageTrimCount(50) === 3 && averageTrimCount(100) === 5, "longer ao uses 5% trim");
+const fiftyTimes = Array.from({ length: 50 }, (_, i) => (i + 1) * 1000);
+assert(averageOf(fiftyTimes, 50) === 25500, "ao50 drops three best and three worst");
+assert(meanOf(fiftyTimes, 3) === 49_000, "mo3 of 48s/49s/50s");
+const fiftyStats = computeStats(fiftyTimes.map((ms, i) => ({ id: `n${i}`, ms, at: i + 1 })));
+assert(fiftyStats.ao12 != null && fiftyStats.ao25 != null && fiftyStats.ao50 != null, "fifty solves fill ao12–ao50");
+assert(fiftyStats.ao100 == null, "ao100 needs a hundred");
+assert(fiftyStats.bestAo5 != null && fiftyStats.bestAo5 <= fiftyStats.ao5, "best ao5 is at least as fast as current");
 deletePracticeTime("b", store);
 assert(loadPracticeTimes(store).every((r) => r.id !== "b"), "deleted time is gone");
 clearPracticeTimes(store);
@@ -1208,6 +1231,12 @@ const timesHtml = renderTimesList(splitRows);
 assert(timesHtml.includes("timer-time-ms is-best"), "times list highlights the session best");
 assert(timesHtml.includes("split-cross") && timesHtml.includes("split-f2l"), "times list colors Cross and F2L");
 assert(statsHtml.includes("timer-stat-best") && statsHtml.includes("timer-stat-cross") && statsHtml.includes("timer-stat-f2l"), "stats highlight Best, Cross, and F2L");
+assert(statsHtml.includes("timer-averages") && statsHtml.includes("mo3") && statsHtml.includes("ao25") && statsHtml.includes("ao50") && statsHtml.includes("ao100"), "stats table lists cubing averages");
+assert(statsHtml.includes(">now<") && statsHtml.includes(">best<"), "averages show current and personal best");
+assert(renderAverageTable(computeStats([])).includes("ao12") && renderAverageTable(computeStats([])).includes("—"), "empty averages still list windows");
+assert(renderProgressChart(many).includes("timer-chart-ao50"), "chart plots ao50 once the window is full");
+assert(renderProgressChart(many).includes("swatch-ao25") && renderProgressChart(many).includes("swatch-ao100"), "legend lists ao25 and ao100");
+assert(!renderProgressChart(many).includes("timer-chart-ao100"), "last-50 chart has no ao100 line");
 assert(renderSplitStats(splitStats).includes("timer-split-avg-cross") && renderSplitStats(splitStats).includes("timer-split-avg-f2l"), "stage averages tag Cross and F2L");
 assert(tip.includes("tip-cross") && tip.includes("tip-f2l"), "tooltip tags Cross and F2L rows");
 

@@ -12,7 +12,7 @@
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=aoavg" />
+    <link rel="stylesheet" href="styles.css?v=delta1" />
   </head>
   <body class="timer-page">
     <div class="ambient" aria-hidden="true"></div>
@@ -43,7 +43,10 @@
           </button>
         </div>
         <button type="button" class="practice-clock" id="practice-clock" data-phase="idle" aria-label="Start timer">
-          <span class="practice-clock-value" id="practice-clock-value">0.00</span>
+          <span class="practice-clock-face">
+            <span class="practice-clock-value" id="practice-clock-value">0.00</span>
+            <span class="practice-clock-delta" id="practice-clock-delta" hidden></span>
+          </span>
         </button>
         <ol class="practice-splits" id="practice-splits" hidden></ol>
         <p class="practice-status" id="practice-status">Space or tap to start · next scramble appears when you stop</p>
@@ -96,7 +99,7 @@
       <span>Space or tap the clock · in split mode that also records Cross, F2L, then Final</span>
     </footer>
 
-    <script type="module" src="js/timer-page.js?v=aoavg"></script>
+    <script type="module" src="js/timer-page.js?v=delta1"></script>
     <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "fd680e4c7f304be681f2fca80e8000e2"}'></script><!-- End Cloudflare Web Analytics -->
   </body>
 </html>

@@ -992,6 +992,7 @@ const {
   computeSplitStats,
   computeStats,
   deletePracticeTime,
+  formatSignedDelta,
   isSessionBest,
   loadChartWindow,
   loadPracticeTimes,
@@ -1069,6 +1070,18 @@ assert(
   "times list shows scramble moves"
 );
 assert(!renderTimesList([{ id: "s2", ms: 10000, at: 2, scramble: "" }]).includes("timer-time-scramble"), "blank scramble omitted");
+assert(!renderTimesList([{ id: "s2", ms: 10000, at: 2 }]).includes("timer-time-delta"), "first solve has no delta");
+const deltaList = renderTimesList([
+  { id: "d1", ms: 12000, at: 1 },
+  { id: "d2", ms: 10500, at: 2 },
+  { id: "d3", ms: 13000, at: 3 },
+]);
+assert(deltaList.includes("-1.50") && deltaList.includes("is-faster"), "faster solve shows a minus");
+assert(deltaList.includes("+2.50") && deltaList.includes("is-slower"), "slower solve shows a plus");
+assert(formatSignedDelta(-1500).text === "-1.50" && formatSignedDelta(-1500).tone === "faster", "signed delta is faster");
+assert(formatSignedDelta(2500).text === "+2.50" && formatSignedDelta(2500).tone === "slower", "signed delta is slower");
+assert(formatSignedDelta(4).text === "+0.00" && formatSignedDelta(4).tone === "even", "sub-centisecond gap is even");
+assert(formatSignedDelta(null) == null, "missing delta is empty");
 
 assert(loadTimerMode(store) === TIMER_MODE_SINGLE, "default timer mode is single");
 assert(saveTimerMode("splits", store) === TIMER_MODE_SPLITS, "saves split mode");

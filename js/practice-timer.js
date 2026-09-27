@@ -733,6 +733,27 @@ function dash(ms) {
   return ms == null ? "—" : formatClock(ms);
 }
 
+/** Signed gap versus the previous solve. Sub-centisecond gaps read as even. */
+export function formatSignedDelta(ms) {
+  if (ms == null || ms === "") return null;
+  const n = Number(ms);
+  if (!Number.isFinite(n)) return null;
+  const abs = formatClock(Math.abs(n));
+  if (abs === "0.00") {
+    return { text: "+0.00", tone: "even", label: "Same as the previous solve" };
+  }
+  if (n > 0) {
+    return { text: `+${abs}`, tone: "slower", label: `${abs} slower than the previous solve` };
+  }
+  return { text: `-${abs}`, tone: "faster", label: `${abs} faster than the previous solve` };
+}
+
+function renderDelta(ms) {
+  const delta = formatSignedDelta(ms);
+  if (!delta) return "";
+  return `<span class="timer-time-delta is-${delta.tone}" title="${escapeHtml(delta.label)}">${delta.text}</span>`;
+}
+
 export function formatTimerParts(ms) {
   const clamped = Math.max(0, Number(ms) || 0);
   const cs = Math.floor(clamped / 10);
@@ -771,10 +792,16 @@ export function renderTimesList(records) {
           }).join("")}</div>`
         : "";
       const bestCls = isSessionBest(row.ms, best) ? " is-best" : "";
+      const chrono = records.length - 1 - i;
+      const prev = chrono > 0 ? records[chrono - 1] : null;
+      const deltaHtml = prev ? renderDelta(row.ms - prev.ms) : "";
       return `<li data-id="${escapeHtml(row.id)}">
         <div class="timer-time-row">
           <span class="timer-time-index">#${records.length - i}</span>
-          <span class="timer-time-ms${bestCls}">${formatClock(row.ms)}</span>
+          <span class="timer-time-main">
+            <span class="timer-time-ms${bestCls}">${formatClock(row.ms)}</span>
+            ${deltaHtml}
+          </span>
           <button type="button" class="timer-time-delete" data-delete="${escapeHtml(row.id)}" aria-label="Delete ${formatClock(row.ms)}">×</button>
         </div>
         ${splits}
@@ -889,6 +916,7 @@ export function initPracticeTimer({
 } = {}) {
   const clockBtn = document.getElementById("practice-clock");
   const clockValue = document.getElementById("practice-clock-value");
+  const clockDelta = document.getElementById("practice-clock-delta");
   const scrambleEl = document.getElementById("practice-scramble");
   const statusEl = document.getElementById("practice-status");
   const timesEl = document.getElementById("timer-times");
@@ -918,6 +946,7 @@ export function initPracticeTimer({
     lastTapElapsed: 0,
     lastSplits: null,
     lastMs: 0,
+    lastDelta: null,
     chartWindow: loadChartWindow(store),
   };
 
@@ -970,16 +999,34 @@ export function initPracticeTimer({
     clockBtn.classList.toggle("is-best", show);
   }
 
+  function paintDelta() {
+    if (!clockDelta) return;
+    const show = state.phase === "idle" ? formatSignedDelta(state.lastDelta) : null;
+    if (!show) {
+      clockDelta.hidden = true;
+      clockDelta.textContent = "";
+      clockDelta.removeAttribute("title");
+      clockDelta.className = "practice-clock-delta";
+      return;
+    }
+    clockDelta.hidden = false;
+    clockDelta.textContent = `${show.text} vs last`;
+    clockDelta.title = show.label;
+    clockDelta.className = `practice-clock-delta is-${show.tone}`;
+  }
+
   function paintClock(ms, inspecting = false) {
     if (inspecting || state.phase === "running") clockBtn.classList.remove("is-best");
     if (inspecting) {
       clockValue.textContent = String(Math.max(0, ms));
       paintSplits(0);
+      paintDelta();
       return;
     }
     const { m, s, centi } = formatTimerParts(ms);
     clockValue.innerHTML = `${m}<span class="practice-colon">:</span>${s}<span class="practice-centi">${centi}</span>`;
     paintSplits(ms);
+    paintDelta();
   }
 
   function newScramble({ announce = false } = {}) {
@@ -1043,6 +1090,7 @@ export function initPracticeTimer({
     state.lastTapElapsed = 0;
     state.lastSplits = null;
     state.lastMs = 0;
+    state.lastDelta = null;
     paintClock(0);
     updateBestHighlight();
     setStatus(idleStatus(state.mode));
@@ -1063,6 +1111,7 @@ export function initPracticeTimer({
     state.lastSplits = null;
     clockBtn.classList.remove("is-best");
     setStatus(runningStatus(state.mode, state.marks));
+    paintDelta();
     tickRunning();
   }
 
@@ -1099,8 +1148,10 @@ export function initPracticeTimer({
         state.mode === TIMER_MODE_SPLITS && state.marks.length >= SPLIT_STEPS.length - 1
           ? splitDurationsFromMarks(state.marks, ms)
           : null;
+      const previous = loadPracticeTimes(store).at(-1);
       state.lastSplits = splits;
       state.lastMs = ms;
+      state.lastDelta = previous && Number.isFinite(previous.ms) ? ms - previous.ms : null;
       addPracticeTime({ ms, at: Date.now(), scramble: state.scramble, splits }, store);
       paintClock(ms);
       renderRecords();
@@ -1108,16 +1159,19 @@ export function initPracticeTimer({
       const splitBits = splits
         ? SPLIT_STEPS.map((step) => `${step.short} ${formatClock(splits[step.id])}`).join(" · ")
         : "";
+      const delta = formatSignedDelta(state.lastDelta);
+      const vs = delta ? `, ${delta.label.toLowerCase()}` : "";
       setStatus(
         splitBits
-          ? `Stopped at ${formatClock(ms)} · ${splitBits}. Scramble ready.`
-          : `Stopped at ${formatClock(ms)}. Scramble ready for the next solve.`
+          ? `Stopped at ${formatClock(ms)}${vs} · ${splitBits}. Scramble ready.`
+          : `Stopped at ${formatClock(ms)}${vs}. Scramble ready for the next solve.`
       );
       state.marks = [];
       state.lastTapElapsed = 0;
     } else {
       state.lastSplits = null;
       state.lastMs = 0;
+      state.lastDelta = null;
       paintClock(0);
       updateBestHighlight();
       setStatus("Inspection cancelled");
@@ -1189,6 +1243,8 @@ export function initPracticeTimer({
     clearPracticeTimes(store);
     state.lastSplits = null;
     state.lastMs = 0;
+    state.lastDelta = null;
+    paintClock(0);
     renderRecords();
     paintSplits(0);
     setStatus("All times cleared");

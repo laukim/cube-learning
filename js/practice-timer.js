@@ -751,7 +751,7 @@ export function formatSignedDelta(ms) {
 function renderDelta(ms) {
   const delta = formatSignedDelta(ms);
   if (!delta) return "";
-  return `<span class="timer-time-delta is-${delta.tone}" title="${escapeHtml(delta.label)}">${delta.text}</span>`;
+  return `<span class="timer-time-delta is-${delta.tone}" title="${escapeHtml(delta.label)}">${delta.text}<em>vs last</em></span>`;
 }
 
 export function formatTimerParts(ms) {

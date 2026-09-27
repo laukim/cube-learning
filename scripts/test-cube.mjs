@@ -1076,7 +1076,7 @@ const deltaList = renderTimesList([
   { id: "d2", ms: 10500, at: 2 },
   { id: "d3", ms: 13000, at: 3 },
 ]);
-assert(deltaList.includes("-1.50") && deltaList.includes("is-faster"), "faster solve shows a minus");
+assert(deltaList.includes("-1.50") && deltaList.includes("is-faster") && deltaList.includes("vs last"), "faster solve shows a minus versus last");
 assert(deltaList.includes("+2.50") && deltaList.includes("is-slower"), "slower solve shows a plus");
 assert(formatSignedDelta(-1500).text === "-1.50" && formatSignedDelta(-1500).tone === "faster", "signed delta is faster");
 assert(formatSignedDelta(2500).text === "+2.50" && formatSignedDelta(2500).tone === "slower", "signed delta is slower");

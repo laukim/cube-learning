@@ -2924,6 +2924,16 @@ body.timer-page .topbar {
   font-variant-numeric: tabular-nums;
 }
 
+.timer-time-delta em {
+  margin-left: 0.28rem;
+  font-style: normal;
+  font-weight: 600;
+  font-size: 0.68rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
 .timer-time-index {
   color: var(--muted);
   font-size: 0.78rem;

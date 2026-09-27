@@ -991,6 +991,7 @@ const {
   clearPracticeTimes,
   computeSplitStats,
   computeStats,
+  averageShift,
   deletePracticeTime,
   formatSignedDelta,
   isSessionBest,
@@ -1070,18 +1071,12 @@ assert(
   "times list shows scramble moves"
 );
 assert(!renderTimesList([{ id: "s2", ms: 10000, at: 2, scramble: "" }]).includes("timer-time-scramble"), "blank scramble omitted");
-assert(!renderTimesList([{ id: "s2", ms: 10000, at: 2 }]).includes("timer-time-delta"), "first solve has no delta");
-const deltaList = renderTimesList([
-  { id: "d1", ms: 12000, at: 1 },
-  { id: "d2", ms: 10500, at: 2 },
-  { id: "d3", ms: 13000, at: 3 },
-]);
-assert(deltaList.includes("-1.50") && deltaList.includes("is-faster") && deltaList.includes("vs last"), "faster solve shows a minus versus last");
-assert(deltaList.includes("+2.50") && deltaList.includes("is-slower"), "slower solve shows a plus");
-assert(formatSignedDelta(-1500).text === "-1.50" && formatSignedDelta(-1500).tone === "faster", "signed delta is faster");
+assert(!renderTimesList([{ id: "d1", ms: 12000, at: 1 }, { id: "d2", ms: 10500, at: 2 }]).includes("vs last"), "times list does not compare with the previous solve");
+assert(formatSignedDelta(-1500, "ao5").text === "-1.50" && formatSignedDelta(-1500, "ao5").tone === "faster", "signed delta is faster");
+assert(formatSignedDelta(-1500, "ao5").label.includes("ao5"), "signed delta names the average");
 assert(formatSignedDelta(2500).text === "+2.50" && formatSignedDelta(2500).tone === "slower", "signed delta is slower");
 assert(formatSignedDelta(4).text === "+0.00" && formatSignedDelta(4).tone === "even", "sub-centisecond gap is even");
-assert(formatSignedDelta(null) == null, "missing delta is empty");
+assert(formatSignedDelta(null) == null && averageShift(12000, null) == null, "missing delta is empty");
 
 assert(loadTimerMode(store) === TIMER_MODE_SINGLE, "default timer mode is single");
 assert(saveTimerMode("splits", store) === TIMER_MODE_SPLITS, "saves split mode");
@@ -1182,6 +1177,18 @@ assert(statsHtml.includes("Cross avg") && statsHtml.includes("4.50"), "stats gri
 assert(statsHtml.includes("F2L avg") && statsHtml.includes("17.00"), "stats grid shows F2L average");
 assert(stageBest(computeSplitStats(splitRows), "cross") === 4000, "stageBest reads Cross");
 assert(stageMean(computeSplitStats(splitRows), "f2l") === 17000, "stageMean reads F2L");
+const splitShiftHtml = renderStats(computeStats(splitRows), computeStats([splitRows[0]]), { splitShift: true });
+const crossCard = splitShiftHtml.match(/<div class="timer-stat timer-stat-cross">[\s\S]*?<\/div>/);
+const f2lCard = splitShiftHtml.match(/<div class="timer-stat timer-stat-f2l">[\s\S]*?<\/div>/);
+assert(crossCard?.[0].includes("+0.50") && crossCard[0].includes("is-slower"), "latest split moves Cross avg slower");
+assert(f2lCard?.[0].includes("-1.00") && f2lCard[0].includes("is-faster"), "latest split moves F2L avg faster");
+assert(!splitShiftHtml.includes("vs last"), "average shift is not labeled versus last");
+assert(!renderStats(computeStats(splitRows), computeStats([splitRows[0]])).includes("timer-avg-delta"), "single-mode latest solve leaves Cross and F2L avgs unmarked");
+const aoSeries = [12000, 10000, 14000, 11000, 13000, 9000].map((ms, i) => ({ id: `ao${i}`, ms, at: i + 1 }));
+const aoShiftHtml = renderStats(computeStats(aoSeries), computeStats(aoSeries.slice(0, -1)));
+assert(aoShiftHtml.includes("-1.66") && aoShiftHtml.includes("mo3"), "mo3 row shows how the latest solve moved it");
+assert(aoShiftHtml.includes("-0.66") && aoShiftHtml.includes("timer-avg-ao5"), "ao5 row shows how the latest solve moved it");
+assert(averageShift(11000, 12666.666) < 0, "average shift is current minus previous");
 assert(renderStats(computeStats([])).includes("Cross avg") && renderStats(computeStats([])).includes("F2L avg"), "empty stats still list split averages");
 assert(renderStats(computeStats([])).includes("Cross best") && renderStats(computeStats([])).includes("F2L best"), "empty stats still list split records");
 assert(renderProgressChart(many).includes("data-enlarge-chart"), "sidebar chart has Enlarge");

@@ -733,25 +733,31 @@ function dash(ms) {
   return ms == null ? "—" : formatClock(ms);
 }
 
-/** Signed gap versus the previous solve. Sub-centisecond gaps read as even. */
-export function formatSignedDelta(ms) {
+/** How far an average moved. Positive is slower. Sub-centisecond gaps read as even. */
+export function formatSignedDelta(ms, subject = "Average") {
   if (ms == null || ms === "") return null;
   const n = Number(ms);
   if (!Number.isFinite(n)) return null;
   const abs = formatClock(Math.abs(n));
   if (abs === "0.00") {
-    return { text: "+0.00", tone: "even", label: "Same as the previous solve" };
+    return { text: "+0.00", tone: "even", label: `${subject} did not move` };
   }
   if (n > 0) {
-    return { text: `+${abs}`, tone: "slower", label: `${abs} slower than the previous solve` };
+    return { text: `+${abs}`, tone: "slower", label: `${subject} moved ${abs} slower` };
   }
-  return { text: `-${abs}`, tone: "faster", label: `${abs} faster than the previous solve` };
+  return { text: `-${abs}`, tone: "faster", label: `${subject} moved ${abs} faster` };
 }
 
-function renderDelta(ms) {
-  const delta = formatSignedDelta(ms);
+/** Change in an average after the latest solve. Null when either side is missing. */
+export function averageShift(current, previous) {
+  if (!Number.isFinite(current) || !Number.isFinite(previous)) return null;
+  return current - previous;
+}
+
+function renderAvgDelta(ms, subject) {
+  const delta = formatSignedDelta(ms, subject);
   if (!delta) return "";
-  return `<span class="timer-time-delta is-${delta.tone}" title="${escapeHtml(delta.label)}">${delta.text}<em>vs last</em></span>`;
+  return `<span class="timer-avg-delta is-${delta.tone}" title="${escapeHtml(delta.label)}">${delta.text}</span>`;
 }
 
 export function formatTimerParts(ms) {
@@ -792,16 +798,10 @@ export function renderTimesList(records) {
           }).join("")}</div>`
         : "";
       const bestCls = isSessionBest(row.ms, best) ? " is-best" : "";
-      const chrono = records.length - 1 - i;
-      const prev = chrono > 0 ? records[chrono - 1] : null;
-      const deltaHtml = prev ? renderDelta(row.ms - prev.ms) : "";
       return `<li data-id="${escapeHtml(row.id)}">
         <div class="timer-time-row">
           <span class="timer-time-index">#${records.length - i}</span>
-          <span class="timer-time-main">
-            <span class="timer-time-ms${bestCls}">${formatClock(row.ms)}</span>
-            ${deltaHtml}
-          </span>
+          <span class="timer-time-ms${bestCls}">${formatClock(row.ms)}</span>
           <button type="button" class="timer-time-delete" data-delete="${escapeHtml(row.id)}" aria-label="Delete ${formatClock(row.ms)}">×</button>
         </div>
         ${splits}
@@ -812,42 +812,47 @@ export function renderTimesList(records) {
   return `<ol class="timer-times-list">${items}</ol>`;
 }
 
-export function renderStats(stats) {
+export function renderStats(stats, previous = null, { splitShift = false } = {}) {
+  const crossNow = stageMean(stats.splits, "cross");
+  const f2lNow = stageMean(stats.splits, "f2l");
+  const crossDelta = splitShift ? renderAvgDelta(averageShift(crossNow, stageMean(previous?.splits, "cross")), "Cross avg") : "";
+  const f2lDelta = splitShift ? renderAvgDelta(averageShift(f2lNow, stageMean(previous?.splits, "f2l")), "F2L avg") : "";
   const rows = [
-    ["Solves", String(stats.count || 0), ""],
-    ["Average", dash(stats.mean), ""],
-    ["Best", dash(stats.best), "timer-stat-best"],
-    ["Worst", dash(stats.worst), ""],
-    ["Cross avg", dash(stageMean(stats.splits, "cross")), "timer-stat-cross"],
-    ["F2L avg", dash(stageMean(stats.splits, "f2l")), "timer-stat-f2l"],
-    ["Cross best", dash(stageBest(stats.splits, "cross")), "timer-stat-cross"],
-    ["F2L best", dash(stageBest(stats.splits, "f2l")), "timer-stat-f2l"],
-    ["Trimmed", dash(stats.trimmed), ""],
+    ["Solves", String(stats.count || 0), "", ""],
+    ["Average", dash(stats.mean), "", ""],
+    ["Best", dash(stats.best), "timer-stat-best", ""],
+    ["Worst", dash(stats.worst), "", ""],
+    ["Cross avg", dash(crossNow), "timer-stat-cross", crossDelta],
+    ["F2L avg", dash(f2lNow), "timer-stat-f2l", f2lDelta],
+    ["Cross best", dash(stageBest(stats.splits, "cross")), "timer-stat-cross", ""],
+    ["F2L best", dash(stageBest(stats.splits, "f2l")), "timer-stat-f2l", ""],
+    ["Trimmed", dash(stats.trimmed), "", ""],
   ];
   const cards = rows
     .map(
-      ([label, value, extra]) => `<div class="timer-stat${extra ? ` ${extra}` : ""}">
+      ([label, value, extra, delta]) => `<div class="timer-stat${extra ? ` ${extra}` : ""}">
         <span>${label}</span>
-        <strong>${value}</strong>
+        <strong>${value}${delta}</strong>
       </div>`
     )
     .join("");
-  return `${cards}${renderAverageTable(stats)}`;
+  return `${cards}${renderAverageTable(stats, previous)}`;
 }
 
-export function renderAverageTable(stats) {
+export function renderAverageTable(stats, previous = null) {
   const metrics = [
     ...MEAN_WINDOWS.map((n) => [`mo${n}`, stats[`mo${n}`], stats[`bestMo${n}`]]),
     ...AVERAGE_WINDOWS.map((n) => [`ao${n}`, stats[`ao${n}`], stats[`bestAo${n}`]]),
   ];
   const body = metrics
-    .map(
-      ([label, current, best]) => `<tr>
+    .map(([label, current, best]) => {
+      const delta = renderAvgDelta(averageShift(current, previous?.[label]), label);
+      return `<tr>
         <th scope="row" class="timer-avg-${label}">${label}</th>
-        <td>${dash(current)}</td>
+        <td>${dash(current)}${delta}</td>
         <td>${dash(best)}</td>
-      </tr>`
-    )
+      </tr>`;
+    })
     .join("");
   return `<div class="timer-averages-wrap">
     <table class="timer-averages">
@@ -916,7 +921,6 @@ export function initPracticeTimer({
 } = {}) {
   const clockBtn = document.getElementById("practice-clock");
   const clockValue = document.getElementById("practice-clock-value");
-  const clockDelta = document.getElementById("practice-clock-delta");
   const scrambleEl = document.getElementById("practice-scramble");
   const statusEl = document.getElementById("practice-status");
   const timesEl = document.getElementById("timer-times");
@@ -946,7 +950,6 @@ export function initPracticeTimer({
     lastTapElapsed: 0,
     lastSplits: null,
     lastMs: 0,
-    lastDelta: null,
     chartWindow: loadChartWindow(store),
   };
 
@@ -999,34 +1002,16 @@ export function initPracticeTimer({
     clockBtn.classList.toggle("is-best", show);
   }
 
-  function paintDelta() {
-    if (!clockDelta) return;
-    const show = state.phase === "idle" ? formatSignedDelta(state.lastDelta) : null;
-    if (!show) {
-      clockDelta.hidden = true;
-      clockDelta.textContent = "";
-      clockDelta.removeAttribute("title");
-      clockDelta.className = "practice-clock-delta";
-      return;
-    }
-    clockDelta.hidden = false;
-    clockDelta.textContent = `${show.text} vs last`;
-    clockDelta.title = show.label;
-    clockDelta.className = `practice-clock-delta is-${show.tone}`;
-  }
-
   function paintClock(ms, inspecting = false) {
     if (inspecting || state.phase === "running") clockBtn.classList.remove("is-best");
     if (inspecting) {
       clockValue.textContent = String(Math.max(0, ms));
       paintSplits(0);
-      paintDelta();
       return;
     }
     const { m, s, centi } = formatTimerParts(ms);
     clockValue.innerHTML = `${m}<span class="practice-colon">:</span>${s}<span class="practice-centi">${centi}</span>`;
     paintSplits(ms);
-    paintDelta();
   }
 
   function newScramble({ announce = false } = {}) {
@@ -1063,8 +1048,9 @@ export function initPracticeTimer({
   function renderRecords() {
     const records = loadPracticeTimes(store);
     const stats = computeStats(records);
+    const previous = records.length > 1 ? computeStats(records.slice(0, -1)) : null;
     if (timesEl) timesEl.innerHTML = renderTimesList(records);
-    if (statsEl) statsEl.innerHTML = renderStats(stats);
+    if (statsEl) statsEl.innerHTML = renderStats(stats, previous, { splitShift: Boolean(records.at(-1)?.splits) });
     if (splitStatsEl) splitStatsEl.innerHTML = renderSplitStats(stats.splits);
     if (chartEl) {
       chartEl.innerHTML = renderProgressChart(records, { windowSize: state.chartWindow });
@@ -1090,7 +1076,6 @@ export function initPracticeTimer({
     state.lastTapElapsed = 0;
     state.lastSplits = null;
     state.lastMs = 0;
-    state.lastDelta = null;
     paintClock(0);
     updateBestHighlight();
     setStatus(idleStatus(state.mode));
@@ -1111,7 +1096,6 @@ export function initPracticeTimer({
     state.lastSplits = null;
     clockBtn.classList.remove("is-best");
     setStatus(runningStatus(state.mode, state.marks));
-    paintDelta();
     tickRunning();
   }
 
@@ -1148,10 +1132,8 @@ export function initPracticeTimer({
         state.mode === TIMER_MODE_SPLITS && state.marks.length >= SPLIT_STEPS.length - 1
           ? splitDurationsFromMarks(state.marks, ms)
           : null;
-      const previous = loadPracticeTimes(store).at(-1);
       state.lastSplits = splits;
       state.lastMs = ms;
-      state.lastDelta = previous && Number.isFinite(previous.ms) ? ms - previous.ms : null;
       addPracticeTime({ ms, at: Date.now(), scramble: state.scramble, splits }, store);
       paintClock(ms);
       renderRecords();
@@ -1159,19 +1141,16 @@ export function initPracticeTimer({
       const splitBits = splits
         ? SPLIT_STEPS.map((step) => `${step.short} ${formatClock(splits[step.id])}`).join(" · ")
         : "";
-      const delta = formatSignedDelta(state.lastDelta);
-      const vs = delta ? `, ${delta.label.toLowerCase()}` : "";
       setStatus(
         splitBits
-          ? `Stopped at ${formatClock(ms)}${vs} · ${splitBits}. Scramble ready.`
-          : `Stopped at ${formatClock(ms)}${vs}. Scramble ready for the next solve.`
+          ? `Stopped at ${formatClock(ms)} · ${splitBits}. Scramble ready.`
+          : `Stopped at ${formatClock(ms)}. Scramble ready for the next solve.`
       );
       state.marks = [];
       state.lastTapElapsed = 0;
     } else {
       state.lastSplits = null;
       state.lastMs = 0;
-      state.lastDelta = null;
       paintClock(0);
       updateBestHighlight();
       setStatus("Inspection cancelled");
@@ -1243,7 +1222,6 @@ export function initPracticeTimer({
     clearPracticeTimes(store);
     state.lastSplits = null;
     state.lastMs = 0;
-    state.lastDelta = null;
     paintClock(0);
     renderRecords();
     paintSplits(0);

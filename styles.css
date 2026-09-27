@@ -2233,14 +2233,6 @@ body.timer-page .topbar {
   color: var(--warn);
 }
 
-.practice-clock-face {
-  display: inline-flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 0.7rem;
-  max-width: 100%;
-}
-
 .practice-clock-value {
   font-family: var(--font-display);
   font-size: clamp(2.8rem, 7vw, 4.6rem);
@@ -2248,35 +2240,6 @@ body.timer-page .topbar {
   letter-spacing: 0.04em;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-}
-
-.practice-clock-delta {
-  font-family: var(--font-body);
-  font-size: clamp(0.95rem, 2.2vw, 1.15rem);
-  font-weight: 700;
-  letter-spacing: 0;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.practice-clock-delta[hidden] {
-  display: none;
-}
-
-.practice-clock-delta.is-faster,
-.timer-time-delta.is-faster {
-  color: var(--accent);
-}
-
-.practice-clock-delta.is-slower,
-.timer-time-delta.is-slower {
-  color: var(--danger);
-}
-
-.practice-clock-delta.is-even,
-.timer-time-delta.is-even {
-  color: var(--muted);
 }
 
 .practice-colon {
@@ -2447,6 +2410,26 @@ body.timer-page .topbar {
 .timer-stat strong {
   color: var(--ink);
   font-variant-numeric: tabular-nums;
+}
+
+.timer-avg-delta {
+  margin-left: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.timer-avg-delta.is-faster {
+  color: var(--accent);
+}
+
+.timer-avg-delta.is-slower {
+  color: var(--danger);
+}
+
+.timer-avg-delta.is-even {
+  color: var(--muted);
 }
 
 .timer-stat-best {
@@ -2905,33 +2888,9 @@ body.timer-page .topbar {
 
 .timer-time-row {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 0.55rem;
-}
-
-.timer-time-main {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.2rem 0.55rem;
-  min-width: 0;
-}
-
-.timer-time-delta {
-  font-size: 0.78rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.timer-time-delta em {
-  margin-left: 0.28rem;
-  font-style: normal;
-  font-weight: 600;
-  font-size: 0.68rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  opacity: 0.8;
 }
 
 .timer-time-index {

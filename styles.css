@@ -2477,6 +2477,26 @@ body.timer-page .topbar {
   font-variant-numeric: tabular-nums;
 }
 
+.timer-avg-delta {
+  margin-left: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.timer-avg-delta.is-faster {
+  color: var(--accent);
+}
+
+.timer-avg-delta.is-slower {
+  color: var(--danger);
+}
+
+.timer-avg-delta.is-even {
+  color: var(--muted);
+}
+
 .timer-stat-best {
   border-color: color-mix(in srgb, var(--warn) 45%, var(--line));
   background: color-mix(in srgb, var(--warn) 10%, transparent);

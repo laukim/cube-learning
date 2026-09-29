@@ -733,6 +733,33 @@ function dash(ms) {
   return ms == null ? "—" : formatClock(ms);
 }
 
+/** How far an average moved. Positive is slower. Sub-centisecond gaps read as even. */
+export function formatSignedDelta(ms, subject = "Average") {
+  if (ms == null || ms === "") return null;
+  const n = Number(ms);
+  if (!Number.isFinite(n)) return null;
+  const abs = formatClock(Math.abs(n));
+  if (abs === "0.00") {
+    return { text: "+0.00", tone: "even", label: `${subject} did not move` };
+  }
+  if (n > 0) {
+    return { text: `+${abs}`, tone: "slower", label: `${subject} moved ${abs} slower` };
+  }
+  return { text: `-${abs}`, tone: "faster", label: `${subject} moved ${abs} faster` };
+}
+
+/** Change in an average after the latest solve. Null when either side is missing. */
+export function averageShift(current, previous) {
+  if (!Number.isFinite(current) || !Number.isFinite(previous)) return null;
+  return current - previous;
+}
+
+function renderAvgDelta(ms, subject) {
+  const delta = formatSignedDelta(ms, subject);
+  if (!delta) return "";
+  return `<span class="timer-avg-delta is-${delta.tone}" title="${escapeHtml(delta.label)}">${delta.text}</span>`;
+}
+
 export function formatTimerParts(ms) {
   const clamped = Math.max(0, Number(ms) || 0);
   const cs = Math.floor(clamped / 10);
@@ -785,42 +812,47 @@ export function renderTimesList(records) {
   return `<ol class="timer-times-list">${items}</ol>`;
 }
 
-export function renderStats(stats) {
+export function renderStats(stats, previous = null, { splitShift = false } = {}) {
+  const crossNow = stageMean(stats.splits, "cross");
+  const f2lNow = stageMean(stats.splits, "f2l");
+  const crossDelta = splitShift ? renderAvgDelta(averageShift(crossNow, stageMean(previous?.splits, "cross")), "Cross avg") : "";
+  const f2lDelta = splitShift ? renderAvgDelta(averageShift(f2lNow, stageMean(previous?.splits, "f2l")), "F2L avg") : "";
   const rows = [
-    ["Solves", String(stats.count || 0), ""],
-    ["Average", dash(stats.mean), ""],
-    ["Best", dash(stats.best), "timer-stat-best"],
-    ["Worst", dash(stats.worst), ""],
-    ["Cross avg", dash(stageMean(stats.splits, "cross")), "timer-stat-cross"],
-    ["F2L avg", dash(stageMean(stats.splits, "f2l")), "timer-stat-f2l"],
-    ["Cross best", dash(stageBest(stats.splits, "cross")), "timer-stat-cross"],
-    ["F2L best", dash(stageBest(stats.splits, "f2l")), "timer-stat-f2l"],
-    ["Trimmed", dash(stats.trimmed), ""],
+    ["Solves", String(stats.count || 0), "", ""],
+    ["Average", dash(stats.mean), "", ""],
+    ["Best", dash(stats.best), "timer-stat-best", ""],
+    ["Worst", dash(stats.worst), "", ""],
+    ["Cross avg", dash(crossNow), "timer-stat-cross", crossDelta],
+    ["F2L avg", dash(f2lNow), "timer-stat-f2l", f2lDelta],
+    ["Cross best", dash(stageBest(stats.splits, "cross")), "timer-stat-cross", ""],
+    ["F2L best", dash(stageBest(stats.splits, "f2l")), "timer-stat-f2l", ""],
+    ["Trimmed", dash(stats.trimmed), "", ""],
   ];
   const cards = rows
     .map(
-      ([label, value, extra]) => `<div class="timer-stat${extra ? ` ${extra}` : ""}">
+      ([label, value, extra, delta]) => `<div class="timer-stat${extra ? ` ${extra}` : ""}">
         <span>${label}</span>
-        <strong>${value}</strong>
+        <strong>${value}${delta}</strong>
       </div>`
     )
     .join("");
-  return `${cards}${renderAverageTable(stats)}`;
+  return `${cards}${renderAverageTable(stats, previous)}`;
 }
 
-export function renderAverageTable(stats) {
+export function renderAverageTable(stats, previous = null) {
   const metrics = [
     ...MEAN_WINDOWS.map((n) => [`mo${n}`, stats[`mo${n}`], stats[`bestMo${n}`]]),
     ...AVERAGE_WINDOWS.map((n) => [`ao${n}`, stats[`ao${n}`], stats[`bestAo${n}`]]),
   ];
   const body = metrics
-    .map(
-      ([label, current, best]) => `<tr>
+    .map(([label, current, best]) => {
+      const delta = renderAvgDelta(averageShift(current, previous?.[label]), label);
+      return `<tr>
         <th scope="row" class="timer-avg-${label}">${label}</th>
-        <td>${dash(current)}</td>
+        <td>${dash(current)}${delta}</td>
         <td>${dash(best)}</td>
-      </tr>`
-    )
+      </tr>`;
+    })
     .join("");
   return `<div class="timer-averages-wrap">
     <table class="timer-averages">
@@ -1016,8 +1048,9 @@ export function initPracticeTimer({
   function renderRecords() {
     const records = loadPracticeTimes(store);
     const stats = computeStats(records);
+    const previous = records.length > 1 ? computeStats(records.slice(0, -1)) : null;
     if (timesEl) timesEl.innerHTML = renderTimesList(records);
-    if (statsEl) statsEl.innerHTML = renderStats(stats);
+    if (statsEl) statsEl.innerHTML = renderStats(stats, previous, { splitShift: Boolean(records.at(-1)?.splits) });
     if (splitStatsEl) splitStatsEl.innerHTML = renderSplitStats(stats.splits);
     if (chartEl) {
       chartEl.innerHTML = renderProgressChart(records, { windowSize: state.chartWindow });
@@ -1189,6 +1222,7 @@ export function initPracticeTimer({
     clearPracticeTimes(store);
     state.lastSplits = null;
     state.lastMs = 0;
+    paintClock(0);
     renderRecords();
     paintSplits(0);
     setStatus("All times cleared");

@@ -9,23 +9,20 @@ import {
   solvedFacelets,
 } from "./cube.js";
 import { consumeAlgMove, initAlgProgress, restoreAlgMove } from "./alg-progress.js?v=2look5";
-import { createErnoCube } from "./erno-view.js?v=pllknown1";
+import { createErnoCube } from "./erno-view.js?v=pllref1";
 import { analyzeCross, CROSS_TIPS, scrambleCross } from "./cross-trainer.js";
 import { analyzeF2lDrill, countSlotsSolved, F2L_TIPS, getF2lDrillInfo, getF2lGroupFilter, getF2lGroups, f2lRandomPoolSize, popBaselineIds, poppedSolvedSlots, scrambleF2L, shouldFlashPop, solvedSlotIds, stableSolvedSlotIds, setF2lGroupFilter, toggleF2lGroupFilter } from "./f2l-trainer.js?v=f2l18r";
 import { F2L_DRILL_CASES } from "./f2l-cases.js?v=f2l18r";
-import { renderCaseDiagram } from "./case-diagram.js?v=pllknown1";
+import { renderCaseDiagram } from "./case-diagram.js?v=pllref1";
 import { analyzeOll, expandWideAlg, getOllDrillInfo, getOllLook, OLL_TIPS, scrambleOll, setOllLook } from "./oll-trainer.js";
-import { analyzePll, getPllDrillInfo, PLL_TIPS, scramblePll } from "./pll-trainer.js?v=pllknown1";
+import { analyzePll, getPllDrillInfo, PLL_TIPS, scramblePll } from "./pll-trainer.js?v=pllref1";
 import {
-  getKnownPllCase,
   getPllLook,
   knownPllDiagram,
   knownPllNote,
-  knownPllSetupAlg,
   PLL_KNOWN_CASES,
-  selectKnownPll,
   setPllLook,
-} from "./pll-known.js?v=pllknown1";
+} from "./pll-known.js?v=pllref1";
 import { ALG_LIBRARY, analyze, STEPS } from "./solver.js";
 import {
   analyzeRoux,
@@ -1237,6 +1234,21 @@ function refreshOll() {
   document.getElementById("btn-oll-apply").hidden = !lastOllAlg;
 }
 
+function syncPllRefLayout() {
+  const on = appMode === "pll" && getPllLook() === "known";
+  const was = document.body.classList.contains("pll-ref-open");
+  document.body.classList.toggle("pll-ref-open", on);
+  if (on) setHintsOpen(true);
+  else if (was) requestAnimationFrame(() => erno?.resize());
+}
+
+function escPllText(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 function syncPllLookChrome() {
   const look = getPllLook();
   document.querySelectorAll("[data-pll-look]").forEach((btn) => {
@@ -1248,47 +1260,34 @@ function syncPllLookChrome() {
   const known = document.getElementById("pll-known");
   if (two) two.hidden = look !== "two";
   if (known) known.hidden = look !== "known";
+  syncPllRefLayout();
 }
 
 function renderKnownPll() {
-  const grid = document.getElementById("pll-known-grid");
-  const selected = getKnownPllCase();
-  if (grid && grid.dataset.ready !== "1") {
-    grid.innerHTML = PLL_KNOWN_CASES.map((c) => {
-      const diagram = renderCaseDiagram(knownPllDiagram(c));
-      return `<button type="button" class="pll-known-card" data-pll-known="${c.id}" aria-pressed="false">
-        ${diagram}
-        <p class="pll-known-name">${c.short}</p>
-        <p class="pll-known-cue">${c.cue}</p>
-      </button>`;
-    }).join("");
-    grid.dataset.ready = "1";
-    grid.querySelectorAll("[data-pll-known]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        selectKnownPll(btn.dataset.pllKnown);
-        const draft = solvedFacelets();
-        const alg = knownPllSetupAlg();
-        playScrambleAlg(alg);
-        renderKnownPll();
-      });
-    });
-  }
-  grid?.querySelectorAll("[data-pll-known]").forEach((btn) => {
-    const on = btn.dataset.pllKnown === selected.id;
-    btn.classList.toggle("is-selected", on);
-    btn.setAttribute("aria-pressed", on ? "true" : "false");
-  });
-  const kicker = document.getElementById("pll-known-kicker");
-  if (kicker) kicker.textContent = `PLL · ${selected.short}`;
-  const title = document.getElementById("pll-known-title");
-  if (title) title.textContent = selected.name;
-  setHintDiagram(document.getElementById("pll-known-diagram"), knownPllDiagram(selected));
-  setHintCopy(document.getElementById("pll-known-copy"), selected.steps);
-  const algEl = document.getElementById("pll-known-alg");
-  if (algEl) algEl.textContent = selected.algDisplay || selected.alg;
+  const list = document.getElementById("pll-known-list");
   const noteEl = document.getElementById("pll-known-note");
   if (noteEl) noteEl.textContent = knownPllNote();
-  lastPllAlg = selected.alg;
+  if (list && list.dataset.ready !== "1") {
+    list.innerHTML = PLL_KNOWN_CASES.map((c) => {
+      const diagram = renderCaseDiagram(knownPllDiagram(c));
+      const steps = c.steps
+        .split("\n")
+        .filter((line) => line.trim())
+        .map((line) => `<p>${escPllText(line)}</p>`)
+        .join("");
+      return `<article class="pll-known-case" id="pll-known-${c.id}">
+        <header class="pll-known-head">
+          <h2 class="pll-known-name">${escPllText(c.short)} <span>${escPllText(c.name)}</span></h2>
+          <p class="pll-known-cue">${escPllText(c.cue)}</p>
+        </header>
+        ${diagram}
+        <div class="pll-known-steps">${steps}</div>
+        <code class="alg pll-known-alg">${escPllText(c.algDisplay || c.alg)}</code>
+      </article>`;
+    }).join("");
+    list.dataset.ready = "1";
+  }
+  lastPllAlg = "";
 }
 
 function refreshPll() {
@@ -1615,9 +1614,8 @@ function setPanelCopy(mode) {
   } else if (mode === "pll") {
     syncPllLookChrome();
     if (getPllLook() === "known") {
-      const c = getKnownPllCase();
       title.textContent = "PLL cases I know";
-      blurb.innerHTML = `Now <strong>${c.short}</strong> · ${c.cue}. Tap a card to set it up. Diagram, Cube Academy alg, and hold steps stay on the card. <strong>2-look</strong> is the other switch. From <a class="ext-link" href="https://www.cube.academy/pll-algs" target="_blank" rel="noopener">Cube Academy PLL</a>.`;
+      blurb.innerHTML = `Recognition pictures for F, Y, Ja, Na, T, Ua, Ub, H, and Z. Steps and the Cube Academy alg are under each picture. <strong>2-look</strong> is the drill. From <a class="ext-link" href="https://www.cube.academy/pll-algs" target="_blank" rel="noopener">Cube Academy PLL</a>.`;
       btnHint.textContent = "PLL hint";
     } else {
       const d = getPllDrillInfo();
@@ -1667,6 +1665,7 @@ function setPanelCopy(mode) {
     btnHint.textContent = "Next hint";
   }
   syncPrimaryActions();
+  syncPllRefLayout();
 }
 
 function render() {
@@ -2015,21 +2014,13 @@ document.querySelectorAll("[data-pll-look]").forEach((btn) => {
       /* ignore */
     }
     stickyPllHint = null;
-    if (next === "known") {
-      const draft = solvedFacelets();
-      playScrambleAlg(knownPllSetupAlg());
-    } else {
+    if (next !== "known") {
       const draft = solvedFacelets();
       playScrambleAlg(scramblePll(draft, "again"));
     }
     setPanelCopy("pll");
     refreshPll();
   });
-});
-
-document.getElementById("btn-pll-known-apply")?.addEventListener("click", () => {
-  const alg = getKnownPllCase().alg;
-  if (alg) doAlg(alg);
 });
 
 document.getElementById("btn-fb-case")?.addEventListener("click", () => {
@@ -2113,13 +2104,13 @@ document.getElementById("btn-hint").addEventListener("click", () => {
   }
   if (appMode === "pll") {
     refreshPll();
-    const cardId = getPllLook() === "known" ? "pll-known-card" : "pll-hint-card";
+    const cardId = getPllLook() === "known" ? "pll-known-list" : "pll-hint-card";
     const card = document.getElementById(cardId);
     if (card) {
       card.hidden = false;
       card.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
-    flashHintedMove(lastPllAlg);
+    if (getPllLook() !== "known") flashHintedMove(lastPllAlg);
     return;
   }
   if (appMode === "fb") {

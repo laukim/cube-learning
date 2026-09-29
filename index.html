@@ -12,7 +12,7 @@
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
       rel="stylesheet"
     />
-      <link rel="stylesheet" href="styles.css?v=f2l18r" />
+      <link rel="stylesheet" href="styles.css?v=pllknown1" />
     <link rel="stylesheet" href="vendor/erno-cube.css?v=f2l18r" />
   </head>
   <body class="hints-open">
@@ -368,6 +368,16 @@
         </div>
 
         <div class="panel-body" id="panel-pll" data-panel="pll" hidden>
+          <div class="look-switch" role="group" aria-label="Which PLL to open">
+            <button type="button" class="method-btn is-active" data-pll-look="two" aria-pressed="true">
+              2-look
+            </button>
+            <button type="button" class="method-btn" data-pll-look="known" aria-pressed="false">
+              Cases I know
+            </button>
+          </div>
+
+          <div id="pll-two">
           <div class="f2l-progress" id="pll-progress" aria-label="PLL steps"></div>
 
           <div class="hint-card" id="pll-hint-card">
@@ -402,6 +412,32 @@
           </div>
 
           <div class="f2l-tips" id="pll-tips"></div>
+          </div>
+
+          <div id="pll-known" hidden>
+            <p class="pll-known-lead">
+              The nine full PLL cases you already know. Each card is a top-view recognition picture drawn here,
+              Cube Academy’s alg, and how to hold it. Tap a card to set that case on the cube. 2-look drill stays
+              on the other switch.
+              <a class="ext-link" href="https://www.cube.academy/pll-algs" target="_blank" rel="noopener">Cube Academy PLL</a>.
+            </p>
+            <div id="pll-known-grid" class="pll-known-grid"></div>
+            <div class="hint-card" id="pll-known-card">
+              <div class="hint-kicker" id="pll-known-kicker">PLL</div>
+              <h2 class="hint-title" id="pll-known-title">F</h2>
+              <div class="hint-layout">
+                <div class="hint-diagram" id="pll-known-diagram"></div>
+                <div class="hint-text">
+                  <p class="hint-copy" id="pll-known-copy"></p>
+                  <div class="alg-block">
+                    <code class="alg" id="pll-known-alg"></code>
+                    <button type="button" class="btn btn-small" id="btn-pll-known-apply">Apply on cube</button>
+                  </div>
+                  <p class="hint-note" id="pll-known-note"></p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="panel-body" id="panel-fb" data-panel="fb" hidden>
@@ -530,8 +566,8 @@
     </footer>
 
     <script src="vendor/cubejs.js?v=f2l18r"></script>
-    <script src="vendor/erno.js?v=f2l18r"></script>
-    <script type="module" src="js/main.js?v=f2l18r"></script>
+    <script src="vendor/erno.js?v=pllknown1"></script>
+    <script type="module" src="js/main.js?v=pllknown1"></script>
     <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "fd680e4c7f304be681f2fca80e8000e2"}'></script><!-- End Cloudflare Web Analytics -->
   </body>
 </html>

@@ -1552,6 +1552,71 @@ body {
   font-weight: 800;
 }
 
+.pll-known-lead {
+  margin: 0 0 0.85rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.pll-known-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.6rem, 1fr));
+  gap: 0.6rem;
+  margin: 0 0 0.9rem;
+}
+
+.pll-known-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.15rem;
+  text-align: left;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 14px;
+  padding: 0.45rem 0.45rem 0.6rem;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.pll-known-card.is-selected {
+  border-color: rgba(109, 255, 176, 0.5);
+  background: var(--accent-dim);
+}
+
+.pll-known-card .case-diagram-recog {
+  width: 100%;
+}
+
+.pll-known-card .case-caption {
+  min-height: 2.4em;
+}
+
+.pll-known-name {
+  margin: 0.15rem 0 0;
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+}
+
+.pll-known-cue {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.25;
+}
+
+.case-diagram-recog {
+  width: 11.5rem;
+}
+
+.pll-recog-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
 .alg-block {
   display: flex;
   flex-wrap: wrap;

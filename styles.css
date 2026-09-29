@@ -1554,7 +1554,11 @@ body {
 
 body.pll-ref-open .layout {
   grid-template-columns: minmax(0, 1fr);
-  max-width: 920px;
+  max-width: 1440px;
+}
+
+body.pll-ref-open .foot {
+  max-width: 1440px;
 }
 
 body.pll-ref-open .stage {
@@ -1593,13 +1597,15 @@ body.pll-ref-open #panel-pll .look-switch {
 }
 
 .pll-known-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1.15rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20.5rem), 1fr));
+  gap: 1rem 1.05rem;
   margin-top: 0.85rem;
+  align-items: start;
 }
 
 .pll-known-case {
+  min-width: 0;
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.02);
   border-radius: 18px;
@@ -1614,7 +1620,7 @@ body.pll-ref-open #panel-pll .look-switch {
   margin: 0;
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: clamp(1.6rem, 4vw, 2.1rem);
+  font-size: clamp(1.35rem, 2vw, 1.75rem);
   letter-spacing: -0.02em;
   line-height: 1.1;
 }
@@ -1636,8 +1642,8 @@ body.pll-ref-open #panel-pll .look-switch {
 }
 
 .pll-known-case .case-diagram-recog {
-  width: min(100%, 26rem);
-  margin: 0.55rem auto 0.15rem;
+  width: 100%;
+  margin: 0.45rem auto 0.1rem;
 }
 
 .pll-known-case .case-caption {
@@ -1646,9 +1652,9 @@ body.pll-ref-open #panel-pll .look-switch {
 }
 
 .pll-known-steps {
-  margin: 0.85rem auto 0;
-  max-width: 36rem;
-  font-size: 1.05rem;
+  margin: 0.7rem auto 0;
+  max-width: none;
+  font-size: 0.98rem;
 }
 
 .pll-known-steps p {
@@ -1657,10 +1663,12 @@ body.pll-ref-open #panel-pll .look-switch {
 
 .pll-known-alg {
   display: block;
-  margin: 0.7rem auto 0;
-  max-width: 36rem;
-  font-size: 1.05rem;
+  margin: 0.65rem auto 0;
+  max-width: none;
+  font-size: 0.98rem;
   line-height: 1.45;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .case-diagram-recog {

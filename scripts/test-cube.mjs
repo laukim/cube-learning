@@ -981,6 +981,37 @@ assert(analyzePll(zCube).hint.alg.includes(PLL_Z.alg), "Z-perm case hints Z");
 assert(toAtomics(analyzePll(zCube).hint.alg)[0] === "M'", "Z-perm remaining starts with M'");
 
 const {
+  PLL_KNOWN_CASES,
+  knownPllDiagram,
+  knownPllSetupAlg,
+  setPllLook,
+  getPllLook,
+} = await import("../js/pll-known.js");
+const { PLL_U, PLL_UB } = await import("../js/pll-trainer.js");
+assert(PLL_KNOWN_CASES.map((c) => c.short).join(" ") === "F Y Ja Na T Ua Ub H Z", "known PLL is the nine cases");
+assert(PLL_KNOWN_CASES.find((c) => c.id === "t").alg === PLL_T.alg, "T reuses the 2-look alg");
+assert(PLL_KNOWN_CASES.find((c) => c.id === "y").alg === PLL_Y.alg, "Y reuses the 2-look alg");
+assert(PLL_KNOWN_CASES.find((c) => c.id === "ub").alg === PLL_UB.alg, "Ub reuses the 2-look alg");
+assert(PLL_KNOWN_CASES.find((c) => c.id === "h").alg === PLL_H.alg, "H reuses the 2-look alg");
+assert(PLL_KNOWN_CASES.find((c) => c.id === "z").alg === PLL_Z.alg, "Z reuses the 2-look alg");
+assert(PLL_KNOWN_CASES.find((c) => c.id === "ua").alg !== PLL_U.alg, "full PLL Ua is not the 2-look Ua");
+for (const c of PLL_KNOWN_CASES) {
+  const solved = solvedFacelets();
+  const cube = solvedFacelets();
+  applyAlg(cube, knownPllSetupAlg(c));
+  assert(cube.some((color, i) => color !== solved[i]), `${c.short} setup is not solved`);
+  applyAlg(cube, expandWideAlg(c.alg));
+  assert(cube.every((color, i) => color === solved[i]), `${c.short} Cube Academy alg solves the pictured case`);
+  const diagram = knownPllDiagram(c);
+  assert(diagram.type === "pll-recog" && diagram.sides.F && diagram.sides.B, `${c.short} has an in-app diagram`);
+  assert(!JSON.stringify(diagram).includes("http"), `${c.short} diagram has no remote asset`);
+}
+setPllLook("known");
+assert(getPllLook() === "known", "known look switches on");
+setPllLook("two");
+assert(getPllLook() === "two", "2-look look switches back");
+
+const {
   addPracticeTime,
   applySplitTap,
   AVERAGE_WINDOWS,

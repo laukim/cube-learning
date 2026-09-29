@@ -9,13 +9,23 @@ import {
   solvedFacelets,
 } from "./cube.js";
 import { consumeAlgMove, initAlgProgress, restoreAlgMove } from "./alg-progress.js?v=2look5";
-import { createErnoCube } from "./erno-view.js?v=f2l18r";
+import { createErnoCube } from "./erno-view.js?v=pllknown1";
 import { analyzeCross, CROSS_TIPS, scrambleCross } from "./cross-trainer.js";
 import { analyzeF2lDrill, countSlotsSolved, F2L_TIPS, getF2lDrillInfo, getF2lGroupFilter, getF2lGroups, f2lRandomPoolSize, popBaselineIds, poppedSolvedSlots, scrambleF2L, shouldFlashPop, solvedSlotIds, stableSolvedSlotIds, setF2lGroupFilter, toggleF2lGroupFilter } from "./f2l-trainer.js?v=f2l18r";
 import { F2L_DRILL_CASES } from "./f2l-cases.js?v=f2l18r";
-import { renderCaseDiagram } from "./case-diagram.js";
+import { renderCaseDiagram } from "./case-diagram.js?v=pllknown1";
 import { analyzeOll, expandWideAlg, getOllDrillInfo, getOllLook, OLL_TIPS, scrambleOll, setOllLook } from "./oll-trainer.js";
-import { analyzePll, getPllDrillInfo, PLL_TIPS, scramblePll } from "./pll-trainer.js";
+import { analyzePll, getPllDrillInfo, PLL_TIPS, scramblePll } from "./pll-trainer.js?v=pllknown1";
+import {
+  getKnownPllCase,
+  getPllLook,
+  knownPllDiagram,
+  knownPllNote,
+  knownPllSetupAlg,
+  PLL_KNOWN_CASES,
+  selectKnownPll,
+  setPllLook,
+} from "./pll-known.js?v=pllknown1";
 import { ALG_LIBRARY, analyze, STEPS } from "./solver.js";
 import {
   analyzeRoux,
@@ -203,6 +213,7 @@ let analysisShownForSolve = false;
 const MOVE_PAD_KEY = "bylayer-show-move-pad";
 const PHONE_PAD_KEY = "bylayer-phone-move-pad";
 const OLL_LOOK_KEY = "bylayer-oll-look";
+const PLL_LOOK_KEY = "bylayer-pll-look";
 const F2L_GROUP_FILTER_KEY = "bylayer-f2l-group-filter";
 
 function isCompactLayout() {
@@ -1226,7 +1237,66 @@ function refreshOll() {
   document.getElementById("btn-oll-apply").hidden = !lastOllAlg;
 }
 
+function syncPllLookChrome() {
+  const look = getPllLook();
+  document.querySelectorAll("[data-pll-look]").forEach((btn) => {
+    const on = btn.dataset.pllLook === look;
+    btn.classList.toggle("is-active", on);
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+  const two = document.getElementById("pll-two");
+  const known = document.getElementById("pll-known");
+  if (two) two.hidden = look !== "two";
+  if (known) known.hidden = look !== "known";
+}
+
+function renderKnownPll() {
+  const grid = document.getElementById("pll-known-grid");
+  const selected = getKnownPllCase();
+  if (grid && grid.dataset.ready !== "1") {
+    grid.innerHTML = PLL_KNOWN_CASES.map((c) => {
+      const diagram = renderCaseDiagram(knownPllDiagram(c));
+      return `<button type="button" class="pll-known-card" data-pll-known="${c.id}" aria-pressed="false">
+        ${diagram}
+        <p class="pll-known-name">${c.short}</p>
+        <p class="pll-known-cue">${c.cue}</p>
+      </button>`;
+    }).join("");
+    grid.dataset.ready = "1";
+    grid.querySelectorAll("[data-pll-known]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        selectKnownPll(btn.dataset.pllKnown);
+        const draft = solvedFacelets();
+        const alg = knownPllSetupAlg();
+        playScrambleAlg(alg);
+        renderKnownPll();
+      });
+    });
+  }
+  grid?.querySelectorAll("[data-pll-known]").forEach((btn) => {
+    const on = btn.dataset.pllKnown === selected.id;
+    btn.classList.toggle("is-selected", on);
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+  const kicker = document.getElementById("pll-known-kicker");
+  if (kicker) kicker.textContent = `PLL · ${selected.short}`;
+  const title = document.getElementById("pll-known-title");
+  if (title) title.textContent = selected.name;
+  setHintDiagram(document.getElementById("pll-known-diagram"), knownPllDiagram(selected));
+  setHintCopy(document.getElementById("pll-known-copy"), selected.steps);
+  const algEl = document.getElementById("pll-known-alg");
+  if (algEl) algEl.textContent = selected.algDisplay || selected.alg;
+  const noteEl = document.getElementById("pll-known-note");
+  if (noteEl) noteEl.textContent = knownPllNote();
+  lastPllAlg = selected.alg;
+}
+
 function refreshPll() {
+  syncPllLookChrome();
+  if (getPllLook() === "known") {
+    renderKnownPll();
+    return;
+  }
   const result = analyzePll(facelets);
   const prog = document.getElementById("pll-progress");
   prog.innerHTML = [
@@ -1543,12 +1613,20 @@ function setPanelCopy(mode) {
     btnHint.textContent = "OLL hint";
     syncOllLookChrome();
   } else if (mode === "pll") {
-    const d = getPllDrillInfo();
-    title.textContent = "2-look PLL — 6 algs";
-    blurb.innerHTML = `Now <strong>${d.name}</strong> · ${d.index + 1}/${d.total}. Corners = T or Y · Edges = Ua / Ub / H / Z. <strong>PLL hint</strong> lights the next move — including <strong>M / M' / M2</strong> for H and Z. <strong>Again</strong> / <strong>Next PLL</strong>. From <a class="ext-link" href="https://www.cube.academy/2-look-pll-algs" target="_blank" rel="noopener">CubeHead 2-look PLL</a>.`;
-    btnPll.hidden = false;
-    btnPllAgain.hidden = false;
-    btnHint.textContent = "PLL hint";
+    syncPllLookChrome();
+    if (getPllLook() === "known") {
+      const c = getKnownPllCase();
+      title.textContent = "PLL cases I know";
+      blurb.innerHTML = `Now <strong>${c.short}</strong> · ${c.cue}. Tap a card to set it up. Diagram, Cube Academy alg, and hold steps stay on the card. <strong>2-look</strong> is the other switch. From <a class="ext-link" href="https://www.cube.academy/pll-algs" target="_blank" rel="noopener">Cube Academy PLL</a>.`;
+      btnHint.textContent = "PLL hint";
+    } else {
+      const d = getPllDrillInfo();
+      title.textContent = "2-look PLL — 6 algs";
+      blurb.innerHTML = `Now <strong>${d.name}</strong> · ${d.index + 1}/${d.total}. Corners = T or Y · Edges = Ua / Ub / H / Z. <strong>PLL hint</strong> lights the next move — including <strong>M / M' / M2</strong> for H and Z. <strong>Again</strong> / <strong>Next PLL</strong>. Open <strong>Cases I know</strong> for F, Y, Ja, Na, T, Ua, Ub, H, Z. From <a class="ext-link" href="https://www.cube.academy/2-look-pll-algs" target="_blank" rel="noopener">CubeHead 2-look PLL</a>.`;
+      btnPll.hidden = false;
+      btnPllAgain.hidden = false;
+      btnHint.textContent = "PLL hint";
+    }
   } else if (mode === "fb") {
     title.textContent = "First block drill";
     blurb.innerHTML =
@@ -1926,6 +2004,34 @@ document.getElementById("btn-pll-case").addEventListener("click", () => {
   setPanelCopy("pll");
 });
 
+document.querySelectorAll("[data-pll-look]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const next = btn.dataset.pllLook;
+    if (!next || next === getPllLook()) return;
+    setPllLook(next);
+    try {
+      localStorage.setItem(PLL_LOOK_KEY, next);
+    } catch {
+      /* ignore */
+    }
+    stickyPllHint = null;
+    if (next === "known") {
+      const draft = solvedFacelets();
+      playScrambleAlg(knownPllSetupAlg());
+    } else {
+      const draft = solvedFacelets();
+      playScrambleAlg(scramblePll(draft, "again"));
+    }
+    setPanelCopy("pll");
+    refreshPll();
+  });
+});
+
+document.getElementById("btn-pll-known-apply")?.addEventListener("click", () => {
+  const alg = getKnownPllCase().alg;
+  if (alg) doAlg(alg);
+});
+
 document.getElementById("btn-fb-case")?.addEventListener("click", () => {
   const draft = solvedFacelets();
   const alg = scrambleFb(draft);
@@ -2007,8 +2113,12 @@ document.getElementById("btn-hint").addEventListener("click", () => {
   }
   if (appMode === "pll") {
     refreshPll();
-    document.getElementById("pll-hint-card").hidden = false;
-    document.getElementById("pll-hint-card").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    const cardId = getPllLook() === "known" ? "pll-known-card" : "pll-hint-card";
+    const card = document.getElementById(cardId);
+    if (card) {
+      card.hidden = false;
+      card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
     flashHintedMove(lastPllAlg);
     return;
   }
@@ -2298,6 +2408,8 @@ setHintsOpen(isCompactLayout());
 try {
   const savedLook = localStorage.getItem(OLL_LOOK_KEY);
   if (savedLook === "cross" || savedLook === "corners") setOllLook(savedLook);
+  const savedPll = localStorage.getItem(PLL_LOOK_KEY);
+  if (savedPll === "two" || savedPll === "known") setPllLook(savedPll);
 } catch {
   /* default look 2 */
 }

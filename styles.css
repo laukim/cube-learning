@@ -1552,59 +1552,115 @@ body {
   font-weight: 800;
 }
 
+body.pll-ref-open .layout {
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 920px;
+}
+
+body.pll-ref-open .stage {
+  display: none;
+}
+
+body.pll-ref-open .panel {
+  grid-column: 1;
+  grid-row: 1;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  transform: none;
+  visibility: visible;
+  pointer-events: auto;
+  align-self: stretch;
+}
+
+body.pll-ref-open .hints-sheet-bar {
+  display: none;
+}
+
+body.pll-ref-open #panel-pll .look-switch {
+  position: sticky;
+  top: -1.25rem;
+  z-index: 2;
+  margin-top: -0.35rem;
+  padding: 0.55rem 0.2rem 0.45rem;
+  background: rgba(12, 20, 17, 0.96);
+}
+
 .pll-known-lead {
-  margin: 0 0 0.85rem;
+  margin: 0 0 0.45rem;
   color: var(--muted);
-  font-size: 0.92rem;
+  font-size: 0.98rem;
 }
 
-.pll-known-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(9.6rem, 1fr));
-  gap: 0.6rem;
-  margin: 0 0 0.9rem;
-}
-
-.pll-known-card {
+.pll-known-list {
   display: flex;
   flex-direction: column;
-  align-items: stretch;
-  gap: 0.15rem;
-  text-align: left;
+  gap: 1.15rem;
+  margin-top: 0.85rem;
+}
+
+.pll-known-case {
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.02);
-  border-radius: 14px;
-  padding: 0.45rem 0.45rem 0.6rem;
-  color: inherit;
-  cursor: pointer;
-  font: inherit;
+  border-radius: 18px;
+  padding: 1rem 1rem 1.15rem;
 }
 
-.pll-known-card.is-selected {
-  border-color: rgba(109, 255, 176, 0.5);
-  background: var(--accent-dim);
-}
-
-.pll-known-card .case-diagram-recog {
-  width: 100%;
-}
-
-.pll-known-card .case-caption {
-  min-height: 2.4em;
+.pll-known-head {
+  text-align: center;
 }
 
 .pll-known-name {
-  margin: 0.15rem 0 0;
-  font-weight: 700;
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.6rem, 4vw, 2.1rem);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.pll-known-name span {
+  display: block;
+  margin-top: 0.15rem;
+  font-family: var(--font-body);
+  font-weight: 600;
   font-size: 0.95rem;
-  letter-spacing: 0.01em;
+  letter-spacing: 0;
+  color: var(--muted);
 }
 
 .pll-known-cue {
-  margin: 0;
-  color: var(--muted);
-  font-size: 0.75rem;
-  line-height: 1.25;
+  margin: 0.35rem 0 0;
+  color: var(--ink);
+  font-size: 1.02rem;
+}
+
+.pll-known-case .case-diagram-recog {
+  width: min(100%, 26rem);
+  margin: 0.55rem auto 0.15rem;
+}
+
+.pll-known-case .case-caption {
+  text-align: center;
+  font-size: 0.88rem;
+}
+
+.pll-known-steps {
+  margin: 0.85rem auto 0;
+  max-width: 36rem;
+  font-size: 1.05rem;
+}
+
+.pll-known-steps p {
+  margin: 0 0 0.4rem;
+}
+
+.pll-known-alg {
+  display: block;
+  margin: 0.7rem auto 0;
+  max-width: 36rem;
+  font-size: 1.05rem;
+  line-height: 1.45;
 }
 
 .case-diagram-recog {

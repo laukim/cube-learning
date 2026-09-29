@@ -1006,6 +1006,11 @@ for (const c of PLL_KNOWN_CASES) {
   assert(diagram.type === "pll-recog" && diagram.sides.F && diagram.sides.B, `${c.short} has an in-app diagram`);
   assert(!JSON.stringify(diagram).includes("http"), `${c.short} diagram has no remote asset`);
 }
+assert(PLL_KNOWN_CASES.every((c) => c.steps && c.algDisplay), "each known PLL has steps and a display alg");
+assert(htmlSrc.includes('id="pll-known-list"'), "known PLL is a list of cases");
+assert(!htmlSrc.includes("btn-pll-known-apply"), "known PLL does not apply onto the cube");
+assert(mainSrc.includes("pll-ref-open"), "known PLL hides the cube and fills the page");
+assert(!mainSrc.includes("knownPllSetupAlg"), "known PLL does not scramble the cube");
 setPllLook("known");
 assert(getPllLook() === "known", "known look switches on");
 setPllLook("two");

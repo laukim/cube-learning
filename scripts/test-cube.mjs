@@ -988,18 +988,35 @@ const {
   getPllLook,
 } = await import("../js/pll-known.js");
 const { PLL_U, PLL_UB } = await import("../js/pll-trainer.js");
-assert(PLL_KNOWN_CASES.map((c) => c.short).join(" ") === "F Y Ja Na T Ua Ub H Z", "known PLL is the nine cases");
+assert(PLL_KNOWN_CASES.map((c) => c.short).join(" ") === "F Y Jb Na T Ua Ub H Z", "known PLL is the nine cases");
+assert(!PLL_KNOWN_CASES.some((c) => c.id === "ja" || c.short === "Ja"), "Ja is gone from cases I know");
+const jb = PLL_KNOWN_CASES.find((c) => c.id === "jb");
+assert(jb && jb.short === "Jb" && jb.name === "Jb-perm", "Jb replaces Ja");
+assert(jb.alg === "R U R' F' R U R' U' R' F R2 U' R' U'", "Jb uses the rearranged T alg");
+assert(jb.algDisplay === "(R U R' F') (R U R' U') R' F (R2 U' R') U'", "Jb display groups the T-shaped alg");
+assert(!jb.alg.includes("x") && !jb.alg.includes("r"), "Jb has no x or wide r");
+assert(jb.sides.L.every((color) => color === "orange"), "Jb full bar is on the left");
 assert(PLL_KNOWN_CASES.find((c) => c.id === "t").alg === PLL_T.alg, "T reuses the 2-look alg");
 assert(PLL_KNOWN_CASES.find((c) => c.id === "y").alg === PLL_Y.alg, "Y reuses the 2-look alg");
 assert(PLL_KNOWN_CASES.find((c) => c.id === "ub").alg === PLL_UB.alg, "Ub reuses the 2-look alg");
 assert(PLL_KNOWN_CASES.find((c) => c.id === "h").alg === PLL_H.alg, "H reuses the 2-look alg");
 assert(PLL_KNOWN_CASES.find((c) => c.id === "z").alg === PLL_Z.alg, "Z reuses the 2-look alg");
 assert(PLL_KNOWN_CASES.find((c) => c.id === "ua").alg !== PLL_U.alg, "full PLL Ua is not the 2-look Ua");
+function recogSides(facelets) {
+  const row = (face, order) => order.map((i) => sticker(facelets, face, i));
+  return {
+    B: row("B", [2, 1, 0]),
+    L: row("L", [2, 1, 0]),
+    R: row("R", [2, 1, 0]),
+    F: row("F", [0, 1, 2]),
+  };
+}
 for (const c of PLL_KNOWN_CASES) {
   const solved = solvedFacelets();
   const cube = solvedFacelets();
   applyAlg(cube, knownPllSetupAlg(c));
   assert(cube.some((color, i) => color !== solved[i]), `${c.short} setup is not solved`);
+  assert(JSON.stringify(recogSides(cube)) === JSON.stringify(c.sides), `${c.short} diagram matches the held case`);
   applyAlg(cube, expandWideAlg(c.alg));
   assert(cube.every((color, i) => color === solved[i]), `${c.short} Cube Academy alg solves the pictured case`);
   const diagram = knownPllDiagram(c);
@@ -1007,6 +1024,22 @@ for (const c of PLL_KNOWN_CASES) {
   assert(!JSON.stringify(diagram).includes("http"), `${c.short} diagram has no remote asset`);
 }
 assert(PLL_KNOWN_CASES.every((c) => c.steps && c.algDisplay), "each known PLL has steps and a display alg");
+const jbSetup = solvedFacelets();
+applyAlg(jbSetup, knownPllSetupAlg(jb));
+const jbEdge = {
+  UB: sticker(jbSetup, "B", 1),
+  UR: sticker(jbSetup, "R", 1),
+  UF: sticker(jbSetup, "F", 1),
+  UL: sticker(jbSetup, "L", 1),
+};
+assert(jbEdge.UF === "red" && jbEdge.UR === "blue" && jbEdge.UB === "green" && jbEdge.UL === "orange", "Jb swaps the front and right edges");
+assert(
+  sticker(jbSetup, "R", 0) === "green" && sticker(jbSetup, "F", 2) === "red" && sticker(jbSetup, "L", 0) === "orange" && sticker(jbSetup, "L", 2) === "orange",
+  "Jb swaps the two right corners and leaves the left bar"
+);
+assert(mainSrc.includes("F, Y, Jb, Na, T, Ua, Ub, H, Z"), "2-look copy lists Jb among cases I know");
+assert(mainSrc.includes("F, Y, Jb, Na, T, Ua, Ub, H, and Z"), "cases I know copy lists Jb");
+assert(!mainSrc.includes("Ja"), "Ja is gone from PLL copy");
 assert(htmlSrc.includes('id="pll-known-list"'), "known PLL is a list of cases");
 assert(!htmlSrc.includes("btn-pll-known-apply"), "known PLL does not apply onto the cube");
 assert(mainSrc.includes("pll-ref-open"), "known PLL hides the cube and fills the page");

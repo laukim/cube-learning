@@ -817,9 +817,10 @@ export function renderStats(stats, previous = null, { splitShift = false } = {})
   const f2lNow = stageMean(stats.splits, "f2l");
   const crossDelta = splitShift ? renderAvgDelta(averageShift(crossNow, stageMean(previous?.splits, "cross")), "Cross avg") : "";
   const f2lDelta = splitShift ? renderAvgDelta(averageShift(f2lNow, stageMean(previous?.splits, "f2l")), "F2L avg") : "";
+  const meanDelta = renderAvgDelta(averageShift(stats.mean, previous?.mean), "Average");
   const rows = [
     ["Solves", String(stats.count || 0), "", ""],
-    ["Average", dash(stats.mean), "", ""],
+    ["Average", dash(stats.mean), "", meanDelta],
     ["Best", dash(stats.best), "timer-stat-best", ""],
     ["Worst", dash(stats.worst), "", ""],
     ["Cross avg", dash(crossNow), "timer-stat-cross", crossDelta],

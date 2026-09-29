@@ -1218,8 +1218,17 @@ const crossCard = splitShiftHtml.match(/<div class="timer-stat timer-stat-cross"
 const f2lCard = splitShiftHtml.match(/<div class="timer-stat timer-stat-f2l">[\s\S]*?<\/div>/);
 assert(crossCard?.[0].includes("+0.50") && crossCard[0].includes("is-slower"), "latest split moves Cross avg slower");
 assert(f2lCard?.[0].includes("-1.00") && f2lCard[0].includes("is-faster"), "latest split moves F2L avg faster");
+const avgCard = splitShiftHtml.match(/<span>Average<\/span>\s*<strong>[\s\S]*?<\/strong>/);
+assert(avgCard?.[0].includes("-1.00") && avgCard[0].includes("is-faster"), "latest solve moves session Average faster");
 assert(!splitShiftHtml.includes("vs last"), "average shift is not labeled versus last");
-assert(!renderStats(computeStats(splitRows), computeStats([splitRows[0]])).includes("timer-avg-delta"), "single-mode latest solve leaves Cross and F2L avgs unmarked");
+const singleShiftHtml = renderStats(computeStats(splitRows), computeStats([splitRows[0]]));
+const singleCross = singleShiftHtml.match(/<div class="timer-stat timer-stat-cross">[\s\S]*?<\/div>/);
+const singleF2l = singleShiftHtml.match(/<div class="timer-stat timer-stat-f2l">[\s\S]*?<\/div>/);
+const singleAvg = singleShiftHtml.match(/<span>Average<\/span>\s*<strong>[\s\S]*?<\/strong>/);
+assert(singleCross && !singleCross[0].includes("timer-avg-delta"), "single-mode latest solve leaves Cross avg unmarked");
+assert(singleF2l && !singleF2l[0].includes("timer-avg-delta"), "single-mode latest solve leaves F2L avg unmarked");
+assert(singleAvg?.[0].includes("-1.00") && singleAvg[0].includes("is-faster"), "session Average still shifts when the latest solve has no splits");
+assert(!renderStats(computeStats([splitRows[0]])).includes("timer-avg-delta"), "first solve has no Average shift yet");
 const aoSeries = [12000, 10000, 14000, 11000, 13000, 9000].map((ms, i) => ({ id: `ao${i}`, ms, at: i + 1 }));
 const aoShiftHtml = renderStats(computeStats(aoSeries), computeStats(aoSeries.slice(0, -1)));
 assert(aoShiftHtml.includes("-1.66") && aoShiftHtml.includes("mo3"), "mo3 row shows how the latest solve moved it");

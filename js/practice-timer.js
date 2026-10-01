@@ -815,8 +815,10 @@ export function renderTimesList(records) {
 export function renderStats(stats, previous = null, { splitShift = false } = {}) {
   const crossNow = stageMean(stats.splits, "cross");
   const f2lNow = stageMean(stats.splits, "f2l");
+  const finalNow = stageMean(stats.splits, "final");
   const crossDelta = splitShift ? renderAvgDelta(averageShift(crossNow, stageMean(previous?.splits, "cross")), "Cross avg") : "";
   const f2lDelta = splitShift ? renderAvgDelta(averageShift(f2lNow, stageMean(previous?.splits, "f2l")), "F2L avg") : "";
+  const finalDelta = splitShift ? renderAvgDelta(averageShift(finalNow, stageMean(previous?.splits, "final")), "Final avg") : "";
   const meanDelta = renderAvgDelta(averageShift(stats.mean, previous?.mean), "Average");
   const rows = [
     ["Solves", String(stats.count || 0), "", ""],
@@ -825,6 +827,8 @@ export function renderStats(stats, previous = null, { splitShift = false } = {})
     ["Worst", dash(stats.worst), "", ""],
     ["Cross avg", dash(crossNow), "timer-stat-cross", crossDelta],
     ["F2L avg", dash(f2lNow), "timer-stat-f2l", f2lDelta],
+    ["Final avg", dash(finalNow), "timer-stat-final", finalDelta],
+    ["Final best", dash(stageBest(stats.splits, "final")), "timer-stat-final", ""],
     ["Cross best", dash(stageBest(stats.splits, "cross")), "timer-stat-cross", ""],
     ["F2L best", dash(stageBest(stats.splits, "f2l")), "timer-stat-f2l", ""],
     ["Trimmed", dash(stats.trimmed), "", ""],

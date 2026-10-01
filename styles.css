@@ -16,6 +16,7 @@
   --green: #0b9e4a;
   --timer-cross: color-mix(in srgb, var(--blue) 52%, #ffffff);
   --timer-f2l: var(--orange);
+  --timer-final: var(--accent);
   --timer-ao25: #6dc8ff;
   --timer-ao50: #c4a0ff;
   --timer-ao100: #ff8aa8;
@@ -2586,6 +2587,15 @@ body.timer-page .topbar {
 
 .timer-stat-f2l strong {
   color: var(--timer-f2l);
+}
+
+.timer-stat-final {
+  border-color: color-mix(in srgb, var(--timer-final) 45%, var(--line));
+  background: color-mix(in srgb, var(--timer-final) 12%, transparent);
+}
+
+.timer-stat-final strong {
+  color: var(--timer-final);
 }
 
 .timer-averages-wrap {

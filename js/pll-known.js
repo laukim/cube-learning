@@ -105,6 +105,42 @@ export const PLL_KNOWN_CASES = [
     corners: { swaps: [["URF", "UBR"]] },
   },
   {
+    id: "ra",
+    short: "Ra",
+    name: "Ra-perm",
+    cue: "Headlights left, pair in front",
+    alg: "R U' R' U' R U R D R' U' R D' R' U2 R'",
+    algDisplay: "(R U' R' U') R U R D (R' U' R D') R' U2 R'",
+    steps:
+      "Headlights on the left: the two corner stickers match and the edge between them does not. One pair sits on the front, on the left, touching those headlights. Not T — T also has a pair on the back.\nTurn only U until the headlights are on the left and that pair is on the front.\nDo the Ra-perm. The D and D' put the bottom back — finish every move.",
+    sides: {
+      B: ["red", "green", "blue"],
+      L: ["green", "red", "green"],
+      R: ["orange", "blue", "red"],
+      F: ["orange", "orange", "blue"],
+    },
+    edges: { cycle: ["UF", "UR", "UL"] },
+    corners: { cycle: ["UFL", "UBR", "ULB"] },
+  },
+  {
+    id: "rb",
+    short: "Rb",
+    name: "Rb-perm",
+    cue: "Headlights in front, pair on the left",
+    alg: "R' U2 R U2 R' F R U R' U' R' F' R2",
+    algDisplay: "(R' U2 R U2) R' F (R U R' U') R' F' R2",
+    steps:
+      "Headlights on the front: the two corner stickers match and the edge between them does not. One pair sits on the left, toward the back, away from those headlights. Not Ra — there the pair faces you — and not T, which has two pairs.\nTurn only U until the headlights are at the front and the pair is on the left toward the back.\nDo the Rb-perm.",
+    sides: {
+      B: ["blue", "red", "green"],
+      L: ["green", "green", "red"],
+      R: ["red", "orange", "blue"],
+      F: ["orange", "blue", "orange"],
+    },
+    edges: { cycle: ["UL", "UR", "UB"] },
+    corners: { cycle: ["UFL", "URF", "ULB"] },
+  },
+  {
     id: "ua",
     short: "Ua",
     name: "Ua-perm",

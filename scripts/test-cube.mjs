@@ -1314,6 +1314,12 @@ assert(
   statsHtml.indexOf("F2L avg") < statsHtml.indexOf("Final avg") && statsHtml.indexOf("Final avg") < statsHtml.indexOf("timer-averages"),
   "Final avg sits with the stage cards above the averages table"
 );
+const stageLabels = ["Cross avg", "Cross best", "F2L avg", "F2L best", "Final avg", "Final best"];
+const stagePositions = stageLabels.map((label) => statsHtml.indexOf(`<span>${label}</span>`));
+assert(
+  stagePositions.every((at, i) => at >= 0 && (i === 0 || at > stagePositions[i - 1])),
+  "stage cards are three rows: Cross, F2L, then Final, each avg then best"
+);
 assert(stageBest(computeSplitStats(splitRows), "cross") === 4000, "stageBest reads Cross");
 assert(stageMean(computeSplitStats(splitRows), "f2l") === 17000, "stageMean reads F2L");
 assert(stageMean(computeSplitStats(splitRows), "final") === 7500, "stageMean reads Final");

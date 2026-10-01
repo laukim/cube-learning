@@ -1242,24 +1242,35 @@ assert(windowedSplitChart.includes(">8</text>") && windowedSplitChart.includes("
 const statsHtml = renderStats(computeStats(splitRows));
 assert(statsHtml.includes("Cross best") && statsHtml.includes("4.00"), "stats grid shows Cross best");
 assert(statsHtml.includes("F2L best") && statsHtml.includes("16.00"), "stats grid shows F2L best");
+assert(statsHtml.includes("Final best") && statsHtml.includes("7.00"), "stats grid shows Final best");
 assert(statsHtml.includes("Cross avg") && statsHtml.includes("4.50"), "stats grid shows Cross average");
 assert(statsHtml.includes("F2L avg") && statsHtml.includes("17.00"), "stats grid shows F2L average");
+assert(statsHtml.includes("Final avg") && statsHtml.includes("7.50"), "stats grid shows Final average");
+assert(
+  statsHtml.indexOf("F2L avg") < statsHtml.indexOf("Final avg") && statsHtml.indexOf("Final avg") < statsHtml.indexOf("timer-averages"),
+  "Final avg sits with the stage cards above the averages table"
+);
 assert(stageBest(computeSplitStats(splitRows), "cross") === 4000, "stageBest reads Cross");
 assert(stageMean(computeSplitStats(splitRows), "f2l") === 17000, "stageMean reads F2L");
+assert(stageMean(computeSplitStats(splitRows), "final") === 7500, "stageMean reads Final");
 const splitShiftHtml = renderStats(computeStats(splitRows), computeStats([splitRows[0]]), { splitShift: true });
 const crossCard = splitShiftHtml.match(/<div class="timer-stat timer-stat-cross">[\s\S]*?<\/div>/);
 const f2lCard = splitShiftHtml.match(/<div class="timer-stat timer-stat-f2l">[\s\S]*?<\/div>/);
+const finalCard = splitShiftHtml.match(/<div class="timer-stat timer-stat-final">[\s\S]*?<\/div>/);
 assert(crossCard?.[0].includes("+0.50") && crossCard[0].includes("is-slower"), "latest split moves Cross avg slower");
 assert(f2lCard?.[0].includes("-1.00") && f2lCard[0].includes("is-faster"), "latest split moves F2L avg faster");
+assert(finalCard?.[0].includes("Final avg") && finalCard[0].includes("-0.50") && finalCard[0].includes("is-faster"), "latest split moves Final avg faster");
 const avgCard = splitShiftHtml.match(/<span>Average<\/span>\s*<strong>[\s\S]*?<\/strong>/);
 assert(avgCard?.[0].includes("-1.00") && avgCard[0].includes("is-faster"), "latest solve moves session Average faster");
 assert(!splitShiftHtml.includes("vs last"), "average shift is not labeled versus last");
 const singleShiftHtml = renderStats(computeStats(splitRows), computeStats([splitRows[0]]));
 const singleCross = singleShiftHtml.match(/<div class="timer-stat timer-stat-cross">[\s\S]*?<\/div>/);
 const singleF2l = singleShiftHtml.match(/<div class="timer-stat timer-stat-f2l">[\s\S]*?<\/div>/);
+const singleFinal = singleShiftHtml.match(/<div class="timer-stat timer-stat-final">[\s\S]*?<\/div>/);
 const singleAvg = singleShiftHtml.match(/<span>Average<\/span>\s*<strong>[\s\S]*?<\/strong>/);
 assert(singleCross && !singleCross[0].includes("timer-avg-delta"), "single-mode latest solve leaves Cross avg unmarked");
 assert(singleF2l && !singleF2l[0].includes("timer-avg-delta"), "single-mode latest solve leaves F2L avg unmarked");
+assert(singleFinal && !singleFinal[0].includes("timer-avg-delta"), "single-mode latest solve leaves Final avg unmarked");
 assert(singleAvg?.[0].includes("-1.00") && singleAvg[0].includes("is-faster"), "session Average still shifts when the latest solve has no splits");
 assert(!renderStats(computeStats([splitRows[0]])).includes("timer-avg-delta"), "first solve has no Average shift yet");
 const aoSeries = [12000, 10000, 14000, 11000, 13000, 9000].map((ms, i) => ({ id: `ao${i}`, ms, at: i + 1 }));
@@ -1268,7 +1279,12 @@ assert(aoShiftHtml.includes("-1.66") && aoShiftHtml.includes("mo3"), "mo3 row sh
 assert(aoShiftHtml.includes("-0.66") && aoShiftHtml.includes("timer-avg-ao5"), "ao5 row shows how the latest solve moved it");
 assert(averageShift(11000, 12666.666) < 0, "average shift is current minus previous");
 assert(renderStats(computeStats([])).includes("Cross avg") && renderStats(computeStats([])).includes("F2L avg"), "empty stats still list split averages");
+assert(renderStats(computeStats([])).includes("Final avg"), "empty stats still list Final average");
 assert(renderStats(computeStats([])).includes("Cross best") && renderStats(computeStats([])).includes("F2L best"), "empty stats still list split records");
+assert(renderStats(computeStats([])).includes("Final best"), "empty stats still list Final best");
+const plainStats = renderStats(computeStats([{ id: "plain", ms: 12000, at: 1 }]));
+const plainFinal = plainStats.match(/<span>Final avg<\/span>\s*<strong>([\s\S]*?)<\/strong>/);
+assert(plainFinal?.[1] === "—", "singles without splits leave Final avg dashed");
 assert(renderProgressChart(many).includes("data-enlarge-chart"), "sidebar chart has Enlarge");
 assert(!renderProgressChart([]).includes("data-enlarge-chart"), "empty chart has no Enlarge");
 assert(!renderProgressChart(many, { enlarged: true }).includes("data-enlarge-chart"), "enlarged chart omits Enlarge");

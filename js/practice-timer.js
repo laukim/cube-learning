@@ -825,12 +825,13 @@ export function renderStats(stats, previous = null, { splitShift = false } = {})
     ["Average", dash(stats.mean), "", meanDelta],
     ["Best", dash(stats.best), "timer-stat-best", ""],
     ["Worst", dash(stats.worst), "", ""],
+    // Two-column grid: each stage is one row, avg left and best right.
     ["Cross avg", dash(crossNow), "timer-stat-cross", crossDelta],
+    ["Cross best", dash(stageBest(stats.splits, "cross")), "timer-stat-cross", ""],
     ["F2L avg", dash(f2lNow), "timer-stat-f2l", f2lDelta],
+    ["F2L best", dash(stageBest(stats.splits, "f2l")), "timer-stat-f2l", ""],
     ["Final avg", dash(finalNow), "timer-stat-final", finalDelta],
     ["Final best", dash(stageBest(stats.splits, "final")), "timer-stat-final", ""],
-    ["Cross best", dash(stageBest(stats.splits, "cross")), "timer-stat-cross", ""],
-    ["F2L best", dash(stageBest(stats.splits, "f2l")), "timer-stat-f2l", ""],
     ["Trimmed", dash(stats.trimmed), "", ""],
   ];
   const cards = rows

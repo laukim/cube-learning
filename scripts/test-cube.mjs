@@ -988,8 +988,13 @@ const {
   getPllLook,
 } = await import("../js/pll-known.js");
 const { PLL_U, PLL_UB } = await import("../js/pll-trainer.js");
-assert(PLL_KNOWN_CASES.map((c) => c.short).join(" ") === "F Y Jb Na T Ra Rb Ua Ub H Z", "known PLL is the eleven cases");
-assert(!PLL_KNOWN_CASES.some((c) => c.id === "ja" || c.short === "Ja"), "Ja is gone from cases I know");
+assert(PLL_KNOWN_CASES.map((c) => c.short).join(" ") === "F Y Jb Ja Na T Ra Rb Ua Ub H Z", "known PLL is the twelve cases");
+const ja = PLL_KNOWN_CASES.find((c) => c.id === "ja");
+assert(ja && ja.short === "Ja" && ja.name === "Ja-perm", "Ja sits beside Jb");
+assert(ja.alg === "x R2 F R F' R U2 r' U r U2 x'", "Ja uses the Cube Academy alg");
+assert(ja.algDisplay === "x R2 (F R F' R) U2 (r' U r) U2 x'", "Ja display groups the Cube Academy alg");
+assert(ja.sides.F[0] === ja.sides.F[1] && ja.sides.F[0] !== ja.sides.F[2], "Ja front pair touches the left side — the L");
+assert(!(ja.sides.F[0] === ja.sides.F[2] && ja.sides.F[1] !== ja.sides.F[0]), "Ja front is an incomplete bar, not headlights");
 const ra = PLL_KNOWN_CASES.find((c) => c.id === "ra");
 const rb = PLL_KNOWN_CASES.find((c) => c.id === "rb");
 assert(ra && ra.short === "Ra" && ra.name === "Ra-perm", "Ra is a known PLL");
@@ -1003,7 +1008,7 @@ assert(ra.sides.F[0] === ra.sides.F[1] && ra.sides.F[0] !== ra.sides.F[2], "Ra p
 assert(rb.sides.F[0] === rb.sides.F[2] && rb.sides.F[0] !== rb.sides.F[1], "Rb headlights are on the front");
 assert(rb.sides.L[0] === rb.sides.L[1] && rb.sides.L[0] !== rb.sides.L[2], "Rb pair is on the left toward the back");
 const jb = PLL_KNOWN_CASES.find((c) => c.id === "jb");
-assert(jb && jb.short === "Jb" && jb.name === "Jb-perm", "Jb replaces Ja");
+assert(jb && jb.short === "Jb" && jb.name === "Jb-perm", "Jb stays beside Ja");
 assert(jb.alg === "R U R' F' R U R' U' R' F R2 U' R' U'", "Jb uses the rearranged T alg");
 assert(jb.algDisplay === "(R U R' F') (R U R' U') R' F (R2 U' R') U'", "Jb display groups the T-shaped alg");
 assert(!jb.alg.includes("x") && !jb.alg.includes("r"), "Jb has no x or wide r");
@@ -1048,6 +1053,16 @@ assert(jbEdge.UF === "red" && jbEdge.UR === "blue" && jbEdge.UB === "green" && j
 assert(
   sticker(jbSetup, "R", 0) === "green" && sticker(jbSetup, "F", 2) === "red" && sticker(jbSetup, "L", 0) === "orange" && sticker(jbSetup, "L", 2) === "orange",
   "Jb swaps the two right corners and leaves the left bar"
+);
+const jaSetup = solvedFacelets();
+applyAlg(jaSetup, knownPllSetupAlg(ja));
+assert(
+  sticker(jaSetup, "R", 1) === "green" && sticker(jaSetup, "B", 1) === "red" && sticker(jaSetup, "F", 1) === "blue" && sticker(jaSetup, "L", 1) === "orange",
+  "Ja swaps the right and back edges"
+);
+assert(
+  sticker(jaSetup, "F", 0) === "blue" && sticker(jaSetup, "F", 1) === "blue" && sticker(jaSetup, "L", 2) === "orange",
+  "Ja L is the front pair touching the left side"
 );
 function sameDirectedCycle(stored, derived) {
   if (!stored || !derived || stored.length !== derived.length) return false;
@@ -1100,10 +1115,10 @@ for (const c of [ra, rb]) {
   assert(sameDirectedCycle(c.edges.cycle, cycles.edges), `${c.short} edge arrows match the held cube`);
   assert(sameDirectedCycle(c.corners.cycle, cycles.corners), `${c.short} corner arrows match the held cube`);
 }
-assert(mainSrc.includes("F, Y, Jb, Na, T, Ra, Rb, Ua, Ub, H, Z"), "2-look copy lists Ra and Rb among cases I know");
-assert(mainSrc.includes("F, Y, Jb, Na, T, Ra, Rb, Ua, Ub, H, and Z"), "cases I know copy lists Ra and Rb");
-assert(htmlSrc.includes("Eleven full PLL cases"), "known PLL lead counts eleven cases");
-assert(!mainSrc.includes("Ja"), "Ja is gone from PLL copy");
+assert(mainSrc.includes("F, Y, Jb, Ja, Na, T, Ra, Rb, Ua, Ub, H, Z"), "2-look copy lists Ja beside Jb among cases I know");
+assert(mainSrc.includes("F, Y, Jb, Ja, Na, T, Ra, Rb, Ua, Ub, H, and Z"), "cases I know copy lists Ja beside Jb");
+assert(htmlSrc.includes("Twelve full PLL cases"), "known PLL lead counts twelve cases");
+assert(mainSrc.includes("Ja"), "Ja is named in the PLL copy");
 assert(htmlSrc.includes('id="pll-known-list"'), "known PLL is a list of cases");
 assert(!htmlSrc.includes("btn-pll-known-apply"), "known PLL does not apply onto the cube");
 assert(mainSrc.includes("pll-ref-open"), "known PLL hides the cube and fills the page");

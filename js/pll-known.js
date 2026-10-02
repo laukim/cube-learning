@@ -69,6 +69,24 @@ export const PLL_KNOWN_CASES = [
     corners: { swaps: [["URF", "UBR"]] },
   },
   {
+    id: "ja",
+    short: "Ja",
+    name: "Ja-perm",
+    cue: "L on the left",
+    alg: "x R2 F R F' R U2 r' U r U2 x'",
+    algDisplay: "x R2 (F R F' R) U2 (r' U r) U2 x'",
+    steps:
+      "L on the left. The front is an incomplete bar — two stickers, not three — and that pair sits on the left, touching the matched side. That turn is the L. Not a lone full bar, and not two bars apart.\nNot Jb — there the front pair sits on the right, away from the bar. Not T — T is headlights, and the edge between them does not match.\nTurn only U until that L is on the left.\nDo the Ja-perm. It starts with x and uses a wide r.",
+    sides: {
+      B: ["green", "red", "red"],
+      L: ["orange", "orange", "orange"],
+      R: ["blue", "green", "green"],
+      F: ["blue", "blue", "red"],
+    },
+    edges: { swaps: [["UR", "UB"]] },
+    corners: { swaps: [["URF", "UBR"]] },
+  },
+  {
     id: "na",
     short: "Na",
     name: "Na-perm",

@@ -9,7 +9,7 @@ import {
   solvedFacelets,
 } from "./cube.js";
 import { consumeAlgMove, initAlgProgress, restoreAlgMove } from "./alg-progress.js?v=2look5";
-import { createErnoCube } from "./erno-view.js?v=pllref4";
+import { createErnoCube } from "./erno-view.js?v=pllref5";
 import { analyzeCross, CROSS_TIPS, scrambleCross } from "./cross-trainer.js";
 import { analyzeF2lDrill, countSlotsSolved, F2L_TIPS, getF2lDrillInfo, getF2lGroupFilter, getF2lGroups, f2lRandomPoolSize, popBaselineIds, poppedSolvedSlots, scrambleF2L, shouldFlashPop, solvedSlotIds, stableSolvedSlotIds, setF2lGroupFilter, toggleF2lGroupFilter } from "./f2l-trainer.js?v=f2l18r";
 import { F2L_DRILL_CASES } from "./f2l-cases.js?v=f2l18r";
@@ -22,7 +22,7 @@ import {
   knownPllNote,
   PLL_KNOWN_CASES,
   setPllLook,
-} from "./pll-known.js?v=pllref4";
+} from "./pll-known.js?v=pllref5";
 import { ALG_LIBRARY, analyze, STEPS } from "./solver.js";
 import {
   analyzeRoux,
@@ -1615,12 +1615,12 @@ function setPanelCopy(mode) {
     syncPllLookChrome();
     if (getPllLook() === "known") {
       title.textContent = "PLL cases I know";
-      blurb.innerHTML = `Recognition pictures for F, Y, Jb, Na, T, Ra, Rb, Ua, Ub, H, and Z. Steps and the Cube Academy alg are under each picture. <strong>2-look</strong> is the drill. From <a class="ext-link" href="https://www.cube.academy/pll-algs" target="_blank" rel="noopener">Cube Academy PLL</a>.`;
+      blurb.innerHTML = `Recognition pictures for F, Y, Jb, Ja, Na, T, Ra, Rb, Ua, Ub, H, and Z. Steps and the Cube Academy alg are under each picture. <strong>2-look</strong> is the drill. From <a class="ext-link" href="https://www.cube.academy/pll-algs" target="_blank" rel="noopener">Cube Academy PLL</a>.`;
       btnHint.textContent = "PLL hint";
     } else {
       const d = getPllDrillInfo();
       title.textContent = "2-look PLL — 6 algs";
-      blurb.innerHTML = `Now <strong>${d.name}</strong> · ${d.index + 1}/${d.total}. Corners = T or Y · Edges = Ua / Ub / H / Z. <strong>PLL hint</strong> lights the next move — including <strong>M / M' / M2</strong> for H and Z. <strong>Again</strong> / <strong>Next PLL</strong>. Open <strong>Cases I know</strong> for F, Y, Jb, Na, T, Ra, Rb, Ua, Ub, H, Z. From <a class="ext-link" href="https://www.cube.academy/2-look-pll-algs" target="_blank" rel="noopener">CubeHead 2-look PLL</a>.`;
+      blurb.innerHTML = `Now <strong>${d.name}</strong> · ${d.index + 1}/${d.total}. Corners = T or Y · Edges = Ua / Ub / H / Z. <strong>PLL hint</strong> lights the next move — including <strong>M / M' / M2</strong> for H and Z. <strong>Again</strong> / <strong>Next PLL</strong>. Open <strong>Cases I know</strong> for F, Y, Jb, Ja, Na, T, Ra, Rb, Ua, Ub, H, Z. From <a class="ext-link" href="https://www.cube.academy/2-look-pll-algs" target="_blank" rel="noopener">CubeHead 2-look PLL</a>.`;
       btnPll.hidden = false;
       btnPllAgain.hidden = false;
       btnHint.textContent = "PLL hint";

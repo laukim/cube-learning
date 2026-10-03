@@ -988,7 +988,10 @@ const {
   getPllLook,
 } = await import("../js/pll-known.js");
 const { PLL_U, PLL_UB } = await import("../js/pll-trainer.js");
-assert(PLL_KNOWN_CASES.map((c) => c.short).join(" ") === "F Y Jb Ja Na T Ra Rb Ua Ub H Z", "known PLL is the twelve cases");
+assert(
+  PLL_KNOWN_CASES.map((c) => c.short).join(" ") === "F Y Jb Ja Na T Ra Rb Ua Ub H Z Aa Ab E",
+  "known PLL keeps the twelve cases and adds Aa, Ab, and E"
+);
 const ja = PLL_KNOWN_CASES.find((c) => c.id === "ja");
 assert(ja && ja.short === "Ja" && ja.name === "Ja-perm", "Ja sits beside Jb");
 assert(ja.alg === "x R2 F R F' R U2 r' U r U2 x'", "Ja uses the Cube Academy alg");
@@ -1006,7 +1009,7 @@ assert(rb.algDisplay === "(R' U2 R U2) R' F (R U R' U') R' F' R2", "Rb display g
 assert(ra.sides.L[0] === ra.sides.L[2] && ra.sides.L[0] !== ra.sides.L[1], "Ra headlights are on the left");
 assert(ra.sides.F[0] === ra.sides.F[1] && ra.sides.F[0] !== ra.sides.F[2], "Ra pair is on the front");
 assert(rb.sides.F[0] === rb.sides.F[2] && rb.sides.F[0] !== rb.sides.F[1], "Rb headlights are on the front");
-assert(rb.sides.L[0] === rb.sides.L[1] && rb.sides.L[0] !== rb.sides.L[2], "Rb pair is on the left toward the back");
+assert(rb.sides.L[0] === rb.sides.L[1] && rb.sides.L[0] !== rb.sides.L[2], "Rb pair is the front of the left side");
 const jb = PLL_KNOWN_CASES.find((c) => c.id === "jb");
 assert(jb && jb.short === "Jb" && jb.name === "Jb-perm", "Jb stays beside Ja");
 assert(jb.alg === "R U R' F' R U R' U' R' F R2 U' R' U'", "Jb uses the rearranged T alg");
@@ -1108,6 +1111,33 @@ function heldCycles(facelets) {
   }
   return { edges: cycleFrom(edgeLoc), corners: cycleFrom(cornerLoc) };
 }
+const aa = PLL_KNOWN_CASES.find((c) => c.id === "aa");
+const ab = PLL_KNOWN_CASES.find((c) => c.id === "ab");
+const ePerm = PLL_KNOWN_CASES.find((c) => c.id === "e");
+assert(aa && aa.short === "Aa" && aa.name === "Aa-perm", "Aa is its own case");
+assert(ab && ab.short === "Ab" && ab.name === "Ab-perm", "Ab is its own case");
+assert(ePerm && ePerm.short === "E" && ePerm.name === "E-perm", "E is its own case");
+assert(aa.alg === "x R' U R' D2 R U' R' D2 R2 x'", "Aa uses the Cube Academy alg");
+assert(aa.algDisplay === "x (R' U R') D2 (R U' R') D2 R2 x'", "Aa display groups the Cube Academy alg");
+assert(ab.alg === "x R2 D2 R U R' D2 R U' R x'", "Ab uses the Cube Academy alg");
+assert(ab.algDisplay === "x R2 D2 (R U R') D2 (R U' R) x'", "Ab display groups the Cube Academy alg");
+assert(ePerm.alg === "x' R U' R' D R U R' D' R U R' D R U' R' D' x", "E uses the Cube Academy alg");
+assert(
+  ePerm.algDisplay === "x' (R U' R') D (R U R') D' (R U R') D (R U' R') D' x",
+  "E display groups the Cube Academy alg"
+);
+assert(aa.sides.B[0] === aa.sides.B[2] && aa.sides.B[0] !== aa.sides.B[1], "Aa headlights are on the back");
+assert(aa.sides.F[0] === aa.sides.F[1] && aa.sides.F[0] !== aa.sides.F[2], "Aa block pair is on the front left");
+assert(aa.sides.L[0] === aa.sides.L[1] && aa.sides.L[0] !== aa.sides.L[2], "Aa block pair is the front of the left side");
+assert(ab.sides.R[0] === ab.sides.R[2] && ab.sides.R[0] !== ab.sides.R[1], "Ab headlights are on the right");
+assert(ab.sides.F[0] === ab.sides.F[1] && ab.sides.F[0] !== ab.sides.F[2], "Ab block pair is on the front left");
+assert(!(ab.sides.B[0] === ab.sides.B[2] && ab.sides.B[1] !== ab.sides.B[0]), "Ab headlights are not on the back");
+const sideRows = (c) => [c.sides.B, c.sides.L, c.sides.R, c.sides.F];
+assert(
+  sideRows(ePerm).every((row) => new Set(row).size === 3),
+  "E has no headlights and no bars"
+);
+assert(PLL_KNOWN_CASES.filter((c) => c.id === "jb" || c.id === "ja").length === 2, "Jb and Ja both stay");
 for (const c of [ra, rb]) {
   const held = solvedFacelets();
   applyAlg(held, knownPllSetupAlg(c));
@@ -1115,9 +1145,52 @@ for (const c of [ra, rb]) {
   assert(sameDirectedCycle(c.edges.cycle, cycles.edges), `${c.short} edge arrows match the held cube`);
   assert(sameDirectedCycle(c.corners.cycle, cycles.corners), `${c.short} corner arrows match the held cube`);
 }
-assert(mainSrc.includes("F, Y, Jb, Ja, Na, T, Ra, Rb, Ua, Ub, H, Z"), "2-look copy lists Ja beside Jb among cases I know");
-assert(mainSrc.includes("F, Y, Jb, Ja, Na, T, Ra, Rb, Ua, Ub, H, and Z"), "cases I know copy lists Ja beside Jb");
-assert(htmlSrc.includes("Twelve full PLL cases"), "known PLL lead counts twelve cases");
+function edgesMatchCentres(facelets) {
+  return (
+    sticker(facelets, "F", 1) === "blue" &&
+    sticker(facelets, "R", 1) === "red" &&
+    sticker(facelets, "B", 1) === "green" &&
+    sticker(facelets, "L", 1) === "orange"
+  );
+}
+for (const c of [aa, ab]) {
+  const held = solvedFacelets();
+  applyAlg(held, knownPllSetupAlg(c));
+  assert(edgesMatchCentres(held), `${c.short} leaves the edges solved`);
+  assert(sameDirectedCycle(c.corners.cycle, heldCycles(held).corners), `${c.short} corner arrows match the held cube`);
+}
+{
+  const held = solvedFacelets();
+  applyAlg(held, knownPllSetupAlg(ePerm));
+  assert(edgesMatchCentres(held), "E leaves the edges solved");
+  const { cornerLoc } = (() => {
+    const corners = {
+      URF: [["R", 0], ["F", 2]],
+      UBR: [["B", 0], ["R", 2]],
+      ULB: [["L", 0], ["B", 2]],
+      UFL: [["F", 0], ["L", 2]],
+    };
+    const solved = solvedFacelets();
+    const homeCorner = {};
+    for (const [slot, stickers] of Object.entries(corners)) {
+      homeCorner[stickers.map(([face, i]) => sticker(solved, face, i)).sort().join("/")] = slot;
+    }
+    const loc = {};
+    for (const [slot, stickers] of Object.entries(corners)) {
+      const key = stickers.map(([face, i]) => sticker(held, face, i)).sort().join("/");
+      loc[homeCorner[key]] = slot;
+    }
+    return { cornerLoc: loc };
+  })();
+  const pairs = Object.keys(cornerLoc)
+    .filter((home) => cornerLoc[home] !== home && home < cornerLoc[home])
+    .map((home) => `${home}-${cornerLoc[home]}`)
+    .sort();
+  assert(pairs.join(" ") === "UBR-URF UFL-ULB", "E swaps the two opposite corner pairs");
+}
+assert(mainSrc.includes("F, Y, Jb, Ja, Na, T, Ra, Rb, Ua, Ub, H, Z, Aa, Ab, E"), "2-look copy lists Aa, Ab, and E among cases I know");
+assert(mainSrc.includes("F, Y, Jb, Ja, Na, T, Ra, Rb, Ua, Ub, H, Z, Aa, Ab, and E"), "cases I know copy lists Aa, Ab, and E");
+assert(htmlSrc.includes("Fifteen full PLL cases"), "known PLL lead counts fifteen cases");
 assert(mainSrc.includes("Ja"), "Ja is named in the PLL copy");
 assert(htmlSrc.includes('id="pll-known-list"'), "known PLL is a list of cases");
 assert(!htmlSrc.includes("btn-pll-known-apply"), "known PLL does not apply onto the cube");

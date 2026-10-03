@@ -75,7 +75,8 @@ function stickerRect(x, y, w, h, color) {
 
 /**
  * Top-down PLL recognition diagram.
- * sides.* are visual order: back left→right, left/right back→front, front left→right.
+ * sides.B is back left→right, sides.R is back→front, sides.F is front left→right.
+ * sides.L is cubejs order L[2], L[1], L[0] (front, edge, back), drawn with index 0 on the front row.
  * edges.swaps / corners.swaps are 2-cycles. edges.cycle / corners.cycle are ordered cycles.
  */
 function recognitionSvg(diagram) {
@@ -111,7 +112,8 @@ function recognitionSvg(diagram) {
   });
   L.forEach((color, i) => {
     const x = leftX;
-    const y = sideOnRow(i);
+    // Index 0 is the front sticker (cubejs L[2]); the back row is the top of the diagram.
+    const y = sideOnRow(2 - i);
     parts.push(stickerRect(x, y, side, side, color));
     placed.push({ face: "L", i, x, y, w: side, h: side, color });
   });

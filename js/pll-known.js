@@ -148,7 +148,7 @@ export const PLL_KNOWN_CASES = [
     alg: "R' U2 R U2 R' F R U R' U' R' F' R2",
     algDisplay: "(R' U2 R U2) R' F (R U R' U') R' F' R2",
     steps:
-      "Headlights on the front: the two corner stickers match and the edge between them does not. One pair sits on the left, toward the back, away from those headlights. Not Ra — there the pair faces you — and not T, which has two pairs.\nTurn only U until the headlights are at the front and the pair is on the left toward the back.\nDo the Rb-perm.",
+      "Headlights on the front: the two corner stickers match and the edge between them does not. One pair sits on the left, toward the front, touching those headlights. Not Ra — there the pair faces you — and not T, which has two pairs.\nTurn only U until the headlights are at the front and the pair is on the left toward the front.\nDo the Rb-perm.",
     sides: {
       B: ["blue", "red", "green"],
       L: ["green", "green", "red"],
@@ -229,6 +229,60 @@ export const PLL_KNOWN_CASES = [
     },
     edges: { swaps: [["UF", "UB"]] },
     corners: { cycle: ["URF", "UFL", "ULB", "UBR"] },
+  },
+  {
+    id: "aa",
+    short: "Aa",
+    name: "Aa-perm",
+    cue: "Headlights back, block front-left",
+    alg: "x R' U R' D2 R U' R' D2 R2 x'",
+    algDisplay: "x (R' U R') D2 (R U' R') D2 R2 x'",
+    steps:
+      "Headlights on the back: the two corner stickers match and the edge between them does not. The block is the front-left corner — a pair on the front, on the left, and a pair on the left toward the front, meeting there. The top is yellow and every edge already matches its centre.\nNot Ab — there the headlights are on the right.\nTurn only U until the headlights are at the back and that block is front-left.\nDo the Aa-perm. It starts with x.",
+    sides: {
+      B: ["red", "green", "red"],
+      L: ["orange", "orange", "green"],
+      R: ["blue", "red", "orange"],
+      F: ["blue", "blue", "green"],
+    },
+    edges: {},
+    corners: { cycle: ["UBR", "ULB", "URF"] },
+  },
+  {
+    id: "ab",
+    short: "Ab",
+    name: "Ab-perm",
+    cue: "Headlights on the right, block front-left",
+    alg: "x R2 D2 R U R' D2 R U' R x'",
+    algDisplay: "x R2 D2 (R U R') D2 (R U' R) x'",
+    steps:
+      "Headlights on the right: the two corner stickers match and the edge between them does not. The block is the front-left corner — a pair on the front, on the left, and a pair on the left toward the front. The top is yellow and every edge already matches its centre.\nNot Aa — there the headlights are at the back.\nTurn only U until the headlights are on the right and that block is front-left.\nDo the Ab-perm. It starts with x.",
+    sides: {
+      B: ["blue", "green", "orange"],
+      L: ["orange", "orange", "red"],
+      R: ["green", "red", "green"],
+      F: ["blue", "blue", "red"],
+    },
+    edges: {},
+    corners: { cycle: ["UBR", "URF", "ULB"] },
+  },
+  {
+    id: "e",
+    short: "E",
+    name: "E-perm",
+    cue: "No headlights, edges solved",
+    alg: "x' R U' R' D R U R' D' R U R' D R U' R' D' x",
+    algDisplay: "x' (R U' R') D (R U R') D' (R U R') D (R U' R') D' x",
+    steps:
+      "No headlights and no bars. The top is yellow. Every edge already matches its centre, and every side is three different colours — the corners swap in two opposite pairs.\nTurn only U until it matches the picture.\nDo the E-perm. It starts with x'.",
+    sides: {
+      B: ["orange", "green", "red"],
+      L: ["green", "orange", "blue"],
+      R: ["blue", "red", "green"],
+      F: ["orange", "blue", "red"],
+    },
+    edges: {},
+    corners: { swaps: [["UBR", "URF"], ["UFL", "ULB"]] },
   },
 ];
 

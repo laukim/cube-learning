@@ -1,9 +1,8 @@
 /**
  * PLL case trainer for the timer page.
- * Cases and moves come from Cases I know (pll-known.js) and the 2-look set.
- * T, Y, Ub, H, and Z are the same alg in both. 2-look Ua is a different alg
- * from Cases I know Ua, so it is its own case (Ua₂).
- * Diagrams are the in-app recognition drawings.
+ * Cases come from Cases I know (pll-known.js). T, Y, Ub, H, and Z use the
+ * same moves as 2-look. The one Ua chip uses the 2-look Ua (PLL_U), not the
+ * different Cases I know Ua. Diagrams are the in-app recognition drawings.
  */
 
 import { invertAlgNotation } from "./alg.js";
@@ -16,9 +15,9 @@ export const PLL_TRAINER_CASES_KEY = "cube-coach-pll-trainer-cases";
 export const PLL_TRAINER_TIMES_KEY = "cube-coach-pll-trainer-times";
 export const PLL_TRAINER_MAX = 500;
 
-/** 2-look order. ua2 is PLL_U; the others reuse the Cases I know algs. */
-export const TWO_LOOK_CASE_IDS = ["t", "y", "ua2", "ub", "h", "z"];
-const TWO_LOOK_SHARED = new Set(["t", "y", "ub", "h", "z"]);
+/** 2-look order. Ua is PLL_U, not the Cases I know Ua. */
+export const TWO_LOOK_CASE_IDS = ["t", "y", "ua", "ub", "h", "z"];
+const TWO_LOOK_SHARED = new Set(TWO_LOOK_CASE_IDS);
 
 /**
  * Side colours after the 2-look Ua inverse, in diagram order
@@ -32,24 +31,17 @@ export const TWO_LOOK_UA_SIDES = {
   F: ["blue", "blue", "blue"],
 };
 
-const TWO_LOOK_UA = {
-  id: "ua2",
-  short: "Ua",
-  badge: "2",
-  name: "Ua-perm",
-  cue: "Solved bar on the front",
-  note: "2-look Ua. Cases I know uses a different Ua.",
-  alg: PLL_U.alg,
-  algDisplay: PLL_U.alg,
-  set: "two",
-  diagram: {
+const TWO_LOOK_UA_CUE = "Solved bar on the front";
+
+function twoLookUaDiagram() {
+  return {
     type: "pll-recog",
-    caption: "Ua · 2-look · solved bar on the front · back ↑",
+    caption: `Ua · ${TWO_LOOK_UA_CUE} · back ↑`,
     sides: TWO_LOOK_UA_SIDES,
     edges: { cycle: ["UR", "UL", "UB"] },
     corners: {},
-  },
-};
+  };
+}
 
 function browserStore() {
   try {
@@ -68,17 +60,18 @@ function escapeHtml(value) {
 }
 
 function knownTrainerCase(pllCase) {
+  const shared = TWO_LOOK_SHARED.has(pllCase.id);
+  const useTwoLookUa = pllCase.id === "ua";
   return {
     id: pllCase.id,
     short: pllCase.short,
-    badge: "",
     name: pllCase.name,
-    cue: pllCase.cue,
+    cue: useTwoLookUa ? TWO_LOOK_UA_CUE : pllCase.cue,
     note: "",
-    alg: pllCase.alg,
-    algDisplay: pllCase.algDisplay || pllCase.alg,
-    set: TWO_LOOK_SHARED.has(pllCase.id) ? "both" : "known",
-    diagram: knownPllDiagram(pllCase),
+    alg: useTwoLookUa ? PLL_U.alg : pllCase.alg,
+    algDisplay: useTwoLookUa ? PLL_U.alg : pllCase.algDisplay || pllCase.alg,
+    set: shared ? "both" : "known",
+    diagram: useTwoLookUa ? twoLookUaDiagram() : knownPllDiagram(pllCase),
   };
 }
 
@@ -95,7 +88,7 @@ export function listPllTrainerCases() {
     seen.add(pllCase.id);
     ordered.push(pllCase);
   };
-  for (const id of TWO_LOOK_CASE_IDS) add(id === "ua2" ? TWO_LOOK_UA : byId.get(id));
+  for (const id of TWO_LOOK_CASE_IDS) add(byId.get(id));
   for (const pllCase of known) add(pllCase);
   cachedCases = ordered;
   return cachedCases;
@@ -107,7 +100,11 @@ export function trainerCaseById(id) {
 
 export function caseMark(entry) {
   if (!entry) return "";
-  return entry.badge ? `${entry.short}₂` : entry.short;
+  return entry.short || "";
+}
+
+function canonicalCaseId(id) {
+  return id === "ua2" ? "ua" : id;
 }
 
 export function caseSetupMoves(alg) {
@@ -133,7 +130,7 @@ export function normalizeSelectedIds(raw) {
   if (!Array.isArray(raw)) return [...TWO_LOOK_CASE_IDS];
   const ids = [];
   for (const id of raw) {
-    const key = String(id);
+    const key = canonicalCaseId(String(id));
     if (valid.has(key) && !ids.includes(key)) ids.push(key);
   }
   return ids;
@@ -179,16 +176,15 @@ function normalizePllRecord(row, index) {
   if (!row || typeof row !== "object") return null;
   const ms = Number(row.ms);
   if (!Number.isFinite(ms) || ms < 0) return null;
-  const caseId = String(row.caseId || "");
+  const caseId = canonicalCaseId(String(row.caseId || ""));
   if (!caseId) return null;
   return {
     id: String(row.id || `p-${index}-${ms}`),
     ms,
     at: Number(row.at) || 0,
     caseId,
-    short: String(row.short || caseId),
+    short: caseId === "ua" ? "Ua" : String(row.short || caseId),
     name: String(row.name || ""),
-    badge: String(row.badge || ""),
   };
 }
 
@@ -222,10 +218,9 @@ export function addPllTrainerTime(entry, store = browserStore()) {
     id: String(entry.id || `p-${Date.now()}-${records.length}`),
     ms,
     at: Number(entry.at) || Date.now(),
-    caseId,
+    caseId: canonicalCaseId(caseId),
     short: String(entry.short || caseId),
     name: String(entry.name || ""),
-    badge: String(entry.badge || ""),
   });
   return savePllTrainerTimes(records, store);
 }
@@ -251,7 +246,6 @@ export function summarizePllAttempts(records) {
         caseId: row.caseId,
         short: row.short,
         name: row.name,
-        badge: row.badge || "",
         count: 0,
         best: Infinity,
         sum: 0,
@@ -271,9 +265,7 @@ export function summarizePllAttempts(records) {
 function chipHtml(pllCase, selected, currentId) {
   const on = selected.has(pllCase.id);
   const current = pllCase.id === currentId;
-  const label = pllCase.badge
-    ? `${escapeHtml(pllCase.short)}<sub>${escapeHtml(pllCase.badge)}</sub>`
-    : escapeHtml(pllCase.short);
+  const label = escapeHtml(pllCase.short);
   const title = pllCase.note ? `${pllCase.name}. ${pllCase.note}` : `${pllCase.name}. ${pllCase.cue}`;
   return `<button type="button" class="pll-case-chip${on ? " is-on" : ""}${current ? " is-current" : ""}" data-pll-case="${escapeHtml(pllCase.id)}" aria-pressed="${on ? "true" : "false"}" title="${escapeHtml(title)}">${label}</button>`;
 }
@@ -298,9 +290,7 @@ export function renderTrainerCase(pllCase) {
   if (!pllCase) {
     return `<p class="pll-trainer-empty">Select at least one PLL case.</p>`;
   }
-  const title = pllCase.badge
-    ? `${escapeHtml(pllCase.short)}<sub>${escapeHtml(pllCase.badge)}</sub>`
-    : escapeHtml(pllCase.short);
+  const title = escapeHtml(pllCase.short);
   const note = pllCase.note ? `<p class="pll-trainer-note">${escapeHtml(pllCase.note)}</p>` : "";
   return `<div class="pll-trainer-diagram">${renderCaseDiagram(pllCase.diagram)}</div>
     <div class="pll-trainer-copy">

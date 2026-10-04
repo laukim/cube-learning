@@ -1574,23 +1574,28 @@ const pllTap = applySplitTap({ mode: TIMER_MODE_PLL, marks: [], elapsed: 1800, l
 assert(pllTap.action === "stop", "PLL mode records one time and stops");
 
 const pllCases = listPllTrainerCases();
-assert(pllCases.length === PLL_KNOWN_CASES.length + 1, "trainer adds the 2-look Ua beside Cases I know");
+assert(pllCases.length === PLL_KNOWN_CASES.length, "trainer has one chip per known case");
+assert(pllCases.filter((c) => c.short === "Ua").length === 1, "Ua is one case");
+assert(!pllCases.some((c) => c.id === "ua2"), "there is no second Ua");
+const knownUa = PLL_KNOWN_CASES.find((c) => c.id === "ua");
 for (const c of PLL_KNOWN_CASES) {
   const row = trainerCaseById(c.id);
-  assert(row && row.alg === c.alg && row.diagram.type === "pll-recog", `${c.short} keeps its alg and diagram`);
+  assert(row && row.diagram.type === "pll-recog", `${c.short} keeps an in-app diagram`);
+  if (c.id === "ua") continue;
+  assert(row.alg === c.alg, `${c.short} keeps its alg`);
 }
-const ua2 = trainerCaseById("ua2");
-const fullUa = trainerCaseById("ua");
-assert(ua2.alg === PLL_U.alg && ua2.alg !== fullUa.alg, "Ua₂ is the 2-look Ua, not the Cases I know Ua");
+const trainerUa = trainerCaseById("ua");
+assert(trainerUa.alg === PLL_U.alg && trainerUa.alg !== knownUa.alg, "the one Ua chip uses the 2-look alg");
+assert(trainerUa.short === "Ua" && !trainerUa.short.includes("2"), "Ua is not labelled Ua2");
 assert(trainerCaseById("t").alg === PLL_T.alg && trainerCaseById("ub").alg === PLL_KNOWN_CASES.find((c) => c.id === "ub").alg, "shared cases keep the 2-look alg");
-assert(sameIdSet(presetIds("two"), TWO_LOOK_CASE_IDS), "2-look preset is T Y Ua₂ Ub H Z");
-assert(presetIds("known").includes("ua") && !presetIds("known").includes("ua2"), "Cases I know preset uses full Ua");
-assert(presetIds("all").includes("ua") && presetIds("all").includes("ua2") && presetIds("all").includes("gd"), "all preset includes both Ua cases");
+assert(sameIdSet(presetIds("two"), TWO_LOOK_CASE_IDS), "2-look preset is T Y Ua Ub H Z");
+assert(presetIds("known").includes("ua") && !presetIds("known").includes("ua2") && !presetIds("all").includes("ua2"), "presets do not add a second Ua");
+assert(presetIds("all").includes("ua") && presetIds("all").includes("gd"), "all preset includes Ua once and the rest of the cases");
 assert(presetIds("none").length === 0, "none preset is empty");
 
 const selStore = memoryStore();
 assert(sameIdSet(loadPllSelection(selStore), TWO_LOOK_CASE_IDS), "PLL trainer starts on the 2-look set");
-assert(sameIdSet(savePllSelection(["ua", "nope", "ua", "t"], selStore), ["ua", "t"]), "selection keeps each real case once");
+assert(sameIdSet(savePllSelection(["ua", "nope", "ua", "ua2", "t"], selStore), ["ua", "t"]), "an old second Ua selection collapses to the one Ua");
 assert(sameIdSet(loadPllSelection(selStore), ["ua", "t"]), "selection is remembered");
 assert(savePllSelection([], selStore).length === 0 && loadPllSelection(selStore).length === 0, "clearing the selection stays empty");
 selStore.setItem(PLL_TRAINER_CASES_KEY, "{");
@@ -1600,9 +1605,9 @@ assert(pickTrainerCase(pllCases, []) == null, "no selected cases means no case t
 assert(pickTrainerCase(pllCases, ["t", "y"], { previousId: "t", random: () => 0 }).id === "y", "the next case is another selected one");
 assert(pickTrainerCase(pllCases, ["t"], { previousId: "t", random: () => 0.4 }).id === "t", "one selected case can come up again");
 
-const ua2Cube = solvedFacelets();
-applyAlg(ua2Cube, invertAlg(ua2.alg));
-const faceRow = (face) => getFace(ua2Cube, face).slice(0, 3);
+const uaCube = solvedFacelets();
+applyAlg(uaCube, invertAlg(trainerUa.alg));
+const faceRow = (face) => getFace(uaCube, face).slice(0, 3);
 const mapped = {
   F: faceRow("F"),
   R: faceRow("R").slice().reverse(),
@@ -1610,19 +1615,20 @@ const mapped = {
   L: faceRow("L").slice().reverse(),
 };
 for (const face of ["F", "R", "B", "L"]) {
-  assert(mapped[face].join() === ua2.diagram.sides[face].join(), `2-look Ua ${face} diagram matches the cube`);
+  assert(mapped[face].join() === trainerUa.diagram.sides[face].join(), `Ua ${face} diagram matches the 2-look cube`);
 }
-assert(sticker(ua2Cube, "F", 1) === "blue", "2-look Ua bar matches the front centre");
+assert(mapped.F.join() !== knownUa.sides.F.join(), "Ua diagram is not the Cases I know picture");
+assert(sticker(uaCube, "F", 1) === "blue", "Ua bar matches the front centre");
 assert(
-  sticker(ua2Cube, "R", 1) === "green" && sticker(ua2Cube, "L", 1) === "red" && sticker(ua2Cube, "B", 1) === "orange",
-  "2-look Ua cycles UR, UL, and UB"
+  sticker(uaCube, "R", 1) === "green" && sticker(uaCube, "L", 1) === "red" && sticker(uaCube, "B", 1) === "orange",
+  "Ua cycles UR, UL, and UB"
 );
-assert(ua2.diagram.edges.cycle.join() === "UR,UL,UB", "2-look Ua arrows follow those pieces");
+assert(trainerUa.diagram.edges.cycle.join() === "UR,UL,UB", "Ua arrows follow those pieces");
 const fromSolved = solvedFacelets();
-applyAlg(fromSolved, caseSetupMoves(ua2.alg));
+applyAlg(fromSolved, caseSetupMoves(trainerUa.alg));
 assert(getFace(fromSolved, "F").slice(0, 3).join() === "blue,blue,blue", "the setup from solved matches the picture");
-applyAlg(fromSolved, ua2.alg);
-assert(isSolved(fromSolved), "doing 2-look Ua from that picture solves the cube");
+applyAlg(fromSolved, trainerUa.alg);
+assert(isSolved(fromSolved), "doing the 2-look Ua from that picture solves the cube");
 
 const pllTimeStore = memoryStore();
 addPracticeTime({ id: "solve", ms: 20000, at: 1, scramble: "R U" }, pllTimeStore);
@@ -1634,20 +1640,22 @@ const pllList = renderPllTimesList(loadPllTrainerTimes(pllTimeStore));
 assert(pllList.includes("T-perm") && pllList.includes("1.80") && pllList.includes("data-delete"), "the times list shows that case");
 addPllTrainerTime({ id: "p2", ms: 2400, at: 3, caseId: "t", short: "T", name: "T-perm" }, pllTimeStore);
 addPllTrainerTime({ id: "p3", ms: 1500, at: 4, caseId: "ua2", short: "Ua", name: "Ua-perm", badge: "2" }, pllTimeStore);
+assert(loadPllTrainerTimes(pllTimeStore).some((row) => row.caseId === "ua" && row.ms === 1500), "an old Ua2 time is stored as Ua");
 const pllSummary = renderPllCaseSummary(loadPllTrainerTimes(pllTimeStore));
-assert(pllSummary.includes("Ua₂") && pllSummary.includes("1.50") && pllSummary.includes("avg"), "each case keeps its own best and average");
+assert(pllSummary.includes("Ua") && pllSummary.includes("1.50") && pllSummary.includes("avg") && !pllSummary.includes("Ua₂") && !pllSummary.includes("Ua2"), "Ua times stay under the one Ua");
 assert(clearPllTrainerTimes(pllTimeStore).length === 0, "PLL times can be cleared on their own");
 assert(loadPracticeTimes(pllTimeStore).length === 1, "clearing PLL times leaves solve times");
 
-const picker = renderPllCasePicker(["t", "ua2"], "t");
+const picker = renderPllCasePicker(["t", "ua"], "t");
 assert(picker.includes('data-pll-case="t"') && picker.includes("is-current") && picker.includes('aria-pressed="true"'), "the case on the clock is marked in the picker");
-assert(picker.includes('data-pll-case="ua2"') && picker.includes("<sub>2</sub>"), "the picker shows 2-look Ua");
+assert(picker.split('data-pll-case="ua"').length === 2, "Ua is one chip");
+assert(!picker.includes("ua2") && !picker.includes("Ua₂") && !picker.includes("Ua2") && !picker.includes("<sub>"), "the picker does not label a second Ua");
 assert(picker.includes('data-pll-case="f" aria-pressed="false"'), "a case left out stays off");
-assert(picker.split('data-pll-case="t"').length === 2, "each case is one chip");
+assert(picker.split('data-pll-case="t"').length === 2, "each shared case is one chip");
 const jbCard = renderTrainerCase(trainerCaseById("jb"));
 assert(jbCard.includes("Jb-perm") && jbCard.includes("pll-recog-svg") && jbCard.includes("Another case"), "the case card uses the in-app diagram");
-const ua2Card = renderTrainerCase(ua2);
-assert(ua2Card.includes(PLL_U.alg) && ua2Card.includes("pll-recog-svg") && ua2Card.includes("From a solved cube"), "2-look Ua shows its moves and a setup");
+const uaCard = renderTrainerCase(trainerUa);
+assert(uaCard.includes(PLL_U.alg) && uaCard.includes("pll-recog-svg") && uaCard.includes(">Ua<") && !uaCard.includes("Ua₂"), "Ua shows the 2-look moves");
 assert(renderTrainerCase(null).includes("Select at least one PLL case"), "an empty set asks for a case");
 
 const pllStats = renderStats(computeStats([{ id: "p", ms: 1800, at: 1 }]), null, { stages: false });

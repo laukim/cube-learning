@@ -16,7 +16,7 @@ import {
   sameIdSet,
   savePllSelection,
   toggleSelectedId,
-} from "./pll-case-trainer.js";
+} from "./pll-case-trainer.js?v=pllua1";
 import { formatClock } from "./solve-timer.js?v=splits5";
 
 export const PRACTICE_TIMES_KEY = "cube-coach-practice-times";

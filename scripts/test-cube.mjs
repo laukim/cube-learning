@@ -989,8 +989,8 @@ const {
 } = await import("../js/pll-known.js");
 const { PLL_U, PLL_UB } = await import("../js/pll-trainer.js");
 assert(
-  PLL_KNOWN_CASES.map((c) => c.short).join(" ") === "F Y Jb Ja Na T Ra Rb Ua Ub H Z Aa Ab E Nb V Ga Gb Gc Gd",
-  "known PLL keeps the earlier cases and adds Nb, V, and the four G perms"
+  PLL_KNOWN_CASES.map((c) => c.short).join(" ") === "Aa Ab F Ga Gb Gc Gd Ja Jb Ra Rb T Ua Ub V Y E Z H Na Nb",
+  "known PLL order is probability, then family, then a b c d"
 );
 const ja = PLL_KNOWN_CASES.find((c) => c.id === "ja");
 assert(ja && ja.short === "Ja" && ja.name === "Ja-perm", "Ja sits beside Jb");
@@ -1188,8 +1188,8 @@ for (const c of [aa, ab]) {
     .sort();
   assert(pairs.join(" ") === "UBR-URF UFL-ULB", "E swaps the two opposite corner pairs");
 }
-assert(mainSrc.includes("F, Y, Jb, Ja, Na, T, Ra, Rb, Ua, Ub, H, Z, Aa, Ab, E, Nb, V, Ga, Gb, Gc, Gd"), "2-look copy lists the G perms, V, and Nb among cases I know");
-assert(mainSrc.includes("F, Y, Jb, Ja, Na, T, Ra, Rb, Ua, Ub, H, Z, Aa, Ab, E, Nb, V, Ga, Gb, Gc, and Gd"), "cases I know copy lists the G perms, V, and Nb");
+assert(mainSrc.includes("Aa, Ab, F, Ga, Gb, Gc, Gd, Ja, Jb, Ra, Rb, T, Ua, Ub, V, Y, E, Z, H, Na, Nb"), "2-look copy lists Cases I know in probability order");
+assert(mainSrc.includes("Aa, Ab, F, Ga, Gb, Gc, Gd, Ja, Jb, Ra, Rb, T, Ua, Ub, V, Y, E, Z, H, Na, and Nb"), "cases I know copy lists cases in probability order");
 assert(htmlSrc.includes("Twenty-one full PLL cases"), "known PLL lead counts twenty-one cases");
 const nb = PLL_KNOWN_CASES.find((c) => c.id === "nb");
 const vPerm = PLL_KNOWN_CASES.find((c) => c.id === "v");

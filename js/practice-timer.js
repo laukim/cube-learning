@@ -1,4 +1,22 @@
 import { randomScrambleMoves } from "./cube.js?v=timer4";
+import {
+  addPllTrainerTime,
+  caseMark,
+  clearPllTrainerTimes,
+  deletePllTrainerTime,
+  listPllTrainerCases,
+  loadPllSelection,
+  loadPllTrainerTimes,
+  pickTrainerCase,
+  presetIds,
+  renderPllCasePicker,
+  renderPllCaseSummary,
+  renderPllTimesList,
+  renderTrainerCase,
+  sameIdSet,
+  savePllSelection,
+  toggleSelectedId,
+} from "./pll-case-trainer.js";
 import { formatClock } from "./solve-timer.js?v=splits5";
 
 export const PRACTICE_TIMES_KEY = "cube-coach-practice-times";
@@ -8,6 +26,8 @@ export const PRACTICE_CHART_WINDOW_KEY = "cube-coach-practice-chart-window";
 export const PRACTICE_MAX = 500;
 export const TIMER_MODE_SINGLE = "single";
 export const TIMER_MODE_SPLITS = "splits";
+export const TIMER_MODE_PLL = "pll";
+const TIMER_MODES = new Set([TIMER_MODE_SINGLE, TIMER_MODE_SPLITS, TIMER_MODE_PLL]);
 export const SPLIT_BOUNCE_MS = 150;
 /** Chart window sizes; 0 = all solves in the session. */
 export const CHART_WINDOW_OPTIONS = [25, 50, 100, 0];
@@ -96,11 +116,11 @@ export function normalizeSplits(raw) {
 
 export function loadTimerMode(store = browserStore()) {
   const raw = store?.getItem?.(PRACTICE_MODE_KEY);
-  return raw === TIMER_MODE_SPLITS ? TIMER_MODE_SPLITS : TIMER_MODE_SINGLE;
+  return TIMER_MODES.has(raw) ? raw : TIMER_MODE_SINGLE;
 }
 
 export function saveTimerMode(mode, store = browserStore()) {
-  const value = mode === TIMER_MODE_SPLITS ? TIMER_MODE_SPLITS : TIMER_MODE_SINGLE;
+  const value = TIMER_MODES.has(mode) ? mode : TIMER_MODE_SINGLE;
   try {
     store?.setItem?.(PRACTICE_MODE_KEY, value);
   } catch {
@@ -566,13 +586,15 @@ export function bindChartInteract(root) {
   return hide;
 }
 
-export function renderProgressChart(records, { width, height, windowSize = DEFAULT_CHART_WINDOW, enlarged = false } = {}) {
+export function renderProgressChart(records, { width, height, windowSize = DEFAULT_CHART_WINDOW, enlarged = false, emptyLabel = "" } = {}) {
   const all = Array.isArray(records) ? records : [];
   const { records: windowed, startIndex } = sliceChartRecords(all, windowSize);
   const rows = chartRows(windowed);
   const times = rows.map((row) => row.ms);
   if (times.length < 2) {
-    return `<div class="timer-chart-empty">Solve twice and a progress chart appears here — singles, ao5–ao100, and Cross / F2L times.</div>`;
+    const copy =
+      emptyLabel || "Solve twice and a progress chart appears here — singles, ao5–ao100, and Cross / F2L times.";
+    return `<div class="timer-chart-empty">${copy}</div>`;
   }
 
   const size = enlarged ? ENLARGED_CHART_SIZE : DEFAULT_CHART_SIZE;
@@ -812,7 +834,7 @@ export function renderTimesList(records) {
   return `<ol class="timer-times-list">${items}</ol>`;
 }
 
-export function renderStats(stats, previous = null, { splitShift = false } = {}) {
+export function renderStats(stats, previous = null, { splitShift = false, stages = true } = {}) {
   const crossNow = stageMean(stats.splits, "cross");
   const f2lNow = stageMean(stats.splits, "f2l");
   const finalNow = stageMean(stats.splits, "final");
@@ -826,12 +848,16 @@ export function renderStats(stats, previous = null, { splitShift = false } = {})
     ["Best", dash(stats.best), "timer-stat-best", ""],
     ["Worst", dash(stats.worst), "", ""],
     // Two-column grid: each stage is one row, avg left and best right.
-    ["Cross avg", dash(crossNow), "timer-stat-cross", crossDelta],
-    ["Cross best", dash(stageBest(stats.splits, "cross")), "timer-stat-cross", ""],
-    ["F2L avg", dash(f2lNow), "timer-stat-f2l", f2lDelta],
-    ["F2L best", dash(stageBest(stats.splits, "f2l")), "timer-stat-f2l", ""],
-    ["Final avg", dash(finalNow), "timer-stat-final", finalDelta],
-    ["Final best", dash(stageBest(stats.splits, "final")), "timer-stat-final", ""],
+    ...(stages
+      ? [
+          ["Cross avg", dash(crossNow), "timer-stat-cross", crossDelta],
+          ["Cross best", dash(stageBest(stats.splits, "cross")), "timer-stat-cross", ""],
+          ["F2L avg", dash(f2lNow), "timer-stat-f2l", f2lDelta],
+          ["F2L best", dash(stageBest(stats.splits, "f2l")), "timer-stat-f2l", ""],
+          ["Final avg", dash(finalNow), "timer-stat-final", finalDelta],
+          ["Final best", dash(stageBest(stats.splits, "final")), "timer-stat-final", ""],
+        ]
+      : []),
     ["Trimmed", dash(stats.trimmed), "", ""],
   ];
   const cards = rows
@@ -908,12 +934,15 @@ function isTypingTarget(el) {
 }
 
 function idleStatus(mode) {
-  return mode === TIMER_MODE_SPLITS
-    ? "Space or tap to start · space or tap again at Cross, F2L, then solved"
-    : "Space or tap to start · next scramble appears when you stop";
+  if (mode === TIMER_MODE_SPLITS) {
+    return "Space or tap to start · space or tap again at Cross, F2L, then solved";
+  }
+  if (mode === TIMER_MODE_PLL) return "Space or tap to time this case · another case skips without a time";
+  return "Space or tap to start · next scramble appears when you stop";
 }
 
 function runningStatus(mode, marks = []) {
+  if (mode === TIMER_MODE_PLL) return "Timing this case — space or tap to stop";
   if (mode !== TIMER_MODE_SPLITS) return "Timing — space or tap to stop";
   const next = SPLIT_STEPS[currentSplitIndex(marks)];
   if (next.id === "cross") return "Timing — space or tap when white cross is done";
@@ -941,6 +970,12 @@ export function initPracticeTimer({
   const clearBtn = document.getElementById("timer-clear");
   const splitsEl = document.getElementById("practice-splits");
   const modeBtns = [...document.querySelectorAll("[data-timer-mode]")];
+  const scrambleKicker = document.getElementById("practice-scramble-kicker");
+  const pllCaseEl = document.getElementById("pll-trainer-case");
+  const pllPickEl = document.getElementById("pll-trainer-pick");
+  const pllCasesEl = document.getElementById("pll-trainer-cases");
+  const pllPickLabel = document.getElementById("pll-trainer-pick-label");
+  const pllSummaryEl = document.getElementById("pll-case-summary");
 
   if (!clockBtn || !clockValue) return { refresh() {}, cancel() {} };
 
@@ -957,7 +992,22 @@ export function initPracticeTimer({
     lastSplits: null,
     lastMs: 0,
     chartWindow: loadChartWindow(store),
+    pllSelected: loadPllSelection(store),
+    pllCase: null,
   };
+
+  function pllOn() {
+    return state.mode === TIMER_MODE_PLL;
+  }
+
+  function currentRecords() {
+    return pllOn() ? loadPllTrainerTimes(store) : loadPracticeTimes(store);
+  }
+
+  function statusForIdle() {
+    if (pllOn() && !state.pllCase) return "Select at least one PLL case";
+    return idleStatus(state.mode);
+  }
 
   function setPhase(phase) {
     state.phase = phase;
@@ -969,6 +1019,7 @@ export function initPracticeTimer({
       phase === "running" ? runningLabel : phase === "inspecting" ? "Cancel inspection" : "Start timer"
     );
     syncModeButtons();
+    syncPllLocks();
   }
 
   function setStatus(text) {
@@ -1003,8 +1054,7 @@ export function initPracticeTimer({
   }
 
   function updateBestHighlight() {
-    const show =
-      state.phase === "idle" && isSessionBest(state.lastMs, computeStats(loadPracticeTimes(store)).best);
+    const show = state.phase === "idle" && isSessionBest(state.lastMs, computeStats(currentRecords()).best);
     clockBtn.classList.toggle("is-best", show);
   }
 
@@ -1026,18 +1076,83 @@ export function initPracticeTimer({
     if (announce) setStatus("New scramble");
   }
 
+  function syncPllChrome() {
+    const on = pllOn();
+    if (scrambleEl) scrambleEl.hidden = on;
+    if (scrambleKicker) scrambleKicker.hidden = on;
+    if (pllCaseEl) pllCaseEl.hidden = !on;
+    if (pllPickEl) pllPickEl.hidden = !on;
+    if (pllSummaryEl) pllSummaryEl.hidden = !on;
+    document.body.classList.toggle("timer-pll", on);
+  }
+
+  function syncPllLocks() {
+    const locked = state.phase !== "idle";
+    pllCasesEl?.querySelectorAll("[data-pll-case]").forEach((btn) => {
+      btn.disabled = locked;
+    });
+    pllPickEl?.querySelectorAll("[data-pll-preset]").forEach((btn) => {
+      btn.disabled = locked;
+    });
+    const next = document.getElementById("pll-trainer-next");
+    if (next) next.disabled = locked || !state.pllCase;
+  }
+
+  function paintPllPicker() {
+    if (pllCasesEl) pllCasesEl.innerHTML = renderPllCasePicker(state.pllSelected, state.pllCase?.id || "");
+    if (pllPickLabel) {
+      const n = state.pllSelected.length;
+      pllPickLabel.textContent = n ? `Cases · ${n} on` : "Cases · none on";
+    }
+    pllPickEl?.querySelectorAll("[data-pll-preset]").forEach((btn) => {
+      const ids = presetIds(btn.dataset.pllPreset);
+      const same = Boolean(ids && sameIdSet(ids, state.pllSelected));
+      btn.classList.toggle("is-active", same);
+      btn.setAttribute("aria-pressed", same ? "true" : "false");
+    });
+    syncPllLocks();
+  }
+
+  function paintPllCase() {
+    if (pllCaseEl) pllCaseEl.innerHTML = renderTrainerCase(state.pllCase);
+    paintPllPicker();
+  }
+
+  function dealPllCase() {
+    state.pllCase = pickTrainerCase(listPllTrainerCases(), state.pllSelected, {
+      previousId: state.pllCase?.id || "",
+    });
+    paintPllCase();
+  }
+
+  function setPllSelection(ids) {
+    state.pllSelected = savePllSelection(ids, store);
+    if (!state.pllSelected.includes(state.pllCase?.id)) {
+      state.pllCase = null;
+      dealPllCase();
+    } else {
+      paintPllPicker();
+    }
+    if (pllOn()) setStatus(statusForIdle());
+  }
+
+  function chartOptions(extra = {}) {
+    return {
+      windowSize: state.chartWindow,
+      emptyLabel: pllOn() ? "Time two cases and a progress chart appears here." : "",
+      ...extra,
+    };
+  }
+
   function paintEnlargedChart(records) {
     if (!enlargedEl) return;
-    enlargedEl.innerHTML = renderProgressChart(records, {
-      windowSize: state.chartWindow,
-      enlarged: true,
-    });
+    enlargedEl.innerHTML = renderProgressChart(records, chartOptions({ enlarged: true }));
     bindChartInteract(enlargedEl);
   }
 
   function openEnlargedChart() {
     if (!chartDialog) return;
-    const records = loadPracticeTimes(store);
+    const records = currentRecords();
     const { records: windowed } = sliceChartRecords(records, state.chartWindow);
     if (chartRows(windowed).length < 2) return;
     paintEnlargedChart(records);
@@ -1052,14 +1167,21 @@ export function initPracticeTimer({
   }
 
   function renderRecords() {
-    const records = loadPracticeTimes(store);
+    const records = currentRecords();
     const stats = computeStats(records);
     const previous = records.length > 1 ? computeStats(records.slice(0, -1)) : null;
-    if (timesEl) timesEl.innerHTML = renderTimesList(records);
-    if (statsEl) statsEl.innerHTML = renderStats(stats, previous, { splitShift: Boolean(records.at(-1)?.splits) });
-    if (splitStatsEl) splitStatsEl.innerHTML = renderSplitStats(stats.splits);
+    const pll = pllOn();
+    if (timesEl) timesEl.innerHTML = pll ? renderPllTimesList(records) : renderTimesList(records);
+    if (statsEl) {
+      statsEl.innerHTML = renderStats(stats, previous, {
+        splitShift: Boolean(records.at(-1)?.splits),
+        stages: !pll,
+      });
+    }
+    if (splitStatsEl) splitStatsEl.innerHTML = pll ? "" : renderSplitStats(stats.splits);
+    if (pllSummaryEl) pllSummaryEl.innerHTML = pll ? renderPllCaseSummary(records) : "";
     if (chartEl) {
-      chartEl.innerHTML = renderProgressChart(records, { windowSize: state.chartWindow });
+      chartEl.innerHTML = renderProgressChart(records, chartOptions());
       bindChartInteract(chartEl);
     }
     if (chartDialog?.open) paintEnlargedChart(records);
@@ -1084,7 +1206,7 @@ export function initPracticeTimer({
     state.lastMs = 0;
     paintClock(0);
     updateBestHighlight();
-    setStatus(idleStatus(state.mode));
+    setStatus(statusForIdle());
   }
 
   function tickRunning() {
@@ -1134,12 +1256,39 @@ export function initPracticeTimer({
     cancelTimers();
     setPhase("idle");
     if (ms > 0) {
+      if (pllOn()) {
+        const done = state.pllCase;
+        state.lastSplits = null;
+        state.lastMs = ms;
+        state.marks = [];
+        state.lastTapElapsed = 0;
+        if (done) {
+          addPllTrainerTime(
+            {
+              ms,
+              at: Date.now(),
+              caseId: done.id,
+              short: done.short,
+              name: done.name,
+              badge: done.badge || "",
+            },
+            store
+          );
+        }
+        paintClock(ms);
+        renderRecords();
+        dealPllCase();
+        setStatus(done ? `${caseMark(done)} ${formatClock(ms)}. Next case is ready.` : statusForIdle());
+        return;
+      }
       const splits =
         state.mode === TIMER_MODE_SPLITS && state.marks.length >= SPLIT_STEPS.length - 1
           ? splitDurationsFromMarks(state.marks, ms)
           : null;
       state.lastSplits = splits;
       state.lastMs = ms;
+      state.marks = [];
+      state.lastTapElapsed = 0;
       addPracticeTime({ ms, at: Date.now(), scramble: state.scramble, splits }, store);
       paintClock(ms);
       renderRecords();
@@ -1152,8 +1301,6 @@ export function initPracticeTimer({
           ? `Stopped at ${formatClock(ms)} · ${splitBits}. Scramble ready.`
           : `Stopped at ${formatClock(ms)}. Scramble ready for the next solve.`
       );
-      state.marks = [];
-      state.lastTapElapsed = 0;
     } else {
       state.lastSplits = null;
       state.lastMs = 0;
@@ -1165,6 +1312,10 @@ export function initPracticeTimer({
 
   function toggle() {
     if (!isActive()) return;
+    if (pllOn() && state.phase === "idle" && !state.pllCase) {
+      setStatus("Select at least one PLL case");
+      return;
+    }
     if (state.phase === "running") {
       const elapsed = Date.now() - state.startedAt;
       const result = applySplitTap({
@@ -1188,11 +1339,22 @@ export function initPracticeTimer({
 
   function setMode(mode) {
     if (state.phase !== "idle") return;
+    if (!TIMER_MODES.has(mode)) return;
     state.mode = saveTimerMode(mode, store);
     state.lastSplits = null;
+    state.lastMs = 0;
     state.marks = [];
+    paintClock(0);
+    syncPllChrome();
     paintSplits(0);
-    setStatus(idleStatus(state.mode));
+    if (pllOn()) {
+      if (!state.pllCase || !state.pllSelected.includes(state.pllCase.id)) dealPllCase();
+      else paintPllCase();
+    } else if (!state.scramble) {
+      newScramble();
+    }
+    renderRecords();
+    setStatus(statusForIdle());
     syncModeButtons();
   }
 
@@ -1223,22 +1385,42 @@ export function initPracticeTimer({
     if (enlargedEl) enlargedEl.innerHTML = "";
   });
   clearBtn?.addEventListener("click", () => {
-    if (!loadPracticeTimes(store).length) return;
-    if (!window.confirm("Clear all timer records?")) return;
-    clearPracticeTimes(store);
+    if (!currentRecords().length) return;
+    const pll = pllOn();
+    if (!window.confirm(pll ? "Clear PLL trainer times?" : "Clear all timer records?")) return;
+    if (pll) clearPllTrainerTimes(store);
+    else clearPracticeTimes(store);
     state.lastSplits = null;
     state.lastMs = 0;
     paintClock(0);
     renderRecords();
     paintSplits(0);
-    setStatus("All times cleared");
+    setStatus(pll ? "PLL times cleared" : "All times cleared");
   });
   timesEl?.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-delete]");
     if (!btn) return;
-    deletePracticeTime(btn.dataset.delete, store);
+    if (pllOn()) deletePllTrainerTime(btn.dataset.delete, store);
+    else deletePracticeTime(btn.dataset.delete, store);
     renderRecords();
     setStatus("Time deleted");
+  });
+  pllCaseEl?.addEventListener("click", (e) => {
+    if (!e.target.closest("#pll-trainer-next")) return;
+    if (state.phase !== "idle") return;
+    dealPllCase();
+    setStatus(state.pllCase ? `Next case · ${caseMark(state.pllCase)}` : statusForIdle());
+  });
+  pllCasesEl?.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-pll-case]");
+    if (!btn || state.phase !== "idle") return;
+    setPllSelection(toggleSelectedId(state.pllSelected, btn.dataset.pllCase));
+  });
+  pllPickEl?.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-pll-preset]");
+    if (!btn || state.phase !== "idle") return;
+    const ids = presetIds(btn.dataset.pllPreset);
+    if (ids) setPllSelection(ids);
   });
   for (const btn of modeBtns) {
     btn.addEventListener("click", () => setMode(btn.dataset.timerMode));
@@ -1259,10 +1441,12 @@ export function initPracticeTimer({
   if (inspectEl) inspectEl.value = String(loadInspectionSeconds(store));
   if (chartWindowEl) chartWindowEl.value = String(state.chartWindow);
   setPhase("idle");
-  newScramble();
+  syncPllChrome();
+  if (pllOn()) dealPllCase();
+  else newScramble();
   paintClock(0);
   renderRecords();
-  setStatus(idleStatus(state.mode));
+  setStatus(statusForIdle());
 
   return {
     refresh: renderRecords,

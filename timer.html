@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0b1210" />
-    <meta name="description" content="3×3 timer and scramble — times stay on this device." />
+    <meta name="description" content="3×3 timer, scramble, and PLL case trainer — times stay on this device." />
     <title>Timer — 3×3 Coach</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -12,7 +12,7 @@
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=finalavg1" />
+    <link rel="stylesheet" href="styles.css?v=plltrain1" />
   </head>
   <body class="timer-page">
     <div class="ambient" aria-hidden="true"></div>
@@ -30,7 +30,7 @@
 
     <main class="timer-page-main">
       <section class="timer-stage" aria-label="Scramble and timer">
-        <p class="practice-scramble-kicker">Scramble</p>
+        <p class="practice-scramble-kicker" id="practice-scramble-kicker">Scramble</p>
         <button type="button" class="practice-scramble" id="practice-scramble" title="Tap for a new scramble" aria-label="Current scramble. Tap for a new scramble.">
           —
         </button>
@@ -41,7 +41,11 @@
           <button type="button" class="timer-mode-btn" data-timer-mode="splits" aria-pressed="false">
             Cross · F2L · Final
           </button>
+          <button type="button" class="timer-mode-btn" data-timer-mode="pll" aria-pressed="false">
+            PLL cases
+          </button>
         </div>
+        <div class="pll-trainer-case" id="pll-trainer-case" hidden></div>
         <button type="button" class="practice-clock" id="practice-clock" data-phase="idle" aria-label="Start timer">
           <span class="practice-clock-value" id="practice-clock-value">0.00</span>
         </button>
@@ -50,6 +54,19 @@
       </section>
 
       <section class="timer-side" aria-label="Solve times and progress">
+        <details class="pll-trainer-pick" id="pll-trainer-pick" open hidden>
+          <summary id="pll-trainer-pick-label">Cases</summary>
+          <div class="pll-trainer-presets" role="group" aria-label="PLL case sets">
+            <button type="button" data-pll-preset="two">2-look</button>
+            <button type="button" data-pll-preset="known">Cases I know</button>
+            <button type="button" data-pll-preset="all">All</button>
+            <button type="button" data-pll-preset="none">None</button>
+          </div>
+          <div id="pll-trainer-cases"></div>
+          <p class="pll-trainer-pick-note">
+            T, Y, Ub, H, and Z are shared with Cases I know. Ua<sub>2</sub> is the 2-look Ua — different moves from Ua.
+          </p>
+        </details>
         <div class="timer-toolbar">
           <label class="timer-inspect">
             Inspection
@@ -75,6 +92,7 @@
         <div class="timer-stats" id="timer-stats"></div>
         <div class="timer-split-stats" id="timer-split-stats"></div>
         <div class="timer-chart" id="timer-chart" aria-live="polite"></div>
+        <div id="pll-case-summary" hidden></div>
         <h2 class="timer-times-title">Times</h2>
         <div class="timer-times" id="timer-times"></div>
       </section>
@@ -93,10 +111,10 @@
 
     <footer class="foot">
       <span>Works offline · times stay on this device</span>
-      <span>Space or tap the clock · in split mode that also records Cross, F2L, then Final</span>
+      <span>Space or tap the clock · splits record Cross, F2L, then Final · PLL cases times one case</span>
     </footer>
 
-    <script type="module" src="js/timer-page.js?v=stagerows1"></script>
+    <script type="module" src="js/timer-page.js?v=plltrain1"></script>
     <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "fd680e4c7f304be681f2fca80e8000e2"}'></script><!-- End Cloudflare Web Analytics -->
   </body>
 </html>

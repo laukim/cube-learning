@@ -989,8 +989,8 @@ const {
 } = await import("../js/pll-known.js");
 const { PLL_U, PLL_UB } = await import("../js/pll-trainer.js");
 assert(
-  PLL_KNOWN_CASES.map((c) => c.short).join(" ") === "F Y Jb Ja Na T Ra Rb Ua Ub H Z Aa Ab E",
-  "known PLL keeps the twelve cases and adds Aa, Ab, and E"
+  PLL_KNOWN_CASES.map((c) => c.short).join(" ") === "F Y Jb Ja Na T Ra Rb Ua Ub H Z Aa Ab E Nb V Ga Gb Gc Gd",
+  "known PLL keeps the earlier cases and adds Nb, V, and the four G perms"
 );
 const ja = PLL_KNOWN_CASES.find((c) => c.id === "ja");
 assert(ja && ja.short === "Ja" && ja.name === "Ja-perm", "Ja sits beside Jb");
@@ -1188,9 +1188,44 @@ for (const c of [aa, ab]) {
     .sort();
   assert(pairs.join(" ") === "UBR-URF UFL-ULB", "E swaps the two opposite corner pairs");
 }
-assert(mainSrc.includes("F, Y, Jb, Ja, Na, T, Ra, Rb, Ua, Ub, H, Z, Aa, Ab, E"), "2-look copy lists Aa, Ab, and E among cases I know");
-assert(mainSrc.includes("F, Y, Jb, Ja, Na, T, Ra, Rb, Ua, Ub, H, Z, Aa, Ab, and E"), "cases I know copy lists Aa, Ab, and E");
-assert(htmlSrc.includes("Fifteen full PLL cases"), "known PLL lead counts fifteen cases");
+assert(mainSrc.includes("F, Y, Jb, Ja, Na, T, Ra, Rb, Ua, Ub, H, Z, Aa, Ab, E, Nb, V, Ga, Gb, Gc, Gd"), "2-look copy lists the G perms, V, and Nb among cases I know");
+assert(mainSrc.includes("F, Y, Jb, Ja, Na, T, Ra, Rb, Ua, Ub, H, Z, Aa, Ab, E, Nb, V, Ga, Gb, Gc, and Gd"), "cases I know copy lists the G perms, V, and Nb");
+assert(htmlSrc.includes("Twenty-one full PLL cases"), "known PLL lead counts twenty-one cases");
+const nb = PLL_KNOWN_CASES.find((c) => c.id === "nb");
+const vPerm = PLL_KNOWN_CASES.find((c) => c.id === "v");
+const ga = PLL_KNOWN_CASES.find((c) => c.id === "ga");
+const gb = PLL_KNOWN_CASES.find((c) => c.id === "gb");
+const gc = PLL_KNOWN_CASES.find((c) => c.id === "gc");
+const gd = PLL_KNOWN_CASES.find((c) => c.id === "gd");
+assert(nb && nb.short === "Nb" && nb.name === "Nb-perm", "Nb is its own case");
+assert(vPerm && vPerm.short === "V" && vPerm.name === "V-perm", "V is its own case");
+assert(ga && gb && gc && gd, "all four G perms are present");
+assert(nb.alg === "R' U R U' R' F' U' F R U R' U' R U' f R f'", "Nb uses the Cube Academy alg");
+assert(nb.algDisplay === "(R' U R U') R' (F' U' F) R U (R' U' R U') f R f'", "Nb display groups the Cube Academy alg");
+assert(vPerm.alg === "R' U R' U' R D' R' D R' U D' R2 U' R2 D R2", "V uses the Cube Academy alg");
+assert(vPerm.algDisplay === "(R' U R' U') R D' R' D R' (U D' R2 U' R2 D R2)", "V display groups the Cube Academy alg");
+assert(ga.alg === "R2 U R' U R' U' R U' R2 D U' R' U R D'", "Ga uses the Cube Academy alg");
+assert(ga.algDisplay === "R2 (U R' U R') U' R U' R2 (D U') R' U R D'", "Ga display groups the Cube Academy alg");
+assert(gb.alg === "D R' U' R U D' R2 U R' U R U' R U' R2", "Gb uses the Cube Academy alg");
+assert(gb.algDisplay === "D R' U' R (U D') R2 U R' U (R U' R U') R2", "Gb display groups the Cube Academy alg");
+assert(gc.alg === "D R2 U' R U' R U R' U R2 D' U R U' R'", "Gc uses the Cube Academy alg");
+assert(gc.algDisplay === "D R2 (U' R U' R) U R' U R2 (D' U) R U' R'", "Gc display groups the Cube Academy alg");
+assert(gd.alg === "R U R' U' D R2 U' R U' R' U R' U R2 D'", "Gd uses the Cube Academy alg");
+assert(gd.algDisplay === "R U R' (U' D) R2 U' R U' (R' U R' U) R2 D'", "Gd display groups the Cube Academy alg");
+assert(nb.sides.F[0] === nb.sides.F[1] && nb.sides.F[1] !== nb.sides.F[2], "Nb opposite corner is to the right of the front bar");
+assert(PLL_KNOWN_CASES.find((c) => c.id === "na").sides.F[1] === PLL_KNOWN_CASES.find((c) => c.id === "na").sides.F[2], "Na bar stays on the right of the front");
+assert(ga.sides.L[0] === ga.sides.L[2] && ga.sides.L[0] !== ga.sides.L[1], "Ga headlights are on the left");
+assert(ga.sides.F[1] === ga.sides.F[2] && ga.sides.F[0] !== ga.sides.F[1], "Ga bar is on the front");
+assert(gc.sides.B[1] === gc.sides.B[2] && gc.sides.B[0] !== gc.sides.B[1], "Gc bar is on the back");
+assert(gd.sides.R[1] === gd.sides.R[2] && gd.sides.R[0] !== gd.sides.R[1], "Gd bar is on the right toward the front");
+assert(gb.sides.R[0] === gb.sides.R[1] && gb.sides.R[1] !== gb.sides.R[2], "Gb block is the back of the right side");
+for (const c of [ga, gb, gc, gd]) {
+  const held = solvedFacelets();
+  applyAlg(held, knownPllSetupAlg(c));
+  const cycles = heldCycles(held);
+  assert(sameDirectedCycle(c.edges.cycle, cycles.edges), `${c.short} edge arrows match the held cube`);
+  assert(sameDirectedCycle(c.corners.swaps[0], cycles.corners), `${c.short} corner swap matches the held cube`);
+}
 assert(mainSrc.includes("Ja"), "Ja is named in the PLL copy");
 assert(htmlSrc.includes('id="pll-known-list"'), "known PLL is a list of cases");
 assert(!htmlSrc.includes("btn-pll-known-apply"), "known PLL does not apply onto the cube");

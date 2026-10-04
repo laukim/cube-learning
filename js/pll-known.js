@@ -4,6 +4,8 @@
  * https://www.cube.academy/pll-algs
  * T, Y, Ub, H, and Z match the 2-look strings in pll-trainer.js.
  * Ua on the full PLL page is a different alg from 2-look Ua.
+ * Ga, Gb, Gc, Gd, V, and Nb use the taught algs and recognition on that page
+ * (case images link to https://www.youtube.com/watch?v=QVXKNAjl_0k).
  * Diagrams are drawn in-app (no remote images).
  */
 
@@ -283,6 +285,114 @@ export const PLL_KNOWN_CASES = [
     },
     edges: {},
     corners: { swaps: [["UBR", "URF"], ["UFL", "ULB"]] },
+  },
+  {
+    id: "nb",
+    short: "Nb",
+    name: "Nb-perm",
+    cue: "Opposite corner to the right of the bar",
+    alg: "R' U R U' R' F' U' F R U R' U' R U' f R f'",
+    algDisplay: "(R' U R U') R' (F' U' F) R U (R' U' R U') f R f'",
+    steps:
+      "Bars and an opposite corner on every side. No headlights. The pattern is the same as Na, but this time the opposite corner sits to the right of the bar.\nNot Na — there that corner sits to the left of the bar.\nTurn only U until the bars point the same way as the picture.\nDo the Nb-perm. It uses a wide f.",
+    sides: {
+      B: ["blue", "green", "green"],
+      L: ["orange", "red", "red"],
+      R: ["red", "orange", "orange"],
+      F: ["blue", "blue", "green"],
+    },
+    edges: { swaps: [["UL", "UR"]] },
+    corners: { swaps: [["ULB", "URF"]] },
+  },
+  {
+    id: "v",
+    short: "V",
+    name: "V-perm",
+    cue: "Looks like A, corners opposite the block",
+    alg: "R' U R' U' R D' R' D R' U D' R2 U' R2 D R2",
+    algDisplay: "(R' U R' U') R D' R' D R' (U D' R2 U' R2 D R2)",
+    steps:
+      "No headlights. It looks like an A-perm from this side — a pair on the front, on the left, and a pair on the left toward the front — but both corners are opposite to that block, so it is not Aa or Ab.\nTurn only U until it matches the picture.\nDo the V-perm.",
+    sides: {
+      B: ["blue", "red", "green"],
+      L: ["orange", "orange", "red"],
+      R: ["red", "green", "orange"],
+      F: ["blue", "blue", "green"],
+    },
+    edges: { swaps: [["UB", "UR"]] },
+    corners: { swaps: [["ULB", "URF"]] },
+  },
+  {
+    id: "ga",
+    short: "Ga",
+    name: "Ga-perm",
+    cue: "Headlights left, bar on the front",
+    alg: "R2 U R' U R' U' R U' R2 D U' R' U R D'",
+    algDisplay: "R2 (U R' U R') U' R U' R2 (D U') R' U R D'",
+    steps:
+      "Headlights on the left: the two corner stickers match and the edge between them does not. A bar sits on the front, on the right, not attached to those headlights.\nNot Gc — there the bar is on the back. Not Gd — there the bar is on the right, toward the front.\nTurn only U until the headlights are on the left and that bar is on the front.\nDo the Ga-perm.",
+    sides: {
+      B: ["green", "blue", "red"],
+      L: ["orange", "green", "orange"],
+      R: ["blue", "orange", "green"],
+      F: ["blue", "red", "red"],
+    },
+    edges: { cycle: ["UB", "UL", "UR", "UF"] },
+    corners: { swaps: [["UBR", "URF"]] },
+  },
+  {
+    id: "gb",
+    short: "Gb",
+    name: "Gb-perm",
+    cue: "Headlights left, block in the back",
+    alg: "D R' U' R U D' R2 U R' U R U' R U' R2",
+    algDisplay: "D R' U' R (U D') R2 U R' U (R U' R U') R2",
+    steps:
+      "Headlights on the left, and a bar that is not attached to them. The block is in the back: a pair on the right, toward the back. From that angle it looks like an H pattern except one corner.\nNot Gd — there the bar is on the right, toward the front.\nTurn only U until the headlights are on the left and that block is in the back.\nDo the Gb-perm. It starts with D.",
+    sides: {
+      B: ["green", "orange", "red"],
+      L: ["orange", "red", "orange"],
+      R: ["blue", "blue", "green"],
+      F: ["blue", "green", "red"],
+    },
+    edges: { cycle: ["UB", "UF", "UR", "UL"] },
+    corners: { swaps: [["UBR", "URF"]] },
+  },
+  {
+    id: "gc",
+    short: "Gc",
+    name: "Gc-perm",
+    cue: "Headlights left, bar on the back",
+    alg: "D R2 U' R U' R U R' U R2 D' U R U' R'",
+    algDisplay: "D R2 (U' R U' R) U R' U R2 (D' U) R U' R'",
+    steps:
+      "Headlights on the left, and the bar is on the back — a pair on the right of the back face, not attached to the headlights.\nNot Ga — there the bar faces you.\nTurn only U until the headlights are on the left and the bar is at the back.\nDo the Gc-perm. It starts with D.",
+    sides: {
+      B: ["green", "red", "red"],
+      L: ["orange", "blue", "orange"],
+      R: ["blue", "orange", "green"],
+      F: ["blue", "green", "red"],
+    },
+    edges: { cycle: ["UB", "UF", "UL", "UR"] },
+    corners: { swaps: [["UBR", "URF"]] },
+  },
+  {
+    id: "gd",
+    short: "Gd",
+    name: "Gd-perm",
+    cue: "Headlights left, bar on the right",
+    alg: "R U R' U' D R2 U' R U' R' U R' U R2 D'",
+    algDisplay: "R U R' (U' D) R2 U' R U' (R' U R' U) R2 D'",
+    steps:
+      "Headlights on the left, and a bar on the right toward the front. The bar is not attached to the headlights.\nNot Gb — there the block is in the back. Not Ga — there the bar faces you.\nTurn only U until the headlights are on the left and that bar is on the right, toward the front.\nDo the Gd-perm.",
+    sides: {
+      B: ["green", "blue", "red"],
+      L: ["orange", "red", "orange"],
+      R: ["blue", "green", "green"],
+      F: ["blue", "orange", "red"],
+    },
+    edges: { cycle: ["UB", "UR", "UL", "UF"] },
+    corners: { swaps: [["UBR", "URF"]] },
   },
 ];
 

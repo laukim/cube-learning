@@ -17,6 +17,7 @@ import {
   savePllSelection,
   toggleSelectedId,
 } from "./pll-case-trainer.js?v=pllreveal2";
+import { formatSolvedAt, normalizeSplits, sortSolves } from "./solve-order.js?v=sync1";
 import { formatClock } from "./solve-timer.js?v=splits5";
 
 export const PRACTICE_TIMES_KEY = "cube-coach-practice-times";
@@ -90,9 +91,7 @@ function readJson(store, key, fallback) {
 export function loadPracticeTimes(store = browserStore()) {
   const parsed = readJson(store, PRACTICE_TIMES_KEY, []);
   if (!Array.isArray(parsed)) return [];
-  return parsed
-    .map((row, i) => normalizeRecord(row, i))
-    .filter(Boolean);
+  return sortSolves(parsed.map((row, i) => normalizeRecord(row, i)).filter(Boolean));
 }
 
 function normalizeRecord(row, index) {
@@ -111,15 +110,6 @@ function normalizeRecord(row, index) {
   const splits = normalizeSplits(row.splits);
   if (splits) record.splits = splits;
   return record;
-}
-
-export function normalizeSplits(raw) {
-  if (!raw || typeof raw !== "object") return null;
-  const cross = Number(raw.cross);
-  const f2l = Number(raw.f2l);
-  const final = Number(raw.final);
-  if (![cross, f2l, final].every((n) => Number.isFinite(n) && n >= 0)) return null;
-  return { cross, f2l, final };
 }
 
 export function loadTimerMode(store = browserStore()) {
@@ -206,7 +196,7 @@ export function renderLiveSplits({ marks = [], elapsed = 0, running = false, spl
 }
 
 export function savePracticeTimes(records, store = browserStore()) {
-  const trimmed = (Array.isArray(records) ? records : []).slice(-PRACTICE_MAX);
+  const trimmed = sortSolves(records).slice(-PRACTICE_MAX);
   try {
     store?.setItem?.(PRACTICE_TIMES_KEY, JSON.stringify(trimmed));
   } catch {
@@ -215,18 +205,25 @@ export function savePracticeTimes(records, store = browserStore()) {
   return trimmed;
 }
 
+function newSolveId() {
+  const rand = Math.random().toString(36).slice(2, 8);
+  return `t-${Date.now().toString(36)}-${rand}`;
+}
+
 export function addPracticeTime(entry, store = browserStore()) {
   const records = loadPracticeTimes(store);
   const ms = Number(entry?.ms);
   if (!Number.isFinite(ms) || ms <= 0) return records;
+  const atNumber = Number(entry?.at);
   const record = {
-    id: String(entry.id || `t-${Date.now()}-${records.length}`),
+    id: String(entry?.id || newSolveId()),
     ms,
-    at: Number(entry.at) || Date.now(),
-    scramble: String(entry.scramble || ""),
+    at: Number.isFinite(atNumber) && atNumber > 0 ? Math.round(atNumber) : Date.now(),
+    scramble: String(entry?.scramble || ""),
   };
-  const splits = normalizeSplits(entry.splits);
+  const splits = normalizeSplits(entry?.splits);
   if (splits) record.splits = splits;
+  if (entry && typeof entry === "object") entry.id = record.id;
   records.push(record);
   return savePracticeTimes(records, store);
 }
@@ -445,7 +442,8 @@ export function computeSplitAverages(records) {
 }
 
 export function computeStats(records) {
-  const times = (records || []).map((r) => r.ms).filter((ms) => Number.isFinite(ms) && ms > 0);
+  const ordered = sortSolves(records).filter((row) => row && typeof row === "object");
+  const times = ordered.map((r) => r.ms).filter((ms) => Number.isFinite(ms) && ms > 0);
   const empty = {
     count: 0,
     mean: null,
@@ -454,9 +452,9 @@ export function computeStats(records) {
     trimmed: null,
     ...emptyWindowStats(),
     splits: null,
-    splitAverages: computeSplitAverages(records),
+    splitAverages: computeSplitAverages(ordered),
   };
-  if (!times.length) return { ...empty, splits: computeSplitStats(records) };
+  if (!times.length) return { ...empty, splits: computeSplitStats(ordered) };
 
   const sorted = [...times].sort((a, b) => a - b);
   return {
@@ -466,8 +464,8 @@ export function computeStats(records) {
     worst: sorted[sorted.length - 1],
     trimmed: times.length >= 3 ? mean(sorted.slice(1, -1)) : null,
     ...computeWindowStats(times),
-    splits: computeSplitStats(records),
-    splitAverages: computeSplitAverages(records),
+    splits: computeSplitStats(ordered),
+    splitAverages: computeSplitAverages(ordered),
   };
 }
 
@@ -625,7 +623,7 @@ export function bindChartInteract(root) {
 }
 
 export function renderProgressChart(records, { width, height, windowSize = DEFAULT_CHART_WINDOW, enlarged = false, emptyLabel = "" } = {}) {
-  const all = Array.isArray(records) ? records : [];
+  const all = sortSolves(records);
   const { records: windowed, startIndex } = sliceChartRecords(all, windowSize);
   const rows = chartRows(windowed);
   const times = rows.map((row) => row.ms);
@@ -839,13 +837,14 @@ function escapeHtml(value) {
 }
 
 export function renderTimesList(records) {
-  if (!records.length) {
+  const ordered = sortSolves(records);
+  if (!ordered.length) {
     return `<p class="timer-times-empty">Your solve times will appear here</p>`;
   }
-  const stats = computeStats(records);
+  const stats = computeStats(ordered);
   const best = stats.best;
   const stageBests = splitBests(stats.splits);
-  const items = [...records]
+  const items = [...ordered]
     .reverse()
     .map((row, i) => {
       const scramble = row.scramble
@@ -857,11 +856,15 @@ export function renderTimesList(records) {
             return `<span class="split-${step.id}${bestCls}"><em>${step.short}</em> ${formatClock(row.splits[step.id])}</span>`;
           }).join("")}</div>`
         : "";
+      const when = formatSolvedAt(row.at);
+      const whenHtml = when
+        ? `<time class="timer-time-when" datetime="${escapeHtml(new Date(row.at).toISOString())}">${escapeHtml(when)}</time>`
+        : "";
       const bestCls = isSessionBest(row.ms, best) ? " is-best" : "";
       return `<li data-id="${escapeHtml(row.id)}">
         <div class="timer-time-row">
-          <span class="timer-time-index">#${records.length - i}</span>
-          <span class="timer-time-ms${bestCls}">${formatClock(row.ms)}</span>
+          <span class="timer-time-index">#${ordered.length - i}</span>
+          <span class="timer-time-ms${bestCls}">${formatClock(row.ms)}${whenHtml}</span>
           <button type="button" class="timer-time-delete" data-delete="${escapeHtml(row.id)}" aria-label="Delete ${formatClock(row.ms)}">×</button>
         </div>
         ${splits}
@@ -996,7 +999,7 @@ export function renderSplitStats(splitStats) {
 }
 
 function isTypingTarget(el) {
-  return Boolean(el?.closest?.("input, select, textarea, [contenteditable=true], dialog"));
+  return Boolean(el?.closest?.("input, select, textarea, [contenteditable=true], dialog, button, a"));
 }
 
 function idleStatus(mode) {
@@ -1019,6 +1022,7 @@ function runningStatus(mode, marks = []) {
 export function initPracticeTimer({
   store = browserStore(),
   isActive = () => false,
+  onRecordsChanged,
 } = {}) {
   const clockBtn = document.getElementById("practice-clock");
   const clockValue = document.getElementById("practice-clock-value");
@@ -1375,7 +1379,10 @@ export function initPracticeTimer({
       state.lastMs = ms;
       state.marks = [];
       state.lastTapElapsed = 0;
-      addPracticeTime({ ms, at: Date.now(), scramble: state.scramble, splits }, store);
+      const record = { ms, at: Date.now(), scramble: state.scramble };
+      if (splits) record.splits = splits;
+      addPracticeTime(record, store);
+      onRecordsChanged?.({ reason: "add", record });
       paintClock(ms);
       renderRecords();
       newScramble();
@@ -1476,11 +1483,18 @@ export function initPracticeTimer({
     if (enlargedEl) enlargedEl.innerHTML = "";
   });
   clearBtn?.addEventListener("click", () => {
-    if (!currentRecords().length) return;
     const pll = pllOn();
-    if (!window.confirm(pll ? "Clear PLL trainer times?" : "Clear all timer records?")) return;
-    if (pll) clearPllTrainerTimes(store);
-    else clearPracticeTimes(store);
+    if (pll) {
+      if (!loadPllTrainerTimes(store).length) return;
+      if (!window.confirm("Clear PLL trainer times?")) return;
+      clearPllTrainerTimes(store);
+    } else {
+      const existing = loadPracticeTimes(store);
+      if (!existing.length) return;
+      if (!window.confirm("Clear all timer records?")) return;
+      clearPracticeTimes(store);
+      onRecordsChanged?.({ reason: "clear", deletedIds: existing.map((row) => row.id) });
+    }
     state.lastSplits = null;
     state.lastMs = 0;
     paintClock(0);
@@ -1491,8 +1505,12 @@ export function initPracticeTimer({
   timesEl?.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-delete]");
     if (!btn) return;
-    if (pllOn()) deletePllTrainerTime(btn.dataset.delete, store);
-    else deletePracticeTime(btn.dataset.delete, store);
+    const id = btn.dataset.delete;
+    if (pllOn()) deletePllTrainerTime(id, store);
+    else {
+      deletePracticeTime(id, store);
+      onRecordsChanged?.({ reason: "delete", id });
+    }
     renderRecords();
     setStatus("Time deleted");
   });

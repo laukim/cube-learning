@@ -1690,6 +1690,7 @@ assert(picker.includes('data-pll-case="t"') && picker.includes("is-current") && 
 assert(picker.split('data-pll-case="ua"').length === 2, "Ua is one chip");
 assert(!picker.includes("ua2") && !picker.includes("Ua₂") && !picker.includes("Ua2") && !picker.includes("<sub>"), "the picker does not label a second Ua");
 assert(picker.includes('data-pll-case="f" aria-pressed="false"'), "a case left out stays off");
+assert(picker.includes(">2-look<") && !picker.includes("Cases I know"), "other cases stay as chips without a Cases I know group");
 assert(picker.split('data-pll-case="t"').length === 2, "each shared case is one chip");
 const jbCase = trainerCaseById("jb");
 const jbCard = renderTrainerCase(jbCase);

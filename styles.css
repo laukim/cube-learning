@@ -2570,7 +2570,8 @@ body.timer-pll .timer-stage {
   opacity: 0.55;
 }
 
-.pll-pick-group + .pll-pick-group {
+.pll-pick-group + .pll-pick-group,
+.pll-pick-group + .pll-pick-chips {
   margin-top: 0.65rem;
 }
 

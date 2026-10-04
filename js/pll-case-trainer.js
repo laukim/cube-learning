@@ -274,15 +274,12 @@ export function renderPllCasePicker(selectedIds, currentId = "") {
   const cases = listPllTrainerCases();
   const byId = new Map(cases.map((c) => [c.id, c]));
   const chips = (ids) => ids.map((id) => chipHtml(byId.get(id), selected, currentId)).join("");
-  const knownOnly = PLL_KNOWN_CASES.map((c) => c.id).filter((id) => !TWO_LOOK_SHARED.has(id));
+  const rest = PLL_KNOWN_CASES.map((c) => c.id).filter((id) => !TWO_LOOK_SHARED.has(id));
   return `<div class="pll-pick-group">
       <p class="pll-pick-label">2-look</p>
       <div class="pll-pick-chips">${chips(TWO_LOOK_CASE_IDS)}</div>
     </div>
-    <div class="pll-pick-group">
-      <p class="pll-pick-label">Cases I know</p>
-      <div class="pll-pick-chips">${chips(knownOnly)}</div>
-    </div>`;
+    <div class="pll-pick-chips">${chips(rest)}</div>`;
 }
 
 export function renderTrainerCase(pllCase) {

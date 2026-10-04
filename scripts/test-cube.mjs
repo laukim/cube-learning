@@ -982,8 +982,11 @@ assert(toAtomics(analyzePll(zCube).hint.alg)[0] === "M'", "Z-perm remaining star
 
 const {
   PLL_KNOWN_CASES,
+  knownPllCasesSorted,
   knownPllDiagram,
   knownPllSetupAlg,
+  setPllKnownSort,
+  getPllKnownSort,
   setPllLook,
   getPllLook,
 } = await import("../js/pll-known.js");
@@ -992,6 +995,34 @@ assert(
   PLL_KNOWN_CASES.map((c) => c.short).join(" ") === "Aa Ab F Ga Gb Gc Gd Ja Jb Ra Rb T Ua Ub V Y E Z H Na Nb",
   "known PLL order is probability, then family, then a b c d"
 );
+assert(getPllKnownSort() === "probability", "probability sort is the default");
+assert(
+  knownPllCasesSorted("probability").map((c) => c.short).join(" ") ===
+    PLL_KNOWN_CASES.map((c) => c.short).join(" "),
+  "probability sort stays the case-list order"
+);
+assert(
+  knownPllCasesSorted("weakest").map((c) => c.short).join(" ") ===
+    "Aa Ab Ra Rb Ja Jb Na F T Y Ua Ub H Z Ga Gb Gc Gd V E Nb",
+  "weakest first puts Na before F, then 2-look, then the probability tail"
+);
+const weakestCases = knownPllCasesSorted("weakest");
+assert(
+  weakestCases.findIndex((c) => c.short === "Na") < weakestCases.findIndex((c) => c.short === "F"),
+  "Na comes before F in weakest first"
+);
+const caseSig = (cases) =>
+  [...cases]
+    .sort((a, b) => a.id.localeCompare(b.id))
+    .map((c) => [c.id, c.alg, c.algDisplay, c.cue, c.steps].join("\n"))
+    .join("\n---\n");
+assert(caseSig(weakestCases) === caseSig(PLL_KNOWN_CASES), "sorting does not change algs, cues, or steps");
+setPllKnownSort("weakest");
+assert(getPllKnownSort() === "weakest" && knownPllCasesSorted()[6].short === "Na", "weakest sort switches on");
+setPllKnownSort("nope");
+assert(getPllKnownSort() === "weakest", "unknown sort is ignored");
+setPllKnownSort("probability");
+assert(getPllKnownSort() === "probability", "probability sort switches back");
 const ja = PLL_KNOWN_CASES.find((c) => c.id === "ja");
 assert(ja && ja.short === "Ja" && ja.name === "Ja-perm", "Ja sits beside Jb");
 assert(ja.alg === "x R2 F R F' R U2 r' U r U2 x'", "Ja uses the Cube Academy alg");
@@ -1228,6 +1259,10 @@ for (const c of [ga, gb, gc, gd]) {
 }
 assert(mainSrc.includes("Ja"), "Ja is named in the PLL copy");
 assert(htmlSrc.includes('id="pll-known-list"'), "known PLL is a list of cases");
+assert(htmlSrc.includes('data-pll-sort="probability"'), "Cases I know can sort by probability");
+assert(htmlSrc.includes('data-pll-sort="weakest"'), "Cases I know can sort weakest first");
+assert(mainSrc.includes("knownPllCasesSorted"), "Cases I know renders the selected sort");
+assert(mainSrc.includes("bylayer-pll-known-sort"), "chosen PLL sort is remembered");
 assert(!htmlSrc.includes("btn-pll-known-apply"), "known PLL does not apply onto the cube");
 assert(mainSrc.includes("pll-ref-open"), "known PLL hides the cube and fills the page");
 assert(!mainSrc.includes("knownPllSetupAlg"), "known PLL does not scramble the cube");

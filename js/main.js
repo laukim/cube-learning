@@ -9,7 +9,7 @@ import {
   solvedFacelets,
 } from "./cube.js";
 import { consumeAlgMove, initAlgProgress, restoreAlgMove } from "./alg-progress.js?v=2look5";
-import { createErnoCube } from "./erno-view.js?v=pllref7";
+import { createErnoCube } from "./erno-view.js?v=pllref8";
 import { analyzeCross, CROSS_TIPS, scrambleCross } from "./cross-trainer.js";
 import { analyzeF2lDrill, countSlotsSolved, F2L_TIPS, getF2lDrillInfo, getF2lGroupFilter, getF2lGroups, f2lRandomPoolSize, popBaselineIds, poppedSolvedSlots, scrambleF2L, shouldFlashPop, solvedSlotIds, stableSolvedSlotIds, setF2lGroupFilter, toggleF2lGroupFilter } from "./f2l-trainer.js?v=f2l18r";
 import { F2L_DRILL_CASES } from "./f2l-cases.js?v=f2l18r";
@@ -17,12 +17,14 @@ import { renderCaseDiagram } from "./case-diagram.js?v=pllref6";
 import { analyzeOll, expandWideAlg, getOllDrillInfo, getOllLook, OLL_TIPS, scrambleOll, setOllLook } from "./oll-trainer.js";
 import { analyzePll, getPllDrillInfo, PLL_TIPS, scramblePll } from "./pll-trainer.js?v=pllref1";
 import {
+  getPllKnownSort,
   getPllLook,
+  knownPllCasesSorted,
   knownPllDiagram,
   knownPllNote,
-  PLL_KNOWN_CASES,
+  setPllKnownSort,
   setPllLook,
-} from "./pll-known.js?v=pllref7";
+} from "./pll-known.js?v=pllref8";
 import { ALG_LIBRARY, analyze, STEPS } from "./solver.js";
 import {
   analyzeRoux,
@@ -211,6 +213,7 @@ const MOVE_PAD_KEY = "bylayer-show-move-pad";
 const PHONE_PAD_KEY = "bylayer-phone-move-pad";
 const OLL_LOOK_KEY = "bylayer-oll-look";
 const PLL_LOOK_KEY = "bylayer-pll-look";
+const PLL_SORT_KEY = "bylayer-pll-known-sort";
 const F2L_GROUP_FILTER_KEY = "bylayer-f2l-group-filter";
 
 function isCompactLayout() {
@@ -1263,19 +1266,31 @@ function syncPllLookChrome() {
   syncPllRefLayout();
 }
 
+function syncPllSortChrome() {
+  const sort = getPllKnownSort();
+  document.querySelectorAll("[data-pll-sort]").forEach((btn) => {
+    const on = btn.dataset.pllSort === sort;
+    btn.classList.toggle("is-active", on);
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+  });
+}
+
 function renderKnownPll() {
   const list = document.getElementById("pll-known-list");
   const noteEl = document.getElementById("pll-known-note");
   if (noteEl) noteEl.textContent = knownPllNote();
-  if (list && list.dataset.ready !== "1") {
-    list.innerHTML = PLL_KNOWN_CASES.map((c) => {
-      const diagram = renderCaseDiagram(knownPllDiagram(c));
-      const steps = c.steps
-        .split("\n")
-        .filter((line) => line.trim())
-        .map((line) => `<p>${escPllText(line)}</p>`)
-        .join("");
-      return `<article class="pll-known-case" id="pll-known-${c.id}">
+  syncPllSortChrome();
+  const sort = getPllKnownSort();
+  if (list && list.dataset.sort !== sort) {
+    list.innerHTML = knownPllCasesSorted(sort)
+      .map((c) => {
+        const diagram = renderCaseDiagram(knownPllDiagram(c));
+        const steps = c.steps
+          .split("\n")
+          .filter((line) => line.trim())
+          .map((line) => `<p>${escPllText(line)}</p>`)
+          .join("");
+        return `<article class="pll-known-case" id="pll-known-${c.id}">
         <header class="pll-known-head">
           <h2 class="pll-known-name">${escPllText(c.short)} <span>${escPllText(c.name)}</span></h2>
           <p class="pll-known-cue">${escPllText(c.cue)}</p>
@@ -1284,8 +1299,9 @@ function renderKnownPll() {
         <div class="pll-known-steps">${steps}</div>
         <code class="alg pll-known-alg">${escPllText(c.algDisplay || c.alg)}</code>
       </article>`;
-    }).join("");
-    list.dataset.ready = "1";
+      })
+      .join("");
+    list.dataset.sort = sort;
   }
   lastPllAlg = "";
 }
@@ -2003,6 +2019,20 @@ document.getElementById("btn-pll-case").addEventListener("click", () => {
   setPanelCopy("pll");
 });
 
+document.querySelectorAll("[data-pll-sort]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const next = btn.dataset.pllSort;
+    if (!next || next === getPllKnownSort()) return;
+    setPllKnownSort(next);
+    try {
+      localStorage.setItem(PLL_SORT_KEY, next);
+    } catch {
+      /* ignore */
+    }
+    renderKnownPll();
+  });
+});
+
 document.querySelectorAll("[data-pll-look]").forEach((btn) => {
   btn.addEventListener("click", () => {
     const next = btn.dataset.pllLook;
@@ -2401,6 +2431,8 @@ try {
   if (savedLook === "cross" || savedLook === "corners") setOllLook(savedLook);
   const savedPll = localStorage.getItem(PLL_LOOK_KEY);
   if (savedPll === "two" || savedPll === "known") setPllLook(savedPll);
+  const savedSort = localStorage.getItem(PLL_SORT_KEY);
+  if (savedSort === "probability" || savedSort === "weakest") setPllKnownSort(savedSort);
 } catch {
   /* default look 2 */
 }

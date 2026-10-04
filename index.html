@@ -12,7 +12,7 @@
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
       rel="stylesheet"
     />
-      <link rel="stylesheet" href="styles.css?v=pllref2" />
+      <link rel="stylesheet" href="styles.css?v=pllref3" />
     <link rel="stylesheet" href="vendor/erno-cube.css?v=f2l18r" />
   </head>
   <body class="hints-open">
@@ -415,6 +415,14 @@
           </div>
 
           <div id="pll-known" hidden>
+            <div class="look-switch pll-known-sort" role="group" aria-label="Sort cases">
+              <button type="button" class="method-btn is-active" data-pll-sort="probability" aria-pressed="true">
+                Probability
+              </button>
+              <button type="button" class="method-btn" data-pll-sort="weakest" aria-pressed="false">
+                Weakest first
+              </button>
+            </div>
             <p class="pll-known-lead">
               Twenty-one full PLL cases. The picture is the recognition — hold, steps, and the Cube Academy alg are under
               each one. Switch to <strong>2-look</strong> for the drill.
@@ -551,8 +559,8 @@
     </footer>
 
     <script src="vendor/cubejs.js?v=f2l18r"></script>
-    <script src="vendor/erno.js?v=pllref7"></script>
-    <script type="module" src="js/main.js?v=pllref7"></script>
+    <script src="vendor/erno.js?v=pllref8"></script>
+    <script type="module" src="js/main.js?v=pllref8"></script>
     <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "fd680e4c7f304be681f2fca80e8000e2"}'></script><!-- End Cloudflare Web Analytics -->
   </body>
 </html>

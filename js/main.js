@@ -1615,12 +1615,12 @@ function setPanelCopy(mode) {
     syncPllLookChrome();
     if (getPllLook() === "known") {
       title.textContent = "PLL cases I know";
-      blurb.innerHTML = `Recognition pictures for F, Y, Jb, Ja, Na, T, Ra, Rb, Ua, Ub, H, Z, Aa, Ab, and E. Steps and the Cube Academy alg are under each picture. <strong>2-look</strong> is the drill. From <a class="ext-link" href="https://www.cube.academy/pll-algs" target="_blank" rel="noopener">Cube Academy PLL</a>.`;
+      blurb.innerHTML = `Recognition pictures for F, Y, Jb, Ja, Na, T, Ra, Rb, Ua, Ub, H, Z, Aa, Ab, E, Nb, V, Ga, Gb, Gc, and Gd. Steps and the Cube Academy alg are under each picture. <strong>2-look</strong> is the drill. From <a class="ext-link" href="https://www.cube.academy/pll-algs" target="_blank" rel="noopener">Cube Academy PLL</a>.`;
       btnHint.textContent = "PLL hint";
     } else {
       const d = getPllDrillInfo();
       title.textContent = "2-look PLL — 6 algs";
-      blurb.innerHTML = `Now <strong>${d.name}</strong> · ${d.index + 1}/${d.total}. Corners = T or Y · Edges = Ua / Ub / H / Z. <strong>PLL hint</strong> lights the next move — including <strong>M / M' / M2</strong> for H and Z. <strong>Again</strong> / <strong>Next PLL</strong>. Open <strong>Cases I know</strong> for F, Y, Jb, Ja, Na, T, Ra, Rb, Ua, Ub, H, Z, Aa, Ab, E. From <a class="ext-link" href="https://www.cube.academy/2-look-pll-algs" target="_blank" rel="noopener">CubeHead 2-look PLL</a>.`;
+      blurb.innerHTML = `Now <strong>${d.name}</strong> · ${d.index + 1}/${d.total}. Corners = T or Y · Edges = Ua / Ub / H / Z. <strong>PLL hint</strong> lights the next move — including <strong>M / M' / M2</strong> for H and Z. <strong>Again</strong> / <strong>Next PLL</strong>. Open <strong>Cases I know</strong> for F, Y, Jb, Ja, Na, T, Ra, Rb, Ua, Ub, H, Z, Aa, Ab, E, Nb, V, Ga, Gb, Gc, Gd. From <a class="ext-link" href="https://www.cube.academy/2-look-pll-algs" target="_blank" rel="noopener">CubeHead 2-look PLL</a>.`;
       btnPll.hidden = false;
       btnPllAgain.hidden = false;
       btnHint.textContent = "PLL hint";

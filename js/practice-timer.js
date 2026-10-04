@@ -16,13 +16,15 @@ import {
   sameIdSet,
   savePllSelection,
   toggleSelectedId,
-} from "./pll-case-trainer.js?v=pllua1";
+} from "./pll-case-trainer.js?v=pllreveal1";
 import { formatClock } from "./solve-timer.js?v=splits5";
 
 export const PRACTICE_TIMES_KEY = "cube-coach-practice-times";
 export const PRACTICE_INSPECT_KEY = "cube-coach-practice-inspect";
 export const PRACTICE_MODE_KEY = "cube-coach-practice-mode";
 export const PRACTICE_CHART_WINDOW_KEY = "cube-coach-practice-chart-window";
+export const PLL_INSPECT_KEY = "cube-coach-pll-trainer-inspect";
+export const PLL_CHART_WINDOW_KEY = "cube-coach-pll-trainer-chart-window";
 export const PRACTICE_MAX = 500;
 export const TIMER_MODE_SINGLE = "single";
 export const TIMER_MODE_SPLITS = "splits";
@@ -232,35 +234,35 @@ export function clearPracticeTimes(store = browserStore()) {
   return savePracticeTimes([], store);
 }
 
-export function loadInspectionSeconds(store = browserStore()) {
-  const raw = store?.getItem?.(PRACTICE_INSPECT_KEY);
+export function loadInspectionSeconds(store = browserStore(), key = PRACTICE_INSPECT_KEY) {
+  const raw = store?.getItem?.(key);
   const n = Number(raw);
   return [0, 3, 5, 10, 15].includes(n) ? n : 0;
 }
 
-export function saveInspectionSeconds(seconds, store = browserStore()) {
+export function saveInspectionSeconds(seconds, store = browserStore(), key = PRACTICE_INSPECT_KEY) {
   const n = Number(seconds);
   const value = [0, 3, 5, 10, 15].includes(n) ? n : 0;
   try {
-    store?.setItem?.(PRACTICE_INSPECT_KEY, String(value));
+    store?.setItem?.(key, String(value));
   } catch {
     /* ignore */
   }
   return value;
 }
 
-export function loadChartWindow(store = browserStore()) {
-  const raw = store?.getItem?.(PRACTICE_CHART_WINDOW_KEY);
+export function loadChartWindow(store = browserStore(), key = PRACTICE_CHART_WINDOW_KEY) {
+  const raw = store?.getItem?.(key);
   if (raw == null || raw === "") return DEFAULT_CHART_WINDOW;
   const n = Number(raw);
   return CHART_WINDOW_OPTIONS.includes(n) ? n : DEFAULT_CHART_WINDOW;
 }
 
-export function saveChartWindow(windowSize, store = browserStore()) {
+export function saveChartWindow(windowSize, store = browserStore(), key = PRACTICE_CHART_WINDOW_KEY) {
   const n = Number(windowSize);
   const value = CHART_WINDOW_OPTIONS.includes(n) ? n : DEFAULT_CHART_WINDOW;
   try {
-    store?.setItem?.(PRACTICE_CHART_WINDOW_KEY, String(value));
+    store?.setItem?.(key, String(value));
   } catch {
     /* ignore */
   }
@@ -992,6 +994,7 @@ export function initPracticeTimer({
     lastSplits: null,
     lastMs: 0,
     chartWindow: loadChartWindow(store),
+    pllChartWindow: loadChartWindow(store, PLL_CHART_WINDOW_KEY),
     pllSelected: loadPllSelection(store),
     pllCase: null,
   };
@@ -1136,9 +1139,28 @@ export function initPracticeTimer({
     if (pllOn()) setStatus(statusForIdle());
   }
 
+  function activeChartWindow() {
+    return pllOn() ? state.pllChartWindow : state.chartWindow;
+  }
+
+  function syncSessionControls() {
+    if (inspectEl) {
+      const seconds = pllOn()
+        ? loadInspectionSeconds(store, PLL_INSPECT_KEY)
+        : loadInspectionSeconds(store);
+      inspectEl.value = String(seconds);
+    }
+    const windowSize = pllOn()
+      ? loadChartWindow(store, PLL_CHART_WINDOW_KEY)
+      : loadChartWindow(store);
+    if (pllOn()) state.pllChartWindow = windowSize;
+    else state.chartWindow = windowSize;
+    if (chartWindowEl) chartWindowEl.value = String(windowSize);
+  }
+
   function chartOptions(extra = {}) {
     return {
-      windowSize: state.chartWindow,
+      windowSize: activeChartWindow(),
       emptyLabel: pllOn() ? "Time two cases and a progress chart appears here." : "",
       ...extra,
     };
@@ -1153,7 +1175,7 @@ export function initPracticeTimer({
   function openEnlargedChart() {
     if (!chartDialog) return;
     const records = currentRecords();
-    const { records: windowed } = sliceChartRecords(records, state.chartWindow);
+    const { records: windowed } = sliceChartRecords(records, activeChartWindow());
     if (chartRows(windowed).length < 2) return;
     paintEnlargedChart(records);
     if (typeof chartDialog.showModal === "function") chartDialog.showModal();
@@ -1346,6 +1368,7 @@ export function initPracticeTimer({
     state.marks = [];
     paintClock(0);
     syncPllChrome();
+    syncSessionControls();
     paintSplits(0);
     if (pllOn()) {
       if (!state.pllCase || !state.pllSelected.includes(state.pllCase.id)) dealPllCase();
@@ -1367,10 +1390,14 @@ export function initPracticeTimer({
     newScramble({ announce: true });
   });
   inspectEl?.addEventListener("change", () => {
-    saveInspectionSeconds(inspectEl.value, store);
+    const key = pllOn() ? PLL_INSPECT_KEY : PRACTICE_INSPECT_KEY;
+    saveInspectionSeconds(inspectEl.value, store, key);
   });
   chartWindowEl?.addEventListener("change", () => {
-    state.chartWindow = saveChartWindow(chartWindowEl.value, store);
+    const key = pllOn() ? PLL_CHART_WINDOW_KEY : PRACTICE_CHART_WINDOW_KEY;
+    const value = saveChartWindow(chartWindowEl.value, store, key);
+    if (pllOn()) state.pllChartWindow = value;
+    else state.chartWindow = value;
     renderRecords();
   });
   chartEl?.addEventListener("click", (e) => {
@@ -1405,11 +1432,36 @@ export function initPracticeTimer({
     renderRecords();
     setStatus("Time deleted");
   });
+  function togglePllReveal(button, panel, showLabel, hideLabel) {
+    if (!button || !panel) return;
+    const open = button.getAttribute("aria-expanded") !== "true";
+    button.setAttribute("aria-expanded", open ? "true" : "false");
+    panel.hidden = !open;
+    button.textContent = open ? hideLabel : showLabel;
+  }
+
   pllCaseEl?.addEventListener("click", (e) => {
-    if (!e.target.closest("#pll-trainer-next")) return;
-    if (state.phase !== "idle") return;
-    dealPllCase();
-    setStatus(state.pllCase ? `Next case · ${caseMark(state.pllCase)}` : statusForIdle());
+    if (e.target.closest("#pll-trainer-next")) {
+      if (state.phase !== "idle") return;
+      dealPllCase();
+      setStatus(state.pllCase ? `Next case · ${caseMark(state.pllCase)}` : statusForIdle());
+      return;
+    }
+    const pictureBtn = e.target.closest("#pll-trainer-diagram");
+    const pictureBody = e.target.closest("#pll-trainer-diagram-body");
+    if (pictureBtn || pictureBody) {
+      togglePllReveal(
+        document.getElementById("pll-trainer-diagram"),
+        document.getElementById("pll-trainer-diagram-body"),
+        "Show picture",
+        "Hide picture"
+      );
+      return;
+    }
+    const movesBtn = e.target.closest("#pll-trainer-show-alg");
+    if (movesBtn) {
+      togglePllReveal(movesBtn, document.getElementById("pll-trainer-alg"), "Show moves", "Hide moves");
+    }
   });
   pllCasesEl?.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-pll-case]");
@@ -1426,20 +1478,25 @@ export function initPracticeTimer({
     btn.addEventListener("click", () => setMode(btn.dataset.timerMode));
   }
 
+  function isPllRevealTarget(target) {
+    return Boolean(
+      target?.closest?.("#pll-trainer-diagram, #pll-trainer-show-alg, #pll-trainer-diagram-body")
+    );
+  }
+
   document.addEventListener("keydown", (e) => {
     if (!isActive() || e.code !== "Space") return;
-    if (chartDialog?.open || isTypingTarget(e.target)) return;
+    if (chartDialog?.open || isTypingTarget(e.target) || isPllRevealTarget(e.target)) return;
     e.preventDefault();
   });
   document.addEventListener("keyup", (e) => {
     if (!isActive() || e.repeat || e.code !== "Space") return;
-    if (chartDialog?.open || isTypingTarget(e.target)) return;
+    if (chartDialog?.open || isTypingTarget(e.target) || isPllRevealTarget(e.target)) return;
     e.preventDefault();
     toggle();
   });
 
-  if (inspectEl) inspectEl.value = String(loadInspectionSeconds(store));
-  if (chartWindowEl) chartWindowEl.value = String(state.chartWindow);
+  syncSessionControls();
   setPhase("idle");
   syncPllChrome();
   if (pllOn()) dealPllCase();

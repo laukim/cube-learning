@@ -36,6 +36,12 @@ export const CHART_WINDOW_OPTIONS = [25, 50, 100, 0];
 export const DEFAULT_CHART_WINDOW = 50;
 /** csTimer-style session averages (WCA ao5 plus the usual longer windows). */
 export const AVERAGE_WINDOWS = [5, 12, 25, 50, 100];
+/**
+ * Rolling windows for Cross, F2L, and Final.
+ * Same trim as the full-solve averages: ao5/ao12 drop one each end, longer
+ * windows drop 5% (ao24 drops two). "all" is the untrimmed mean of every stored split.
+ */
+export const SPLIT_AVERAGE_WINDOWS = [5, 12, 24, 50, 100];
 /** Mean of 3 — no trim. The usual short-session companion to ao5. */
 export const MEAN_WINDOWS = [3];
 export const CHART_PAD = { t: 16, r: 12, b: 28, l: 44 };
@@ -410,6 +416,34 @@ export function computeSplitStats(records) {
   return { count: rows.length, stages, slowestId: slowest.id };
 }
 
+/** Stored split durations for one stage, in session order. Solves without that split are skipped. */
+export function stageSplitTimes(records, stageId) {
+  const times = [];
+  for (const row of records || []) {
+    const ms = Number(row?.splits?.[stageId]);
+    if (Number.isFinite(ms) && ms >= 0) times.push(ms);
+  }
+  return times;
+}
+
+/** Current ao windows plus the mean of every stored time. Short windows stay null until they fill. */
+export function computeStageAverages(times) {
+  const values = (times || []).filter((ms) => Number.isFinite(ms) && ms >= 0);
+  const out = { all: values.length ? mean(values) : null };
+  for (const n of SPLIT_AVERAGE_WINDOWS) {
+    out[`ao${n}`] = averageOf(values, n);
+  }
+  return out;
+}
+
+export function computeSplitAverages(records) {
+  const out = {};
+  for (const step of SPLIT_STEPS) {
+    out[step.id] = computeStageAverages(stageSplitTimes(records, step.id));
+  }
+  return out;
+}
+
 export function computeStats(records) {
   const times = (records || []).map((r) => r.ms).filter((ms) => Number.isFinite(ms) && ms > 0);
   const empty = {
@@ -420,6 +454,7 @@ export function computeStats(records) {
     trimmed: null,
     ...emptyWindowStats(),
     splits: null,
+    splitAverages: computeSplitAverages(records),
   };
   if (!times.length) return { ...empty, splits: computeSplitStats(records) };
 
@@ -432,6 +467,7 @@ export function computeStats(records) {
     trimmed: times.length >= 3 ? mean(sorted.slice(1, -1)) : null,
     ...computeWindowStats(times),
     splits: computeSplitStats(records),
+    splitAverages: computeSplitAverages(records),
   };
 }
 
@@ -870,10 +906,37 @@ export function renderStats(stats, previous = null, { splitShift = false, stages
       </div>`
     )
     .join("");
-  return `${cards}${renderAverageTable(stats, previous)}`;
+  return `${cards}${renderAverageTable(stats, previous, { splits: stages })}`;
 }
 
-export function renderAverageTable(stats, previous = null) {
+const SPLIT_AVERAGE_COLUMNS = [...SPLIT_AVERAGE_WINDOWS.map((n) => `ao${n}`), "all"];
+
+function renderSplitAverageTable(splitAverages) {
+  const head = SPLIT_AVERAGE_COLUMNS.map((col) => `<th scope="col">${col}</th>`).join("");
+  const body = SPLIT_STEPS.map((step) => {
+    const row = splitAverages?.[step.id] || {};
+    const cells = SPLIT_AVERAGE_COLUMNS.map(
+      (col) => `<td data-split-window="${col}">${dash(row[col])}</td>`
+    ).join("");
+    return `<tr data-split-avg="${step.id}">
+        <th scope="row" class="timer-split-avg-label timer-split-avg-label-${step.id}">${step.short}</th>
+        ${cells}
+      </tr>`;
+  }).join("");
+  return `<div class="timer-split-averages-scroll">
+    <table class="timer-averages timer-split-averages">
+      <thead>
+        <tr>
+          <th scope="col"></th>
+          ${head}
+        </tr>
+      </thead>
+      <tbody>${body}</tbody>
+    </table>
+  </div>`;
+}
+
+export function renderAverageTable(stats, previous = null, { splits = true } = {}) {
   const metrics = [
     ...MEAN_WINDOWS.map((n) => [`mo${n}`, stats[`mo${n}`], stats[`bestMo${n}`]]),
     ...AVERAGE_WINDOWS.map((n) => [`ao${n}`, stats[`ao${n}`], stats[`bestAo${n}`]]),
@@ -900,6 +963,7 @@ export function renderAverageTable(stats, previous = null) {
       </thead>
       <tbody>${body}</tbody>
     </table>
+    ${splits ? renderSplitAverageTable(stats?.splitAverages) : ""}
   </div>`;
 }
 

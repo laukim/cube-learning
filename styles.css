@@ -2832,6 +2832,35 @@ body.timer-pll .timer-stage {
   background: color-mix(in srgb, var(--orange) 16%, transparent);
 }
 
+.timer-account {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.75rem;
+  margin-bottom: 0.85rem;
+  min-height: 2.4rem;
+}
+
+.timer-account-status {
+  margin: 0;
+  flex: 1 1 12rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.timer-account-user {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.65rem;
+}
+
+#timer-account-email {
+  font-size: 0.86rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
 .timer-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -3441,9 +3470,28 @@ body.timer-pll .timer-stage {
   font-size: 0.78rem;
 }
 
+.timer-time-ms {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.05rem;
+}
+
 .timer-time-ms.is-best {
   color: var(--warn);
   font-weight: 800;
+}
+
+.timer-time-when {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-time-ms.is-best .timer-time-when {
+  color: var(--muted);
+  font-weight: 500;
 }
 
 .timer-time-splits .split-cross {

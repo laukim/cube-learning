@@ -1280,7 +1280,9 @@ const {
   bindChartInteract,
   CHART_PAD,
   clearPracticeTimes,
+  computeSplitAverages,
   computeSplitStats,
+  computeStageAverages,
   computeStats,
   averageShift,
   deletePracticeTime,
@@ -1312,8 +1314,10 @@ const {
   splitBests,
   splitDurationsFromMarks,
   splitStageTimes,
+  SPLIT_AVERAGE_WINDOWS,
   stageBest,
   stageMean,
+  stageSplitTimes,
   TIMER_MODE_PLL,
   TIMER_MODE_SINGLE,
   TIMER_MODE_SPLITS,
@@ -1600,6 +1604,53 @@ assert(statsHtml.includes("timer-stat-best") && statsHtml.includes("timer-stat-c
 assert(statsHtml.includes("timer-averages") && statsHtml.includes("mo3") && statsHtml.includes("ao25") && statsHtml.includes("ao50") && statsHtml.includes("ao100"), "stats table lists cubing averages");
 assert(statsHtml.includes(">now<") && statsHtml.includes(">best<"), "averages show current and personal best");
 assert(renderAverageTable(computeStats([])).includes("ao12") && renderAverageTable(computeStats([])).includes("—"), "empty averages still list windows");
+
+assert(SPLIT_AVERAGE_WINDOWS.join() === "5,12,24,50,100", "split averages use ao5 through ao100 plus a separate all");
+assert(averageTrimCount(24) === 2, "ao24 drops two from each end");
+const splitAvgHtml = renderAverageTable(computeStats(splitRows));
+for (const stage of ["cross", "f2l", "final"]) {
+  assert(splitAvgHtml.includes(`data-split-avg="${stage}"`), `averages group includes a ${stage} row`);
+}
+for (const col of ["ao5", "ao12", "ao24", "ao50", "ao100", "all"]) {
+  assert(splitAvgHtml.includes(`>${col}<`), `split averages list ${col}`);
+}
+assert(splitAvgHtml.includes("timer-split-averages-scroll"), "split averages scroll inside the averages group");
+const crossAll = splitAvgHtml.match(/data-split-avg="cross"[\s\S]*?data-split-window="all">([^<]+)</);
+assert(crossAll?.[1] === "4.50", "Cross all is the mean of stored cross splits");
+assert(/data-split-avg="cross"[\s\S]*?data-split-window="ao5">—</.test(splitAvgHtml), "Cross ao5 waits for five split solves");
+assert(/data-split-avg="f2l"[\s\S]*?data-split-window="all">17.00</.test(splitAvgHtml), "F2L all is the mean of stored F2L splits");
+assert(/data-split-avg="final"[\s\S]*?data-split-window="all">7.50</.test(splitAvgHtml), "Final all is the mean of stored final splits");
+
+const fiveCross = [4000, 5000, 3000, 6000, 4500];
+assert(computeStageAverages(fiveCross).ao5 === 4500, "stage ao5 drops best and worst");
+assert(computeStageAverages(fiveCross).ao12 == null && computeStageAverages(fiveCross).ao24 == null, "stage ao12 and ao24 wait for a full window");
+assert(computeStageAverages(fiveCross).all === meanOf(fiveCross, 5), "stage all is the untrimmed mean");
+const ao24Times = Array.from({ length: 24 }, (_, i) => (i + 1) * 1000);
+assert(computeStageAverages(ao24Times).ao24 === 12500, "ao24 drops the two fastest and two slowest");
+assert(computeStageAverages(ao24Times).ao50 == null && computeStageAverages(ao24Times).ao100 == null, "ao50 and ao100 stay empty at 24 splits");
+const mixedSplitRecords = [
+  { id: "m1", ms: 20000, splits: { cross: 4000, f2l: 12000, final: 4000 } },
+  { id: "m2", ms: 11000 },
+  { id: "m3", ms: 21000, splits: { cross: 5000, f2l: 11000, final: 5000 } },
+  { id: "m4", ms: 19000, splits: { cross: 3000, f2l: 10000, final: 6000 } },
+  { id: "m5", ms: 9000 },
+  { id: "m6", ms: 22000, splits: { cross: 6000, f2l: 9000, final: 7000 } },
+  { id: "m7", ms: 18000, splits: { cross: 4500, f2l: 8000, final: 5500 } },
+];
+assert(stageSplitTimes(mixedSplitRecords, "cross").join() === "4000,5000,3000,6000,4500", "single-mode solves are left out of split averages");
+const mixedAvg = computeSplitAverages(mixedSplitRecords);
+assert(mixedAvg.cross.ao5 === 4500, "Cross ao5 uses the last five stored cross times");
+assert(mixedAvg.f2l.all === 10000, "F2L all ignores solves that have no splits");
+assert(mixedAvg.final.ao5 != null && mixedAvg.final.ao12 == null, "Final ao5 fills from split solves only");
+const emptySplitHtml = renderAverageTable(computeStats([]));
+assert(
+  emptySplitHtml.includes('data-split-avg="cross"') &&
+    emptySplitHtml.includes('data-split-avg="f2l"') &&
+    emptySplitHtml.includes('data-split-avg="final"'),
+  "empty session still shows Cross, F2L, and Final rows"
+);
+const timesBefore = renderTimesList(splitRows);
+assert(timesBefore.includes("timer-times-list") && !timesBefore.includes("timer-split-averages"), "solve list does not gain the split average rows");
 assert(renderProgressChart(many).includes("timer-chart-ao50"), "chart plots ao50 once the window is full");
 assert(renderProgressChart(many).includes("swatch-ao25") && renderProgressChart(many).includes("swatch-ao100"), "legend lists ao25 and ao100");
 assert(!renderProgressChart(many).includes("timer-chart-ao100"), "last-50 chart has no ao100 line");
@@ -1731,6 +1782,7 @@ assert(loadChartWindow(sessionStore, PLL_CHART_WINDOW_KEY) === 0, "PLL chart win
 
 const pllStats = renderStats(computeStats([{ id: "p", ms: 1800, at: 1 }]), null, { stages: false });
 assert(pllStats.includes("Average") && pllStats.includes("1.80") && !pllStats.includes("Cross avg"), "PLL stats are the attempt, not Cross or F2L");
+assert(!pllStats.includes("data-split-avg"), "PLL stats omit Cross, F2L, and Final rolling rows");
 assert(renderProgressChart([]).includes("Solve twice"), "solve chart empty copy stays");
 assert(
   renderProgressChart([], { emptyLabel: "Time two cases and a progress chart appears here." }).includes("Time two cases"),

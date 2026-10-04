@@ -2352,6 +2352,7 @@ body.timer-page .topbar {
 
 .timer-side {
   min-height: 0;
+  min-width: 0;
 }
 
 .practice-scramble-kicker {
@@ -2869,6 +2870,7 @@ body.timer-pll .timer-stage {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.45rem;
   margin-bottom: 0.9rem;
+  min-width: 0;
 }
 
 .timer-stat {
@@ -2946,10 +2948,55 @@ body.timer-pll .timer-stage {
 
 .timer-averages-wrap {
   grid-column: 1 / -1;
+  min-width: 0;
+  max-width: 100%;
   padding: 0.55rem 0.65rem 0.4rem;
   border-radius: 10px;
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.02);
+}
+
+.timer-split-averages-scroll {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  margin-top: 0.55rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--line);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.timer-split-averages {
+  width: max-content;
+  min-width: 100%;
+}
+
+.timer-split-averages th,
+.timer-split-averages td {
+  white-space: nowrap;
+  padding: 0.28rem 0.4rem;
+}
+
+.timer-split-averages th[scope="row"] {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: #101916;
+  box-shadow: 1px 0 0 var(--line);
+}
+
+.timer-split-avg-label-cross {
+  color: var(--timer-cross) !important;
+}
+
+.timer-split-avg-label-f2l {
+  color: var(--timer-f2l) !important;
+}
+
+.timer-split-avg-label-final {
+  color: var(--timer-final) !important;
 }
 
 .timer-averages {
@@ -2999,6 +3046,17 @@ body.timer-pll .timer-stage {
 .timer-averages tbody tr:last-child th,
 .timer-averages tbody tr:last-child td {
   border-bottom: none;
+}
+
+.timer-averages.timer-split-averages {
+  width: max-content;
+  min-width: 100%;
+}
+
+.timer-averages.timer-split-averages th,
+.timer-averages.timer-split-averages td {
+  white-space: nowrap;
+  padding: 0.28rem 0.4rem;
 }
 
 .timer-avg-ao5 {
@@ -3545,6 +3603,19 @@ body.timer-pll .timer-stage {
   margin: 0.15rem 0 0;
   color: var(--muted);
   font-size: 0.82rem;
+}
+
+@media (max-width: 520px) {
+  .timer-averages-wrap {
+    padding-left: 0.4rem;
+    padding-right: 0.35rem;
+  }
+
+  .timer-averages.timer-split-averages th,
+  .timer-averages.timer-split-averages td {
+    padding: 0.26rem 0.32rem;
+    font-size: 0.75rem;
+  }
 }
 
 @media (max-width: 920px) {

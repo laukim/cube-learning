@@ -1275,9 +1275,29 @@ const {
   splitStageTimes,
   stageBest,
   stageMean,
+  TIMER_MODE_PLL,
   TIMER_MODE_SINGLE,
   TIMER_MODE_SPLITS,
 } = await import("../js/practice-timer.js");
+const {
+  TWO_LOOK_CASE_IDS,
+  addPllTrainerTime,
+  caseSetupMoves,
+  clearPllTrainerTimes,
+  listPllTrainerCases,
+  loadPllSelection,
+  loadPllTrainerTimes,
+  pickTrainerCase,
+  PLL_TRAINER_CASES_KEY,
+  presetIds,
+  renderPllCasePicker,
+  renderPllCaseSummary,
+  renderPllTimesList,
+  renderTrainerCase,
+  sameIdSet,
+  savePllSelection,
+  trainerCaseById,
+} = await import("../js/pll-case-trainer.js");
 
 const store = memoryStore();
 assert(loadPracticeTimes(store).length === 0, "empty practice store");
@@ -1546,5 +1566,96 @@ assert(renderProgressChart(many).includes("swatch-ao25") && renderProgressChart(
 assert(!renderProgressChart(many).includes("timer-chart-ao100"), "last-50 chart has no ao100 line");
 assert(renderSplitStats(splitStats).includes("timer-split-avg-cross") && renderSplitStats(splitStats).includes("timer-split-avg-f2l"), "stage averages tag Cross and F2L");
 assert(tip.includes("tip-cross") && tip.includes("tip-f2l"), "tooltip tags Cross and F2L rows");
+
+assert(saveTimerMode(TIMER_MODE_PLL, store) === TIMER_MODE_PLL, "saves PLL trainer mode");
+assert(loadTimerMode(store) === TIMER_MODE_PLL, "loads PLL trainer mode");
+assert(saveTimerMode("nope", store) === TIMER_MODE_SINGLE, "unknown mode still falls back to single");
+const pllTap = applySplitTap({ mode: TIMER_MODE_PLL, marks: [], elapsed: 1800, lastTapElapsed: 0 });
+assert(pllTap.action === "stop", "PLL mode records one time and stops");
+
+const pllCases = listPllTrainerCases();
+assert(pllCases.length === PLL_KNOWN_CASES.length + 1, "trainer adds the 2-look Ua beside Cases I know");
+for (const c of PLL_KNOWN_CASES) {
+  const row = trainerCaseById(c.id);
+  assert(row && row.alg === c.alg && row.diagram.type === "pll-recog", `${c.short} keeps its alg and diagram`);
+}
+const ua2 = trainerCaseById("ua2");
+const fullUa = trainerCaseById("ua");
+assert(ua2.alg === PLL_U.alg && ua2.alg !== fullUa.alg, "Ua₂ is the 2-look Ua, not the Cases I know Ua");
+assert(trainerCaseById("t").alg === PLL_T.alg && trainerCaseById("ub").alg === PLL_KNOWN_CASES.find((c) => c.id === "ub").alg, "shared cases keep the 2-look alg");
+assert(sameIdSet(presetIds("two"), TWO_LOOK_CASE_IDS), "2-look preset is T Y Ua₂ Ub H Z");
+assert(presetIds("known").includes("ua") && !presetIds("known").includes("ua2"), "Cases I know preset uses full Ua");
+assert(presetIds("all").includes("ua") && presetIds("all").includes("ua2") && presetIds("all").includes("gd"), "all preset includes both Ua cases");
+assert(presetIds("none").length === 0, "none preset is empty");
+
+const selStore = memoryStore();
+assert(sameIdSet(loadPllSelection(selStore), TWO_LOOK_CASE_IDS), "PLL trainer starts on the 2-look set");
+assert(sameIdSet(savePllSelection(["ua", "nope", "ua", "t"], selStore), ["ua", "t"]), "selection keeps each real case once");
+assert(sameIdSet(loadPllSelection(selStore), ["ua", "t"]), "selection is remembered");
+assert(savePllSelection([], selStore).length === 0 && loadPllSelection(selStore).length === 0, "clearing the selection stays empty");
+selStore.setItem(PLL_TRAINER_CASES_KEY, "{");
+assert(sameIdSet(loadPllSelection(selStore), TWO_LOOK_CASE_IDS), "a broken selection falls back to 2-look");
+
+assert(pickTrainerCase(pllCases, []) == null, "no selected cases means no case to time");
+assert(pickTrainerCase(pllCases, ["t", "y"], { previousId: "t", random: () => 0 }).id === "y", "the next case is another selected one");
+assert(pickTrainerCase(pllCases, ["t"], { previousId: "t", random: () => 0.4 }).id === "t", "one selected case can come up again");
+
+const ua2Cube = solvedFacelets();
+applyAlg(ua2Cube, invertAlg(ua2.alg));
+const faceRow = (face) => getFace(ua2Cube, face).slice(0, 3);
+const mapped = {
+  F: faceRow("F"),
+  R: faceRow("R").slice().reverse(),
+  B: faceRow("B").slice().reverse(),
+  L: faceRow("L").slice().reverse(),
+};
+for (const face of ["F", "R", "B", "L"]) {
+  assert(mapped[face].join() === ua2.diagram.sides[face].join(), `2-look Ua ${face} diagram matches the cube`);
+}
+assert(sticker(ua2Cube, "F", 1) === "blue", "2-look Ua bar matches the front centre");
+assert(
+  sticker(ua2Cube, "R", 1) === "green" && sticker(ua2Cube, "L", 1) === "red" && sticker(ua2Cube, "B", 1) === "orange",
+  "2-look Ua cycles UR, UL, and UB"
+);
+assert(ua2.diagram.edges.cycle.join() === "UR,UL,UB", "2-look Ua arrows follow those pieces");
+const fromSolved = solvedFacelets();
+applyAlg(fromSolved, caseSetupMoves(ua2.alg));
+assert(getFace(fromSolved, "F").slice(0, 3).join() === "blue,blue,blue", "the setup from solved matches the picture");
+applyAlg(fromSolved, ua2.alg);
+assert(isSolved(fromSolved), "doing 2-look Ua from that picture solves the cube");
+
+const pllTimeStore = memoryStore();
+addPracticeTime({ id: "solve", ms: 20000, at: 1, scramble: "R U" }, pllTimeStore);
+addPllTrainerTime({ id: "p1", ms: 1800, at: 2, caseId: "t", short: "T", name: "T-perm" }, pllTimeStore);
+assert(loadPracticeTimes(pllTimeStore).every((row) => row.id !== "p1"), "a PLL attempt is not a full solve");
+assert(loadPllTrainerTimes(pllTimeStore)[0].caseId === "t" && loadPllTrainerTimes(pllTimeStore)[0].ms === 1800, "the attempt stores the case and the time");
+assert(addPllTrainerTime({ ms: 0, caseId: "t" }, pllTimeStore).length === 1, "a zero PLL time is dropped");
+const pllList = renderPllTimesList(loadPllTrainerTimes(pllTimeStore));
+assert(pllList.includes("T-perm") && pllList.includes("1.80") && pllList.includes("data-delete"), "the times list shows that case");
+addPllTrainerTime({ id: "p2", ms: 2400, at: 3, caseId: "t", short: "T", name: "T-perm" }, pllTimeStore);
+addPllTrainerTime({ id: "p3", ms: 1500, at: 4, caseId: "ua2", short: "Ua", name: "Ua-perm", badge: "2" }, pllTimeStore);
+const pllSummary = renderPllCaseSummary(loadPllTrainerTimes(pllTimeStore));
+assert(pllSummary.includes("Ua₂") && pllSummary.includes("1.50") && pllSummary.includes("avg"), "each case keeps its own best and average");
+assert(clearPllTrainerTimes(pllTimeStore).length === 0, "PLL times can be cleared on their own");
+assert(loadPracticeTimes(pllTimeStore).length === 1, "clearing PLL times leaves solve times");
+
+const picker = renderPllCasePicker(["t", "ua2"], "t");
+assert(picker.includes('data-pll-case="t"') && picker.includes("is-current") && picker.includes('aria-pressed="true"'), "the case on the clock is marked in the picker");
+assert(picker.includes('data-pll-case="ua2"') && picker.includes("<sub>2</sub>"), "the picker shows 2-look Ua");
+assert(picker.includes('data-pll-case="f" aria-pressed="false"'), "a case left out stays off");
+assert(picker.split('data-pll-case="t"').length === 2, "each case is one chip");
+const jbCard = renderTrainerCase(trainerCaseById("jb"));
+assert(jbCard.includes("Jb-perm") && jbCard.includes("pll-recog-svg") && jbCard.includes("Another case"), "the case card uses the in-app diagram");
+const ua2Card = renderTrainerCase(ua2);
+assert(ua2Card.includes(PLL_U.alg) && ua2Card.includes("pll-recog-svg") && ua2Card.includes("From a solved cube"), "2-look Ua shows its moves and a setup");
+assert(renderTrainerCase(null).includes("Select at least one PLL case"), "an empty set asks for a case");
+
+const pllStats = renderStats(computeStats([{ id: "p", ms: 1800, at: 1 }]), null, { stages: false });
+assert(pllStats.includes("Average") && pllStats.includes("1.80") && !pllStats.includes("Cross avg"), "PLL stats are the attempt, not Cross or F2L");
+assert(renderProgressChart([]).includes("Solve twice"), "solve chart empty copy stays");
+assert(
+  renderProgressChart([], { emptyLabel: "Time two cases and a progress chart appears here." }).includes("Time two cases"),
+  "PLL chart waits for two case times"
+);
 
 console.log("ALL PASS");

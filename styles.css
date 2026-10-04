@@ -2391,8 +2391,11 @@ body.timer-page .topbar {
 
 .timer-mode {
   display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
   align-items: center;
   gap: 0.2rem;
+  max-width: 100%;
   padding: 0.2rem;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -2421,6 +2424,252 @@ body.timer-page .topbar {
 .timer-mode-btn:disabled {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+body.timer-pll .timer-stage {
+  justify-content: flex-start;
+  min-height: 0;
+}
+
+.pll-trainer-pick {
+  width: 100%;
+  margin: 0 0 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(8, 14, 12, 0.45);
+  padding: 0.45rem 0.7rem 0.65rem;
+  text-align: left;
+}
+
+.pll-trainer-pick summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.pll-trainer-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.55rem 0 0.7rem;
+}
+
+.pll-trainer-presets button,
+.pll-case-chip {
+  appearance: none;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--muted);
+  font: inherit;
+  font-weight: 700;
+  font-size: 0.82rem;
+  border-radius: 999px;
+  padding: 0.32rem 0.7rem;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.pll-trainer-presets button.is-active,
+.pll-case-chip.is-on {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-color: rgba(109, 255, 176, 0.45);
+}
+
+.pll-case-chip.is-current {
+  box-shadow: inset 0 0 0 1px var(--warn);
+}
+
+.pll-case-chip:disabled,
+.pll-trainer-presets button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.pll-pick-group + .pll-pick-group {
+  margin-top: 0.65rem;
+}
+
+.pll-pick-label {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.pll-pick-chips {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(3.35rem, 1fr));
+  gap: 0.35rem;
+}
+
+.pll-case-chip {
+  border-radius: 10px;
+  min-height: 2.35rem;
+  padding: 0.2rem 0.25rem;
+}
+
+.pll-case-chip sub,
+.pll-trainer-name sub {
+  font-size: 0.68em;
+}
+
+.pll-trainer-pick-note {
+  margin: 0.65rem 0 0.1rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.pll-trainer-case {
+  width: min(100%, 32rem);
+  display: grid;
+  grid-template-columns: 9.5rem minmax(0, 1fr);
+  gap: 0.35rem 0.85rem;
+  align-items: center;
+  text-align: left;
+}
+
+.pll-trainer-empty {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  text-align: center;
+}
+
+.pll-trainer-diagram .case-diagram-recog {
+  width: 9.25rem;
+  margin: 0 auto;
+}
+
+.pll-trainer-diagram .case-caption {
+  text-align: center;
+}
+
+.pll-trainer-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.pll-trainer-name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.pll-trainer-fullname,
+.pll-trainer-cue,
+.pll-trainer-note {
+  margin: 0;
+}
+
+.pll-trainer-fullname {
+  font-weight: 700;
+}
+
+.pll-trainer-cue,
+.pll-trainer-note {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.pll-trainer-alg {
+  display: block;
+  width: 100%;
+  margin-top: 0.25rem;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.pll-trainer-setup {
+  width: 100%;
+  margin-top: 0.15rem;
+}
+
+.pll-trainer-setup summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.pll-trainer-setup .alg {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.pll-case-stats {
+  list-style: none;
+  margin: 0 0 0.85rem;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7.2rem, 1fr));
+  gap: 0.35rem;
+}
+
+.pll-case-stats li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.pll-case-stats-name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+
+.pll-case-stats strong {
+  font-variant-numeric: tabular-nums;
+}
+
+.pll-case-stats-meta {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-time-row-pll {
+  grid-template-columns: auto auto 1fr auto;
+}
+
+.timer-time-case {
+  font-family: var(--font-display);
+  font-weight: 800;
+}
+
+.timer-time-case-name {
+  margin-left: 1.6rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+@media (max-width: 420px) {
+  .pll-trainer-case {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .pll-trainer-copy {
+    align-items: center;
+  }
 }
 
 .practice-splits {

@@ -401,7 +401,33 @@ export const PLL_KNOWN_CASES = [
 
 const HOLD_NOTE = HOLD;
 
+/** Weakest first. Na is before F. The tail stays in probability order. */
+const PLL_KNOWN_WEAKEST_IDS = [
+  "aa",
+  "ab",
+  "ra",
+  "rb",
+  "ja",
+  "jb",
+  "na",
+  "f",
+  "t",
+  "y",
+  "ua",
+  "ub",
+  "h",
+  "z",
+  "ga",
+  "gb",
+  "gc",
+  "gd",
+  "v",
+  "e",
+  "nb",
+];
+
 let pllLook = "two";
+let pllKnownSort = "probability";
 let selectedId = "f";
 
 export function getPllLook() {
@@ -410,6 +436,21 @@ export function getPllLook() {
 
 export function setPllLook(next) {
   if (next === "two" || next === "known") pllLook = next;
+}
+
+export function getPllKnownSort() {
+  return pllKnownSort;
+}
+
+export function setPllKnownSort(next) {
+  if (next === "probability" || next === "weakest") pllKnownSort = next;
+}
+
+/** Probability is the case-list order. Weakest first is a separate order. */
+export function knownPllCasesSorted(sort = getPllKnownSort()) {
+  if (sort !== "weakest") return PLL_KNOWN_CASES;
+  const byId = new Map(PLL_KNOWN_CASES.map((c) => [c.id, c]));
+  return PLL_KNOWN_WEAKEST_IDS.map((id) => byId.get(id));
 }
 
 export function getKnownPllId() {

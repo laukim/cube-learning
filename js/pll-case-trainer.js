@@ -113,7 +113,6 @@ export function caseSetupMoves(alg) {
 
 export function presetIds(preset) {
   if (preset === "two") return [...TWO_LOOK_CASE_IDS];
-  if (preset === "known") return PLL_KNOWN_CASES.map((c) => c.id);
   if (preset === "all") return listPllTrainerCases().map((c) => c.id);
   if (preset === "none") return [];
   return null;
@@ -275,15 +274,12 @@ export function renderPllCasePicker(selectedIds, currentId = "") {
   const cases = listPllTrainerCases();
   const byId = new Map(cases.map((c) => [c.id, c]));
   const chips = (ids) => ids.map((id) => chipHtml(byId.get(id), selected, currentId)).join("");
-  const knownOnly = PLL_KNOWN_CASES.map((c) => c.id).filter((id) => !TWO_LOOK_SHARED.has(id));
+  const rest = PLL_KNOWN_CASES.map((c) => c.id).filter((id) => !TWO_LOOK_SHARED.has(id));
   return `<div class="pll-pick-group">
       <p class="pll-pick-label">2-look</p>
       <div class="pll-pick-chips">${chips(TWO_LOOK_CASE_IDS)}</div>
     </div>
-    <div class="pll-pick-group">
-      <p class="pll-pick-label">Cases I know</p>
-      <div class="pll-pick-chips">${chips(knownOnly)}</div>
-    </div>`;
+    <div class="pll-pick-chips">${chips(rest)}</div>`;
 }
 
 export function renderTrainerCase(pllCase) {
@@ -292,17 +288,23 @@ export function renderTrainerCase(pllCase) {
   }
   const title = escapeHtml(pllCase.short);
   const note = pllCase.note ? `<p class="pll-trainer-note">${escapeHtml(pllCase.note)}</p>` : "";
-  return `<div class="pll-trainer-diagram">${renderCaseDiagram(pllCase.diagram)}</div>
+  const moves = escapeHtml(pllCase.algDisplay || pllCase.alg);
+  const setup = escapeHtml(caseSetupMoves(pllCase.alg));
+  return `<div class="pll-trainer-picture">
+      <button type="button" class="btn btn-ghost btn-small pll-trainer-reveal" id="pll-trainer-diagram" aria-expanded="false" aria-controls="pll-trainer-diagram-body">Show picture</button>
+      <div class="pll-trainer-diagram" id="pll-trainer-diagram-body" hidden>${renderCaseDiagram(pllCase.diagram)}</div>
+    </div>
     <div class="pll-trainer-copy">
       <h2 class="pll-trainer-name">${title}</h2>
       <p class="pll-trainer-fullname">${escapeHtml(pllCase.name)}</p>
       <p class="pll-trainer-cue">${escapeHtml(pllCase.cue)}</p>
       ${note}
-      <code class="alg pll-trainer-alg">${escapeHtml(pllCase.algDisplay || pllCase.alg)}</code>
-      <details class="pll-trainer-setup">
-        <summary>From a solved cube</summary>
-        <code class="alg">${escapeHtml(caseSetupMoves(pllCase.alg))}</code>
-      </details>
+      <button type="button" class="btn btn-ghost btn-small pll-trainer-reveal" id="pll-trainer-show-alg" aria-expanded="false" aria-controls="pll-trainer-alg">Show moves</button>
+      <code class="alg pll-trainer-alg" id="pll-trainer-alg" hidden>${moves}</code>
+      <div class="pll-trainer-setup">
+        <p class="pll-trainer-setup-kicker">From a solved cube</p>
+        <code class="alg">${setup}</code>
+      </div>
       <button type="button" class="btn btn-ghost btn-small" id="pll-trainer-next">Another case</button>
     </div>`;
 }

@@ -2570,7 +2570,8 @@ body.timer-pll .timer-stage {
   opacity: 0.55;
 }
 
-.pll-pick-group + .pll-pick-group {
+.pll-pick-group + .pll-pick-group,
+.pll-pick-group + .pll-pick-chips {
   margin-top: 0.65rem;
 }
 
@@ -2609,10 +2610,22 @@ body.timer-pll .timer-stage {
 .pll-trainer-case {
   width: min(100%, 32rem);
   display: grid;
-  grid-template-columns: 9.5rem minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 0.35rem 0.85rem;
   align-items: center;
   text-align: left;
+}
+
+.pll-trainer-picture {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.pll-trainer-reveal {
+  touch-action: manipulation;
 }
 
 .pll-trainer-empty {
@@ -2679,8 +2692,8 @@ body.timer-pll .timer-stage {
   margin-top: 0.15rem;
 }
 
-.pll-trainer-setup summary {
-  cursor: pointer;
+.pll-trainer-setup-kicker {
+  margin: 0;
   color: var(--muted);
   font-size: 0.78rem;
   font-weight: 700;

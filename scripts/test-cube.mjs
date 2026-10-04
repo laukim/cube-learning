@@ -1287,10 +1287,13 @@ const {
   formatSignedDelta,
   isSessionBest,
   loadChartWindow,
+  loadInspectionSeconds,
   loadPracticeTimes,
   loadTimerMode,
   meanOf,
   MEAN_WINDOWS,
+  PLL_CHART_WINDOW_KEY,
+  PLL_INSPECT_KEY,
   memoryStore,
   nearestChartIndex,
   renderAverageTable,
@@ -1303,6 +1306,7 @@ const {
   rollingAverages,
   runningMean,
   saveChartWindow,
+  saveInspectionSeconds,
   saveTimerMode,
   sliceChartRecords,
   splitBests,
@@ -1624,8 +1628,8 @@ assert(trainerUa.alg === PLL_U.alg && trainerUa.alg !== knownUa.alg, "the one Ua
 assert(trainerUa.short === "Ua" && !trainerUa.short.includes("2"), "Ua is not labelled Ua2");
 assert(trainerCaseById("t").alg === PLL_T.alg && trainerCaseById("ub").alg === PLL_KNOWN_CASES.find((c) => c.id === "ub").alg, "shared cases keep the 2-look alg");
 assert(sameIdSet(presetIds("two"), TWO_LOOK_CASE_IDS), "2-look preset is T Y Ua Ub H Z");
-assert(presetIds("known").includes("ua") && !presetIds("known").includes("ua2") && !presetIds("all").includes("ua2"), "presets do not add a second Ua");
-assert(presetIds("all").includes("ua") && presetIds("all").includes("gd"), "all preset includes Ua once and the rest of the cases");
+assert(presetIds("known") == null, "Cases I know is not a PLL timer preset");
+assert(presetIds("all").includes("ua") && presetIds("all").includes("gd") && !presetIds("all").includes("ua2"), "all preset includes Ua once and the rest of the cases");
 assert(presetIds("none").length === 0, "none preset is empty");
 
 const selStore = memoryStore();
@@ -1686,12 +1690,44 @@ assert(picker.includes('data-pll-case="t"') && picker.includes("is-current") && 
 assert(picker.split('data-pll-case="ua"').length === 2, "Ua is one chip");
 assert(!picker.includes("ua2") && !picker.includes("Ua₂") && !picker.includes("Ua2") && !picker.includes("<sub>"), "the picker does not label a second Ua");
 assert(picker.includes('data-pll-case="f" aria-pressed="false"'), "a case left out stays off");
+assert(picker.includes(">2-look<") && !picker.includes("Cases I know"), "other cases stay as chips without a Cases I know group");
 assert(picker.split('data-pll-case="t"').length === 2, "each shared case is one chip");
-const jbCard = renderTrainerCase(trainerCaseById("jb"));
+const jbCase = trainerCaseById("jb");
+const jbCard = renderTrainerCase(jbCase);
 assert(jbCard.includes("Jb-perm") && jbCard.includes("pll-recog-svg") && jbCard.includes("Another case"), "the case card uses the in-app diagram");
+assert(
+  jbCard.includes('id="pll-trainer-diagram"') &&
+    jbCard.includes('aria-expanded="false"') &&
+    jbCard.includes("Show picture") &&
+    jbCard.includes('id="pll-trainer-diagram-body" hidden'),
+  "the recognition picture starts hidden"
+);
+assert(
+  jbCard.includes('id="pll-trainer-show-alg"') &&
+    jbCard.includes("Show moves") &&
+    jbCard.includes('id="pll-trainer-alg" hidden'),
+  "the moves start hidden"
+);
+assert(
+  !jbCard.includes("<details") &&
+    jbCard.includes("From a solved cube") &&
+    jbCard.includes(caseSetupMoves(jbCase.alg)),
+  "setup moves from a solved cube are already visible"
+);
 const uaCard = renderTrainerCase(trainerUa);
-assert(uaCard.includes(PLL_U.alg) && uaCard.includes("pll-recog-svg") && uaCard.includes(">Ua<") && !uaCard.includes("Ua₂"), "Ua shows the 2-look moves");
+assert(uaCard.includes(PLL_U.alg) && uaCard.includes("pll-recog-svg") && uaCard.includes(">Ua<") && !uaCard.includes("Ua₂"), "Ua keeps the 2-look moves behind the reveal");
+assert(uaCard.includes('id="pll-trainer-alg" hidden') && uaCard.includes(caseSetupMoves(trainerUa.alg)), "Ua setup is visible and the moves wait for a tap");
 assert(renderTrainerCase(null).includes("Select at least one PLL case"), "an empty set asks for a case");
+
+const sessionStore = memoryStore();
+assert(saveInspectionSeconds(15, sessionStore) === 15, "practice inspection still saves on its own key");
+assert(saveInspectionSeconds(10, sessionStore, PLL_INSPECT_KEY) === 10, "PLL inspection saves on its own key");
+assert(loadInspectionSeconds(sessionStore) === 15, "practice inspection is unchanged by the PLL setting");
+assert(loadInspectionSeconds(sessionStore, PLL_INSPECT_KEY) === 10, "PLL inspection stays separate");
+assert(saveChartWindow(25, sessionStore) === 25, "practice chart window still saves on its own key");
+assert(saveChartWindow(0, sessionStore, PLL_CHART_WINDOW_KEY) === 0, "PLL chart window saves on its own key");
+assert(loadChartWindow(sessionStore) === 25, "practice chart window is unchanged by the PLL setting");
+assert(loadChartWindow(sessionStore, PLL_CHART_WINDOW_KEY) === 0, "PLL chart window stays separate");
 
 const pllStats = renderStats(computeStats([{ id: "p", ms: 1800, at: 1 }]), null, { stages: false });
 assert(pllStats.includes("Average") && pllStats.includes("1.80") && !pllStats.includes("Cross avg"), "PLL stats are the attempt, not Cross or F2L");

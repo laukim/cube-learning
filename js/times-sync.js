@@ -1,5 +1,5 @@
 import { GOOGLE_CLIENT_ID } from "./google-client.js?v=sync1";
-import { loadPracticeTimes, savePracticeTimes } from "./practice-timer.js?v=sync2";
+import { loadPracticeTimes, savePracticeTimes } from "./practice-timer.js?v=cross1";
 import { planSync, reconcileSolves } from "./solve-order.js?v=sync1";
 import {
   decodeJwtPayload,

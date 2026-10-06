@@ -1,3 +1,13 @@
+import {
+  addCrossDrillTime,
+  clearCrossDrillTimes,
+  CROSS_DRILL_CHART_WINDOW_KEY,
+  CROSS_DRILL_INSPECT_KEY,
+  deleteCrossDrillTime,
+  loadCrossDrillTimes,
+  renderCrossTimesList,
+} from "./cross-drill.js?v=cross1";
+import { randomCrossCase, warmCrossSolver } from "./cross-solver.js?v=cross1";
 import { randomScrambleMoves } from "./cube.js?v=timer4";
 import {
   addPllTrainerTime,
@@ -30,7 +40,8 @@ export const PRACTICE_MAX = 500;
 export const TIMER_MODE_SINGLE = "single";
 export const TIMER_MODE_SPLITS = "splits";
 export const TIMER_MODE_PLL = "pll";
-const TIMER_MODES = new Set([TIMER_MODE_SINGLE, TIMER_MODE_SPLITS, TIMER_MODE_PLL]);
+export const TIMER_MODE_CROSS = "cross";
+const TIMER_MODES = new Set([TIMER_MODE_SINGLE, TIMER_MODE_SPLITS, TIMER_MODE_PLL, TIMER_MODE_CROSS]);
 export const SPLIT_BOUNCE_MS = 150;
 /** Chart window sizes; 0 = all solves in the session. */
 export const CHART_WINDOW_OPTIONS = [25, 50, 100, 0];
@@ -1007,11 +1018,13 @@ function idleStatus(mode) {
     return "Space or tap to start · space or tap again at Cross, F2L, then solved";
   }
   if (mode === TIMER_MODE_PLL) return "Space or tap to time this case · another case skips without a time";
+  if (mode === TIMER_MODE_CROSS) return "Space or tap to time the cross · Repeat keeps this case";
   return "Space or tap to start · next scramble appears when you stop";
 }
 
 function runningStatus(mode, marks = []) {
   if (mode === TIMER_MODE_PLL) return "Timing this case — space or tap to stop";
+  if (mode === TIMER_MODE_CROSS) return "Timing the cross — space or tap to stop";
   if (mode !== TIMER_MODE_SPLITS) return "Timing — space or tap to stop";
   const next = SPLIT_STEPS[currentSplitIndex(marks)];
   if (next.id === "cross") return "Timing — space or tap when white cross is done";
@@ -1046,6 +1059,9 @@ export function initPracticeTimer({
   const pllCasesEl = document.getElementById("pll-trainer-cases");
   const pllPickLabel = document.getElementById("pll-trainer-pick-label");
   const pllSummaryEl = document.getElementById("pll-case-summary");
+  const crossPanel = document.getElementById("cross-drill");
+  const crossNote = document.getElementById("cross-drill-note");
+  const timesTitle = document.getElementById("timer-times-title");
 
   if (!clockBtn || !clockValue) return { refresh() {}, cancel() {} };
 
@@ -1063,16 +1079,31 @@ export function initPracticeTimer({
     lastMs: 0,
     chartWindow: loadChartWindow(store),
     pllChartWindow: loadChartWindow(store, PLL_CHART_WINDOW_KEY),
+    crossChartWindow: loadChartWindow(store, CROSS_DRILL_CHART_WINDOW_KEY),
     pllSelected: loadPllSelection(store),
     pllCase: null,
+    crossCase: null,
+    crossReveal: false,
   };
 
   function pllOn() {
     return state.mode === TIMER_MODE_PLL;
   }
 
+  function crossOn() {
+    return state.mode === TIMER_MODE_CROSS;
+  }
+
+  function sessionKind() {
+    if (pllOn()) return "pll";
+    if (crossOn()) return "cross";
+    return "solve";
+  }
+
   function currentRecords() {
-    return pllOn() ? loadPllTrainerTimes(store) : loadPracticeTimes(store);
+    if (pllOn()) return loadPllTrainerTimes(store);
+    if (crossOn()) return loadCrossDrillTimes(store);
+    return loadPracticeTimes(store);
   }
 
   function statusForIdle() {
@@ -1091,6 +1122,7 @@ export function initPracticeTimer({
     );
     syncModeButtons();
     syncPllLocks();
+    if (crossOn()) paintCross();
   }
 
   function setStatus(text) {
@@ -1147,14 +1179,84 @@ export function initPracticeTimer({
     if (announce) setStatus("New scramble");
   }
 
+  function paintCross() {
+    const crossCase = state.crossCase;
+    const open = Boolean(state.crossReveal && crossCase);
+    const showBtn = document.getElementById("cross-drill-show");
+    const panel = document.getElementById("cross-drill-solution");
+    const algEl = document.getElementById("cross-drill-alg");
+    const kick = document.getElementById("cross-drill-solution-kicker");
+    if (showBtn) {
+      showBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      showBtn.textContent = open ? "Hide optimal cross" : "Show optimal cross";
+    }
+    if (panel) panel.hidden = !open;
+    if (algEl) algEl.textContent = open && crossCase ? crossCase.solution : "";
+    if (kick) {
+      kick.textContent =
+        open && crossCase
+          ? `Optimal · ${crossCase.length} ${crossCase.length === 1 ? "move" : "moves"} · white on bottom, blue in front`
+          : "";
+    }
+    const locked = state.phase !== "idle";
+    const repeatBtn = document.getElementById("cross-drill-repeat");
+    const nextBtn = document.getElementById("cross-drill-next");
+    if (repeatBtn) repeatBtn.disabled = locked || !crossCase;
+    if (nextBtn) nextBtn.disabled = locked || !crossCase;
+  }
+
+  function showCrossCase(crossCase, { reveal = false, announce = "" } = {}) {
+    state.crossCase = crossCase;
+    state.crossReveal = reveal;
+    state.scramble = crossCase?.scramble || "";
+    if (scrambleEl) scrambleEl.textContent = state.scramble || "—";
+    state.lastSplits = null;
+    state.lastMs = 0;
+    paintClock(0);
+    paintCross();
+    updateBestHighlight();
+    if (announce) setStatus(announce);
+  }
+
+  function dealNextCross() {
+    showCrossCase(randomCrossCase(), { reveal: false, announce: "New cross. Space or tap to start." });
+  }
+
+  function repeatCross() {
+    if (!state.crossCase) {
+      dealNextCross();
+      return;
+    }
+    showCrossCase(state.crossCase, { reveal: false, announce: "Same case. Space or tap to start." });
+  }
+
   function syncPllChrome() {
     const on = pllOn();
-    if (scrambleEl) scrambleEl.hidden = on;
-    if (scrambleKicker) scrambleKicker.hidden = on;
+    const cross = crossOn();
+    if (scrambleEl) {
+      scrambleEl.hidden = on;
+      scrambleEl.classList.toggle("is-static", cross);
+      scrambleEl.title = cross ? "Apply this to a solved cube. White on bottom." : "Tap for a new scramble";
+      scrambleEl.setAttribute(
+        "aria-label",
+        cross
+          ? "Cross scramble. Apply it to a solved cube with white on the bottom."
+          : "Current scramble. Tap for a new scramble."
+      );
+    }
+    if (scrambleKicker) {
+      scrambleKicker.hidden = on;
+      scrambleKicker.textContent = cross ? "Cross scramble" : "Scramble";
+    }
     if (pllCaseEl) pllCaseEl.hidden = !on;
     if (pllPickEl) pllPickEl.hidden = !on;
     if (pllSummaryEl) pllSummaryEl.hidden = !on;
+    if (crossPanel) crossPanel.hidden = !cross;
+    if (crossNote) crossNote.hidden = !cross;
+    if (timesTitle) timesTitle.textContent = cross ? "Cross times" : "Times";
     document.body.classList.toggle("timer-pll", on);
+    document.body.classList.toggle("timer-cross", cross);
+    if (cross) paintCross();
   }
 
   function syncPllLocks() {
@@ -1208,28 +1310,43 @@ export function initPracticeTimer({
   }
 
   function activeChartWindow() {
-    return pllOn() ? state.pllChartWindow : state.chartWindow;
+    if (pllOn()) return state.pllChartWindow;
+    if (crossOn()) return state.crossChartWindow;
+    return state.chartWindow;
+  }
+
+  function sessionInspectKey() {
+    if (pllOn()) return PLL_INSPECT_KEY;
+    if (crossOn()) return CROSS_DRILL_INSPECT_KEY;
+    return PRACTICE_INSPECT_KEY;
+  }
+
+  function sessionChartKey() {
+    if (pllOn()) return PLL_CHART_WINDOW_KEY;
+    if (crossOn()) return CROSS_DRILL_CHART_WINDOW_KEY;
+    return PRACTICE_CHART_WINDOW_KEY;
   }
 
   function syncSessionControls() {
-    if (inspectEl) {
-      const seconds = pllOn()
-        ? loadInspectionSeconds(store, PLL_INSPECT_KEY)
-        : loadInspectionSeconds(store);
-      inspectEl.value = String(seconds);
-    }
-    const windowSize = pllOn()
-      ? loadChartWindow(store, PLL_CHART_WINDOW_KEY)
-      : loadChartWindow(store);
+    if (inspectEl) inspectEl.value = String(loadInspectionSeconds(store, sessionInspectKey()));
+    const windowSize = loadChartWindow(store, sessionChartKey());
     if (pllOn()) state.pllChartWindow = windowSize;
+    else if (crossOn()) state.crossChartWindow = windowSize;
     else state.chartWindow = windowSize;
     if (chartWindowEl) chartWindowEl.value = String(windowSize);
   }
 
   function chartOptions(extra = {}) {
+    const kind = sessionKind();
+    const emptyLabel =
+      kind === "pll"
+        ? "Time two cases and a progress chart appears here."
+        : kind === "cross"
+          ? "Time two crosses and a progress chart appears here."
+          : "";
     return {
       windowSize: activeChartWindow(),
-      emptyLabel: pllOn() ? "Time two cases and a progress chart appears here." : "",
+      emptyLabel,
       ...extra,
     };
   }
@@ -1261,14 +1378,21 @@ export function initPracticeTimer({
     const stats = computeStats(records);
     const previous = records.length > 1 ? computeStats(records.slice(0, -1)) : null;
     const pll = pllOn();
-    if (timesEl) timesEl.innerHTML = pll ? renderPllTimesList(records) : renderTimesList(records);
+    const cross = crossOn();
+    if (timesEl) {
+      timesEl.innerHTML = pll
+        ? renderPllTimesList(records)
+        : cross
+          ? renderCrossTimesList(records)
+          : renderTimesList(records);
+    }
     if (statsEl) {
       statsEl.innerHTML = renderStats(stats, previous, {
-        splitShift: Boolean(records.at(-1)?.splits),
-        stages: !pll,
+        splitShift: !pll && !cross && Boolean(records.at(-1)?.splits),
+        stages: !pll && !cross,
       });
     }
-    if (splitStatsEl) splitStatsEl.innerHTML = pll ? "" : renderSplitStats(stats.splits);
+    if (splitStatsEl) splitStatsEl.innerHTML = pll || cross ? "" : renderSplitStats(stats.splits);
     if (pllSummaryEl) pllSummaryEl.innerHTML = pll ? renderPllCaseSummary(records) : "";
     if (chartEl) {
       chartEl.innerHTML = renderProgressChart(records, chartOptions());
@@ -1346,6 +1470,33 @@ export function initPracticeTimer({
     cancelTimers();
     setPhase("idle");
     if (ms > 0) {
+      if (crossOn()) {
+        const crossCase = state.crossCase;
+        state.lastSplits = null;
+        state.lastMs = ms;
+        state.marks = [];
+        state.lastTapElapsed = 0;
+        if (crossCase) {
+          addCrossDrillTime(
+            {
+              ms,
+              at: Date.now(),
+              scramble: crossCase.scramble,
+              length: crossCase.length,
+            },
+            store
+          );
+        }
+        state.crossReveal = true;
+        paintClock(ms);
+        paintCross();
+        renderRecords();
+        const lengthLabel = crossCase
+          ? ` Optimal is ${crossCase.length} ${crossCase.length === 1 ? "move" : "moves"}.`
+          : "";
+        setStatus(`Cross ${formatClock(ms)}.${lengthLabel} Repeat or Next.`);
+        return;
+      }
       if (pllOn()) {
         const done = state.pllCase;
         state.lastSplits = null;
@@ -1433,6 +1584,7 @@ export function initPracticeTimer({
   function setMode(mode) {
     if (state.phase !== "idle") return;
     if (!TIMER_MODES.has(mode)) return;
+    const previous = state.mode;
     state.mode = saveTimerMode(mode, store);
     state.lastSplits = null;
     state.lastMs = 0;
@@ -1444,7 +1596,10 @@ export function initPracticeTimer({
     if (pllOn()) {
       if (!state.pllCase || !state.pllSelected.includes(state.pllCase.id)) dealPllCase();
       else paintPllCase();
-    } else if (!state.scramble) {
+    } else if (crossOn()) {
+      if (!state.crossCase) dealNextCross();
+      else showCrossCase(state.crossCase, { reveal: false });
+    } else if (previous === TIMER_MODE_CROSS || !state.scramble) {
       newScramble();
     }
     renderRecords();
@@ -1457,17 +1612,16 @@ export function initPracticeTimer({
     clockBtn.blur();
   });
   scrambleEl?.addEventListener("click", () => {
-    if (state.phase !== "idle") return;
+    if (state.phase !== "idle" || crossOn()) return;
     newScramble({ announce: true });
   });
   inspectEl?.addEventListener("change", () => {
-    const key = pllOn() ? PLL_INSPECT_KEY : PRACTICE_INSPECT_KEY;
-    saveInspectionSeconds(inspectEl.value, store, key);
+    saveInspectionSeconds(inspectEl.value, store, sessionInspectKey());
   });
   chartWindowEl?.addEventListener("change", () => {
-    const key = pllOn() ? PLL_CHART_WINDOW_KEY : PRACTICE_CHART_WINDOW_KEY;
-    const value = saveChartWindow(chartWindowEl.value, store, key);
+    const value = saveChartWindow(chartWindowEl.value, store, sessionChartKey());
     if (pllOn()) state.pllChartWindow = value;
+    else if (crossOn()) state.crossChartWindow = value;
     else state.chartWindow = value;
     renderRecords();
   });
@@ -1484,10 +1638,15 @@ export function initPracticeTimer({
   });
   clearBtn?.addEventListener("click", () => {
     const pll = pllOn();
+    const cross = crossOn();
     if (pll) {
       if (!loadPllTrainerTimes(store).length) return;
       if (!window.confirm("Clear PLL trainer times?")) return;
       clearPllTrainerTimes(store);
+    } else if (cross) {
+      if (!loadCrossDrillTimes(store).length) return;
+      if (!window.confirm("Clear cross drill times?")) return;
+      clearCrossDrillTimes(store);
     } else {
       const existing = loadPracticeTimes(store);
       if (!existing.length) return;
@@ -1500,19 +1659,43 @@ export function initPracticeTimer({
     paintClock(0);
     renderRecords();
     paintSplits(0);
-    setStatus(pll ? "PLL times cleared" : "All times cleared");
+    setStatus(pll ? "PLL times cleared" : cross ? "Cross times cleared" : "All times cleared");
   });
   timesEl?.addEventListener("click", (e) => {
     const btn = e.target.closest("[data-delete]");
     if (!btn) return;
     const id = btn.dataset.delete;
     if (pllOn()) deletePllTrainerTime(id, store);
+    else if (crossOn()) deleteCrossDrillTime(id, store);
     else {
       deletePracticeTime(id, store);
       onRecordsChanged?.({ reason: "delete", id });
     }
     renderRecords();
     setStatus("Time deleted");
+  });
+  crossPanel?.addEventListener("click", (e) => {
+    const repeatBtn = e.target.closest("#cross-drill-repeat");
+    const nextBtn = e.target.closest("#cross-drill-next");
+    const showBtn = e.target.closest("#cross-drill-show");
+    if (repeatBtn) {
+      if (state.phase !== "idle") return;
+      repeatCross();
+      repeatBtn.blur();
+      return;
+    }
+    if (nextBtn) {
+      if (state.phase !== "idle") return;
+      dealNextCross();
+      nextBtn.blur();
+      return;
+    }
+    if (showBtn) {
+      if (!state.crossCase) return;
+      state.crossReveal = !state.crossReveal;
+      paintCross();
+      showBtn.blur();
+    }
   });
   function togglePllReveal(button, panel, showLabel, hideLabel) {
     if (!button || !panel) return;
@@ -1582,10 +1765,20 @@ export function initPracticeTimer({
   setPhase("idle");
   syncPllChrome();
   if (pllOn()) dealPllCase();
+  else if (crossOn()) dealNextCross();
   else newScramble();
   paintClock(0);
   renderRecords();
   setStatus(statusForIdle());
+  const warm = () => {
+    try {
+      warmCrossSolver();
+    } catch {
+      /* the next case still builds the table if this was skipped */
+    }
+  };
+  if (typeof requestIdleCallback === "function") requestIdleCallback(warm, { timeout: 1500 });
+  else setTimeout(warm, 200);
 
   return {
     refresh: renderRecords,

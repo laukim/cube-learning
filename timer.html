@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0b1210" />
-    <meta name="description" content="3×3 timer, scramble, and PLL case trainer — times stay on this device." />
+    <meta name="description" content="3×3 timer, scramble, white cross drill, and PLL case trainer — times stay on this device." />
     <title>Timer — 3×3 Coach</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -12,7 +12,7 @@
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=sync2" />
+    <link rel="stylesheet" href="styles.css?v=cross1" />
   </head>
   <body class="timer-page">
     <div class="ambient" aria-hidden="true"></div>
@@ -38,12 +38,35 @@
           <button type="button" class="timer-mode-btn is-active" data-timer-mode="single" aria-pressed="true">
             Single
           </button>
+          <button type="button" class="timer-mode-btn" data-timer-mode="cross" aria-pressed="false">
+            Cross drill
+          </button>
           <button type="button" class="timer-mode-btn" data-timer-mode="splits" aria-pressed="false">
             Cross · F2L · Final
           </button>
           <button type="button" class="timer-mode-btn" data-timer-mode="pll" aria-pressed="false">
             PLL cases
           </button>
+        </div>
+        <div class="cross-drill" id="cross-drill" hidden>
+          <p class="cross-drill-hold">White on bottom, blue in front</p>
+          <div class="cross-drill-actions">
+            <button type="button" class="btn btn-ghost" id="cross-drill-repeat">Repeat this case</button>
+            <button type="button" class="btn btn-primary" id="cross-drill-next">Next</button>
+          </div>
+          <button
+            type="button"
+            class="btn btn-ghost btn-small cross-drill-show"
+            id="cross-drill-show"
+            aria-expanded="false"
+            aria-controls="cross-drill-solution"
+          >
+            Show optimal cross
+          </button>
+          <div class="cross-drill-solution" id="cross-drill-solution" hidden>
+            <p class="cross-drill-solution-kicker" id="cross-drill-solution-kicker"></p>
+            <code class="alg cross-drill-alg" id="cross-drill-alg"></code>
+          </div>
         </div>
         <div class="pll-trainer-case" id="pll-trainer-case" hidden></div>
         <button type="button" class="practice-clock" id="practice-clock" data-phase="idle" aria-label="Start timer">
@@ -98,11 +121,14 @@
           </label>
           <button type="button" class="btn btn-ghost btn-small" id="timer-clear" disabled>Clear times</button>
         </div>
+        <p class="cross-drill-note" id="cross-drill-note" hidden>
+          Cross drill times stay on this device and are kept out of solve averages.
+        </p>
         <div class="timer-stats" id="timer-stats"></div>
         <div class="timer-split-stats" id="timer-split-stats"></div>
         <div class="timer-chart" id="timer-chart" aria-live="polite"></div>
         <div id="pll-case-summary" hidden></div>
-        <h2 class="timer-times-title">Times</h2>
+        <h2 class="timer-times-title" id="timer-times-title">Times</h2>
         <div class="timer-times" id="timer-times"></div>
       </section>
     </main>
@@ -120,10 +146,10 @@
 
     <footer class="foot">
       <span id="timer-foot-note">Works offline · times stay on this device</span>
-      <span>Space or tap the clock · splits record Cross, F2L, then Final · PLL cases times one case</span>
+      <span>Space or tap the clock · splits record Cross, F2L, then Final · Cross drill times the white cross · PLL times one case</span>
     </footer>
 
-    <script type="module" src="js/timer-page.js?v=sync2"></script>
+    <script type="module" src="js/timer-page.js?v=cross1"></script>
     <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "fd680e4c7f304be681f2fca80e8000e2"}'></script><!-- End Cloudflare Web Analytics -->
   </body>
 </html>

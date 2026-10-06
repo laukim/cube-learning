@@ -2511,9 +2511,77 @@ body.timer-page .topbar {
   opacity: 0.55;
 }
 
-body.timer-pll .timer-stage {
+body.timer-pll .timer-stage,
+body.timer-cross .timer-stage {
   justify-content: flex-start;
   min-height: 0;
+}
+
+.practice-scramble.is-static {
+  cursor: default;
+}
+
+.practice-scramble.is-static:hover,
+.practice-scramble.is-static:focus-visible {
+  border-color: var(--line);
+}
+
+.cross-drill {
+  width: min(100%, 28rem);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.55rem;
+}
+
+.cross-drill-hold,
+.cross-drill-note,
+.cross-drill-solution-kicker {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.cross-drill-hold {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.cross-drill-note {
+  margin: 0 0 0.75rem;
+  text-align: left;
+}
+
+.cross-drill-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.cross-drill-actions .btn,
+.cross-drill-show {
+  min-height: 44px;
+  width: 100%;
+  white-space: normal;
+  line-height: 1.2;
+}
+
+.cross-drill-solution {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+  text-align: left;
+}
+
+.cross-drill-alg {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  font-size: 1rem;
+  line-height: 1.45;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .pll-trainer-pick {
@@ -3685,6 +3753,11 @@ body.timer-pll .timer-stage {
 
   .practice-clock {
     min-height: 6.2rem;
+  }
+
+  .timer-mode-btn {
+    min-height: 44px;
+    padding: 0.4rem 0.7rem;
   }
 
   body.timer-page .foot {

@@ -1,14 +1,127 @@
 /**
- * Shortest-path puzzle page. Face turns use the shared cubejs facelets.
- * The picture is the state graph: dots are positions, lines are turns.
+ * Cube net page. One cube, drawn as colored dots in a flat cross.
+ * A small isometric cube sits beside that map. Show optimal is a short alg.
  */
 
 import { invertAlgNotation } from "./alg.js";
 import { applyMove, COLOR_HEX, FACES, isSolved, solvedFacelets } from "./cube.js";
-import { assembleGraph, renderCubeGraph } from "./path-graph.js";
 import { createShortestPathSearch, PATH_LENGTHS, randomHtmScramble } from "./shortest-path.js";
 
 const DEPTH_KEY = "cube-coach-path-depth";
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+const ISO_FACES = [
+  { face: "U", cls: "path-iso-u" },
+  { face: "F", cls: "path-iso-f" },
+  { face: "R", cls: "path-iso-r" },
+];
+
+/** Face slots in the cross: U above F, D below, L F R B across the middle. */
+const FACE_SLOT = { U: [1, 0], L: [0, 1], F: [1, 1], R: [2, 1], B: [3, 1], D: [1, 2] };
+const DOT = 36;
+const FACE_GAP = 58;
+const DOT_R = 14;
+const PAD_X = 28;
+const PAD_Y = 32;
+
+function svgEl(name, attrs) {
+  const node = document.createElementNS(SVG_NS, name);
+  for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, String(value));
+  return node;
+}
+
+function faceOrigin(face) {
+  const [col, row] = FACE_SLOT[face];
+  const step = DOT * 2 + FACE_GAP;
+  return { x: PAD_X + col * step, y: PAD_Y + row * step };
+}
+
+function stickerPoint(face, index) {
+  const origin = faceOrigin(face);
+  return {
+    x: origin.x + (index % 3) * DOT,
+    y: origin.y + Math.floor(index / 3) * DOT,
+  };
+}
+
+function buildDotNet(container) {
+  const width = PAD_X * 2 + DOT * 2 + 3 * (DOT * 2 + FACE_GAP);
+  const height = PAD_Y + DOT * 2 + 2 * (DOT * 2 + FACE_GAP) + 22;
+  const svg = svgEl("svg", { viewBox: `0 0 ${width} ${height}` });
+  const lines = svgEl("g", { class: "path-net-lines", "aria-hidden": "true" });
+  const folds = [
+    ["U", 6, "F", 0],
+    ["U", 7, "F", 1],
+    ["U", 8, "F", 2],
+    ["L", 2, "F", 0],
+    ["L", 5, "F", 3],
+    ["L", 8, "F", 6],
+    ["F", 2, "R", 0],
+    ["F", 5, "R", 3],
+    ["F", 8, "R", 6],
+    ["R", 2, "B", 0],
+    ["R", 5, "B", 3],
+    ["R", 8, "B", 6],
+    ["F", 6, "D", 0],
+    ["F", 7, "D", 1],
+    ["F", 8, "D", 2],
+  ];
+  for (const [faceA, indexA, faceB, indexB] of folds) {
+    const a = stickerPoint(faceA, indexA);
+    const b = stickerPoint(faceB, indexB);
+    lines.appendChild(
+      svgEl("line", {
+        x1: a.x,
+        y1: a.y,
+        x2: b.x,
+        y2: b.y,
+        class: "path-net-fold",
+      }),
+    );
+  }
+  for (const face of ["U", "L", "F", "R", "B", "D"]) {
+    for (let index = 0; index < 9; index++) {
+      const here = stickerPoint(face, index);
+      if (index % 3 < 2) {
+        const next = stickerPoint(face, index + 1);
+        lines.appendChild(svgEl("line", { x1: here.x, y1: here.y, x2: next.x, y2: next.y, class: "path-net-edge" }));
+      }
+      if (index < 6) {
+        const next = stickerPoint(face, index + 3);
+        lines.appendChild(svgEl("line", { x1: here.x, y1: here.y, x2: next.x, y2: next.y, class: "path-net-edge" }));
+      }
+    }
+  }
+  svg.appendChild(lines);
+
+  const dots = svgEl("g", { class: "path-net-dots" });
+  for (const face of ["U", "L", "F", "R", "B", "D"]) {
+    const origin = faceOrigin(face);
+    const label = svgEl("text", {
+      x: origin.x + DOT,
+      y: origin.y - 16,
+      "text-anchor": "middle",
+      class: `path-net-label is-${face}`,
+    });
+    label.textContent = face;
+    svg.appendChild(label);
+    const start = FACES.indexOf(face) * 9;
+    for (let index = 0; index < 9; index++) {
+      const point = stickerPoint(face, index);
+      dots.appendChild(
+        svgEl("circle", {
+          cx: point.x,
+          cy: point.y,
+          r: DOT_R,
+          "data-i": start + index,
+          class: "path-net-dot",
+        }),
+      );
+    }
+  }
+  svg.appendChild(dots);
+  container.replaceChildren(svg);
+}
 
 function loadDepth() {
   try {
@@ -28,22 +141,10 @@ function saveDepth(depth) {
   }
 }
 
-function proofText(result) {
-  const length = result.length;
-  const within = result.within;
-  if (length <= 0) return "The cube was already solved.";
-  if (length === 1) {
-    return "Solved is one turn away. Zero moves leaves you on the scrambled node, so one is the minimum. Breadth-first search hits solved on the first step.";
-  }
-  const prev = length - 1;
-  const unit = prev === 1 ? "move" : "moves";
-  const positions = within.toLocaleString();
-  return `Breadth-first search lists every position within ${prev} ${unit} of the scramble — ${positions} of them. Solved is not in that list, so it takes at least ${length} moves. The search reaches solved on the next turn, and the first time it gets there is a shortest path.`;
-}
-
 function init() {
   const play = document.getElementById("path-play");
   const net = document.getElementById("path-net");
+  const iso = document.getElementById("path-iso");
   const pad = document.getElementById("path-pad");
   const countEl = document.getElementById("path-count");
   const scrambleEl = document.getElementById("path-scramble");
@@ -56,25 +157,27 @@ function init() {
   const headlineEl = document.getElementById("path-headline");
   const kickerEl = document.getElementById("path-kicker");
   const optimalEl = document.getElementById("path-optimal");
-  const graphEl = document.getElementById("path-graph");
   const proofEl = document.getElementById("path-proof");
   const detourEl = document.getElementById("path-detour");
-  const legendShort = document.getElementById("path-legend-short");
   const scoreEl = countEl?.parentElement;
 
-  const faceClass = { U: "net-U", L: "net-L", F: "net-F", R: "net-R", B: "net-B", D: "net-D" };
-  for (const face of ["U", "L", "F", "R", "B", "D"]) {
+  buildDotNet(net);
+
+  const scene = document.createElement("div");
+  scene.className = "path-iso-scene";
+  for (const { face, cls } of ISO_FACES) {
     const faceEl = document.createElement("div");
-    faceEl.className = `net-face ${faceClass[face]}`;
+    faceEl.className = `path-iso-face ${cls}`;
     const start = FACES.indexOf(face) * 9;
     for (let i = 0; i < 9; i++) {
       const cell = document.createElement("div");
-      cell.className = "net-cell";
+      cell.className = "path-iso-cell";
       cell.dataset.i = String(start + i);
       faceEl.appendChild(cell);
     }
-    net.appendChild(faceEl);
+    scene.appendChild(faceEl);
   }
+  iso.appendChild(scene);
 
   let depth = loadDepth();
   let phase = "play";
@@ -88,8 +191,10 @@ function init() {
   let revealed = false;
 
   function paint() {
-    net.querySelectorAll("[data-i]").forEach((cell) => {
-      cell.style.background = COLOR_HEX[facelets[Number(cell.dataset.i)]] || "#333";
+    play.querySelectorAll("[data-i]").forEach((cell) => {
+      const color = COLOR_HEX[facelets[Number(cell.dataset.i)]] || "#333";
+      if (cell.localName === "circle") cell.setAttribute("fill", color);
+      else cell.style.background = color;
     });
   }
 
@@ -113,62 +218,41 @@ function init() {
     playerEl.textContent = played.length ? played.join(" ") : "—";
     scoreEl.classList.toggle("is-short", phase === "solved" && !!optimal && played.length === optimal.length);
     scoreEl.classList.toggle("is-long", phase === "solved" && !!optimal && played.length > optimal.length);
-    if (legendShort) legendShort.hidden = !(revealed && optimal);
   }
 
   function setStatus(text) {
     statusEl.textContent = text;
   }
 
-  function rewindToScramble() {
-    facelets = solvedFacelets();
-    for (const move of scrambleMoves) applyMove(facelets, move);
-    paint();
-  }
-
-  function drawGraph(animate) {
-    const model = assembleGraph({
-      scramble,
-      playerMoves: played,
-      optimalMoves: revealed && optimal ? optimal.moves : null,
-    });
-    renderCubeGraph(graphEl, model, {
-      animate,
-      interactive: phase === "play",
-      onTurn: playMove,
-    });
-  }
-
   function renderResult() {
     const length = optimal ? optimal.length : scrambleMoves.length;
     if (phase === "solved" && optimal && played.length === length) {
-      headlineEl.textContent = "You found a shortest path.";
+      headlineEl.textContent = "You found a short way back.";
     } else if (phase === "solved" && optimal) {
-      headlineEl.textContent = `You solved it in ${played.length}. A shortest path is ${length}.`;
+      headlineEl.textContent = `You solved it in ${played.length}. A short way is ${length}.`;
     } else if (optimal) {
-      headlineEl.textContent = `A shortest path is ${length} ${length === 1 ? "move" : "moves"}.`;
+      headlineEl.textContent = `A short way back is ${length} ${length === 1 ? "move" : "moves"}.`;
     } else {
       headlineEl.textContent = "Here is one way back.";
     }
 
     if (optimal) {
-      kickerEl.textContent = length === 1 ? "1 move from the scramble" : `${length} moves from the scramble`;
+      kickerEl.textContent = "From the scramble";
       optimalEl.textContent = optimal.moves.join(" ") || "—";
-      proofEl.textContent = proofText(optimal);
+      proofEl.textContent = "These turns take the scramble back to solved. The net stays where you left it.";
     } else {
       kickerEl.textContent = "Scramble reversed";
       optimalEl.textContent = invertAlgNotation(scramble);
-      proofEl.textContent =
-        "The search did not finish, so this is the scramble played backwards. It solves the cube. It might not be the shortest route.";
+      proofEl.textContent = "The search did not finish, so this is the scramble played backwards. It solves the cube.";
     }
 
     const undone = invertAlgNotation(scramble);
     if (optimal && scrambleMoves.length > optimal.length) {
       detourEl.hidden = false;
-      detourEl.textContent = `Reversing the scramble also solves it, in ${scrambleMoves.length} moves: ${undone}. That is a longer walk between the same start and solved positions.`;
+      detourEl.textContent = `Undoing the scramble also solves it, in ${scrambleMoves.length} moves: ${undone}.`;
     } else if (optimal && undone !== optimal.moves.join(" ")) {
       detourEl.hidden = false;
-      detourEl.textContent = `Reversing the scramble is another shortest path: ${undone}.`;
+      detourEl.textContent = `Undoing the scramble is another way back: ${undone}.`;
     } else {
       detourEl.hidden = true;
       detourEl.textContent = "";
@@ -176,30 +260,22 @@ function init() {
 
     resultEl.hidden = false;
     syncControls();
-    drawGraph(false);
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    resultEl.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "nearest" });
   }
 
   function maybeReveal() {
     if (phase === "play" || revealed) return;
     if (!optimal && !searchError) {
-      setStatus(phase === "solved" ? `Solved in ${played.length}. Searching for a shortest path…` : "Searching for a shortest path…");
+      setStatus(phase === "solved" ? `Solved in ${played.length}.` : "Looking for a short way back…");
       return;
     }
     revealed = true;
-    if (phase === "reveal") rewindToScramble();
     renderResult();
     if (phase === "solved" && optimal && played.length === optimal.length) {
-      setStatus(`Solved in ${played.length}. That is a shortest path.`);
+      setStatus(`Solved in ${played.length}. That matches a short way back.`);
     } else if (phase === "solved" && optimal) {
-      setStatus(`Solved in ${played.length}. Shortest path is ${optimal.length}.`);
+      setStatus(`Solved in ${played.length}. A shorter way is ${optimal.length}.`);
     } else if (optimal) {
-      setStatus(
-        played.length
-          ? "Cube preview is back at the scramble. Your path stays on the graph."
-          : "Shortest path is on the graph. New scramble for another one.",
-      );
+      setStatus("A short way back from the scramble is below.");
     } else {
       setStatus("Showing the scramble reversed.");
     }
@@ -257,8 +333,7 @@ function init() {
     resultEl.hidden = true;
     paint();
     syncControls();
-    drawGraph(true);
-    setStatus("The center dot is the scramble. Turn a face, or tap a neighboring dot.");
+    setStatus("Turn a face. Each turn redraws this map.");
     pump(roundGen, createShortestPathSearch(scramble));
   }
 
@@ -268,11 +343,9 @@ function init() {
     played.push(move);
     paint();
     syncControls();
-    drawGraph(false);
     if (isSolved(facelets)) {
       phase = "solved";
       syncControls();
-      drawGraph(false);
       setStatus(`Solved in ${played.length}.`);
       maybeReveal();
     }
@@ -284,7 +357,6 @@ function init() {
     applyMove(facelets, invertAlgNotation(move));
     paint();
     syncControls();
-    drawGraph(false);
   }
 
   pad.addEventListener("click", (event) => {

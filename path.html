@@ -6,16 +6,16 @@
     <meta name="theme-color" content="#0b1210" />
     <meta
       name="description"
-      content="Shortest path: a graph of cube positions. Scramble a few moves and walk back. The fewest face turns are a shortest path."
+      content="Cube net: the 3×3 unfolded into a flat cross. Scramble a few moves and solve it from the map."
     />
-    <title>Shortest path — 3×3 Coach</title>
+    <title>Cube net — 3×3 Coach</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=path2" />
+    <link rel="stylesheet" href="styles.css?v=path4" />
   </head>
   <body class="path-page">
     <div class="ambient" aria-hidden="true"></div>
@@ -28,18 +28,16 @@
       <nav class="site-nav" aria-label="App pages">
         <a class="site-nav-link" href="./">Coach</a>
         <a class="site-nav-link" href="./timer.html">Timer</a>
-        <a class="site-nav-link is-active" href="./path.html" aria-current="page" title="Shortest path">Path</a>
+        <a class="site-nav-link is-active" href="./path.html" aria-current="page" title="Cube net">Net</a>
       </nav>
     </header>
 
     <main class="path-main">
-      <section class="path-play" id="path-play" data-phase="play" aria-label="Shortest path puzzle">
+      <section class="path-play" id="path-play" data-phase="play" aria-label="Cube net puzzle">
         <div class="path-top">
           <div class="path-title">
-            <h1>Shortest path</h1>
-            <p class="path-lead">
-              Each dot is a position. Each line is a face turn. The center is your scramble — find a short way to solved.
-            </p>
+            <h1>Cube net</h1>
+            <p class="path-lead">Colored dots are this cube’s stickers, laid flat. Each turn moves them on the map.</p>
           </div>
           <div class="path-top-side">
             <div class="path-depth" role="group" aria-label="Scramble length">
@@ -55,18 +53,17 @@
           </div>
         </div>
 
-        <div class="path-graph-wrap">
-          <div id="path-graph" class="path-graph"></div>
-          <div class="path-legend" aria-hidden="true">
-            <span class="path-legend-item"><i class="path-swatch is-return"></i> undo scramble</span>
-            <span class="path-legend-item"><i class="path-swatch is-player"></i> your path</span>
-            <span class="path-legend-item" id="path-legend-short" hidden><i class="path-swatch is-optimal"></i> shortest</span>
-            <span class="path-legend-note">Dots within two turns of the scramble</span>
-          </div>
+        <div class="path-board">
+          <div
+            class="path-net"
+            id="path-net"
+            role="img"
+            aria-label="One cube as colored dots in a cross. Up on top, down below, front in the middle, with left, right, and back beside it."
+          ></div>
         </div>
 
         <div class="path-banner" id="path-result" hidden>
-          <h2 id="path-headline">Shortest path</h2>
+          <h2 id="path-headline">A short way back</h2>
           <p class="path-kicker" id="path-kicker">From the scramble</p>
           <code class="alg" id="path-optimal"></code>
           <p id="path-proof"></p>
@@ -74,7 +71,7 @@
         </div>
 
         <div class="path-dock">
-          <div class="net path-net" id="path-net" aria-hidden="true"></div>
+          <div class="path-iso" id="path-iso" aria-hidden="true"></div>
           <div class="path-dock-copy">
             <p class="path-hold">Yellow on top · white on bottom · blue in front</p>
             <p class="path-trace">
@@ -120,13 +117,13 @@
     </main>
 
     <footer class="foot">
-      <span>Half-turn metric · yellow top, white bottom</span>
-      <span>A solve is a path · an optimal solve is a shortest path</span>
+      <span>Yellow top · white bottom · blue in front</span>
+      <span>Each turn redraws the flat map</span>
     </footer>
 
-    <noscript>This game needs JavaScript to turn the cube and search for a shortest path.</noscript>
+    <noscript>This page needs JavaScript to scramble the cube and turn the faces.</noscript>
     <script src="vendor/cubejs.js?v=path1"></script>
-    <script type="module" src="js/path-game.js?v=path3"></script>
+    <script type="module" src="js/path-game.js?v=path5"></script>
     <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "fd680e4c7f304be681f2fca80e8000e2"}'></script><!-- End Cloudflare Web Analytics -->
   </body>
 </html>

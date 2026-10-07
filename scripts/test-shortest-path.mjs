@@ -9,14 +9,10 @@ const { invertAlgNotation } = await import("../js/alg.js");
 const {
   HTM_MOVE_NAMES,
   PATH_LENGTHS,
-  localGraph,
-  pathStateIds,
   positionLetters,
   randomHtmScramble,
   shortestPath,
-  solvedStateId,
 } = await import("../js/shortest-path.js");
-const { assembleGraph } = await import("../js/path-graph.js");
 
 await import("../js/path-game.js");
 
@@ -203,7 +199,12 @@ assert(indexHtml.includes('href="./timer.html"'), "coach still links to the time
 assert(indexHtml.includes('href="./path.html"'), "coach links to the path game");
 assert(timerHtml.includes('href="./"'), "timer still links home");
 assert(timerHtml.includes('href="./path.html"'), "timer links to the path game");
-assert(pathHtml.includes("Shortest path"), "path page title");
+assert(pathHtml.includes("Cube net"), "path page title");
+assert(pathHtml.includes("Colored dots"), "page describes the dot map");
+assert(pathHtml.includes('id="path-net"'), "flat net is on the page");
+assert(!pathHtml.includes("path-graph"), "state graph is not the page");
+assert(indexHtml.includes('title="Cube net"'), "coach names the net page");
+assert(timerHtml.includes('title="Cube net"'), "timer names the net page");
 assert(pathHtml.includes('href="./timer.html"'), "path links to the timer");
 assert(pathHtml.includes("js/path-game.js"), "path page script");
 assert(pathHtml.includes('data-depth="3"') && pathHtml.includes('data-depth="5"'), "difficulties");
@@ -212,46 +213,5 @@ for (const name of HTM_MOVE_NAMES) {
   assert(pathHtml.includes(`data-move="${name}"`), `missing move button ${name}`);
 }
 assert(PATH_LENGTHS.join() === "3,4,5", "selectable lengths");
-
-const near = localGraph("R", 1);
-assert(near.nodes.length === 19, `radius-1 ball should be 19, got ${near.nodes.length}`);
-assert(new Set(near.nodes.map((node) => node.id)).size === 19, "radius-1 ids are unique");
-assert(near.edges.length === 18, `radius-1 edges should be 18, got ${near.edges.length}`);
-const solvedId = solvedStateId();
-assert(near.nodes.some((node) => node.id === solvedId), "solved sits next to a one-move scramble");
-assert(near.directed.get(`${near.startId}>${solvedId}`) === "R'", "R' is the edge back to solved");
-assert(pathStateIds("R", ["R'"]).at(-1) === solvedId, "R then R' is solved");
-
-const cloud = localGraph("R U F", 2);
-assert(cloud.nodes.length === 262, `radius-2 ball should be 262, got ${cloud.nodes.length}`);
-assert(cloud.edges.length > 18 && cloud.edges.length < 20000, `radius-2 edge count ${cloud.edges.length}`);
-
-const drawn = assembleGraph({
-  scramble: "R U F",
-  playerMoves: ["R"],
-  optimalMoves: three.moves,
-  radius: 1,
-});
-assert(drawn.nodes.some((node) => node.isSolved), "optimal path draws the solved node");
-assert(drawn.nodes.some((node) => node.isStart), "scramble start is on the graph");
-assert(
-  drawn.edges.some((edge) => edge.kind === "player" || edge.kind === "both"),
-  "player move is a highlighted edge",
-);
-assert(
-  drawn.edges.some((edge) => edge.kind === "optimal" || edge.kind === "both"),
-  "shortest path is a highlighted edge",
-);
-for (const node of drawn.nodes) {
-  assert(Number.isFinite(node.x) && Number.isFinite(node.y), "node coordinates are finite");
-  assert(node.x >= 0 && node.x <= drawn.width && node.y >= 0 && node.y <= drawn.height, "node stays inside the view");
-}
-
-const full = assembleGraph({ scramble: "R U", playerMoves: [], optimalMoves: null, radius: 2 });
-assert(full.nodes.length === 262, "the drawn cloud is the radius-2 ball");
-for (const node of full.nodes) {
-  assert(Number.isFinite(node.x) && Number.isFinite(node.y), "cloud coordinates are finite");
-  assert(node.x >= 4 && node.x <= full.width - 4 && node.y >= 4 && node.y <= full.height - 4, "cloud stays inset");
-}
 
 console.log("shortest path ok");

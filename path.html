@@ -6,16 +6,16 @@
     <meta name="theme-color" content="#0b1210" />
     <meta
       name="description"
-      content="Cube net: the 3×3 unfolded into a flat cross. Scramble a few moves and solve it from the map."
+      content="Ring map: one 3×3 as colored beads on three rings. Scramble a few moves and slide the beads back."
     />
-    <title>Cube net — 3×3 Coach</title>
+    <title>Ring map — 3×3 Coach</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=path5" />
+    <link rel="stylesheet" href="styles.css?v=path7" />
   </head>
   <body class="path-page">
     <div class="ambient" aria-hidden="true"></div>
@@ -28,16 +28,16 @@
       <nav class="site-nav" aria-label="App pages">
         <a class="site-nav-link" href="./">Coach</a>
         <a class="site-nav-link" href="./timer.html">Timer</a>
-        <a class="site-nav-link is-active" href="./path.html" aria-current="page" title="Cube net">Net</a>
+        <a class="site-nav-link is-active" href="./path.html" aria-current="page" title="Ring map">Rings</a>
       </nav>
     </header>
 
     <main class="path-main">
-      <section class="path-play" id="path-play" data-phase="play" aria-label="Cube net puzzle">
+      <section class="path-play" id="path-play" data-phase="play" aria-label="Ring map puzzle">
         <div class="path-top">
           <div class="path-title">
-            <h1>Cube net</h1>
-            <p class="path-lead">Colored dots are this cube’s stickers, laid flat. Each turn moves them on the map.</p>
+            <h1>Ring map</h1>
+            <p class="path-lead">Colored beads are this cube’s stickers, sitting on three rings. A turn slides them along the track.</p>
           </div>
           <div class="path-top-side">
             <div class="path-depth" role="group" aria-label="Scramble length">
@@ -58,7 +58,7 @@
             class="path-net"
             id="path-net"
             role="img"
-            aria-label="One cube as colored dots in a cross. Up on top, down below, front in the middle, with left, right, and back beside it."
+            aria-label="One cube as colored beads on three rings of arcs. The rings overlap, with an empty curved triangle in the middle."
           ></div>
         </div>
 
@@ -118,12 +118,12 @@
 
     <footer class="foot">
       <span>Yellow top · white bottom · blue in front</span>
-      <span>Each turn redraws the flat map</span>
+      <span>A turn slides the beads along their ring</span>
     </footer>
 
     <noscript>This page needs JavaScript to scramble the cube and turn the faces.</noscript>
     <script src="vendor/cubejs.js?v=path1"></script>
-    <script type="module" src="js/path-game.js?v=path6"></script>
+    <script type="module" src="js/path-game.js?v=path9"></script>
     <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "fd680e4c7f304be681f2fca80e8000e2"}'></script><!-- End Cloudflare Web Analytics -->
   </body>
 </html>

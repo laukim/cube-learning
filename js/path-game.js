@@ -1,6 +1,8 @@
 /**
- * Cube net page. One cube, drawn as colored dots in a flat cross.
- * A small isometric cube sits beside that map. Show optimal is a short alg.
+ * Ring map. One cube, drawn as colored beads on three families of circular
+ * arcs. The families sit 120° apart and overlap like a trefoil, with an empty
+ * curved triangle in the middle. Beads sit only where the arcs cross.
+ * A face turn slides the beads along that face’s rings.
  */
 
 import { invertAlgNotation } from "./alg.js";
@@ -16,13 +18,65 @@ const ISO_FACES = [
   { face: "R", cls: "path-iso-r" },
 ];
 
-/** Face slots in the cross: U above F, D below, L F R B across the middle. */
-const FACE_SLOT = { U: [1, 0], L: [0, 1], F: [1, 1], R: [2, 1], B: [3, 1], D: [1, 2] };
-const DOT = 36;
-const FACE_GAP = 58;
-const DOT_R = 14;
-const PAD_X = 28;
-const PAD_Y = 32;
+/** Quarter-turn cycles of facelet slots. Sticker at cycle[i] moves to cycle[i+1]. */
+const CYCLES = {
+  U: [
+    [0, 2, 8, 6],
+    [1, 5, 7, 3],
+    [9, 18, 36, 45],
+    [10, 19, 37, 46],
+    [11, 20, 38, 47],
+  ],
+  R: [
+    [2, 51, 29, 20],
+    [5, 48, 32, 23],
+    [8, 45, 35, 26],
+    [9, 11, 17, 15],
+    [10, 14, 16, 12],
+  ],
+  F: [
+    [6, 9, 29, 44],
+    [7, 12, 28, 41],
+    [8, 15, 27, 38],
+    [18, 20, 26, 24],
+    [19, 23, 25, 21],
+  ],
+  D: [
+    [15, 51, 42, 24],
+    [16, 52, 43, 25],
+    [17, 53, 44, 26],
+    [27, 29, 35, 33],
+    [28, 32, 34, 30],
+  ],
+  L: [
+    [0, 18, 27, 53],
+    [3, 21, 30, 50],
+    [6, 24, 33, 47],
+    [36, 38, 44, 42],
+    [37, 41, 43, 39],
+  ],
+  B: [
+    [0, 42, 35, 11],
+    [1, 39, 34, 14],
+    [2, 36, 33, 17],
+    [45, 47, 53, 51],
+    [46, 50, 52, 48],
+  ],
+};
+
+/** Which ring family a face slides along. 0 up/down, 1 right/left, 2 front/back. */
+const FACE_FAMILY = { U: 0, D: 0, R: 1, L: 1, F: 2, B: 2 };
+
+/**
+ * Facelet slot → crossing index. Most face-turn cycles are four beads on one
+ * ring, so a quarter turn is a slide to the next crossing.
+ */
+const SLOT_DOT = [
+  29, 35, 6, 12, 8, 17, 11, 30, 24, 14, 13, 47, 37, 9, 40, 42, 0, 3, 33, 34, 38, 41, 26, 52, 51, 23, 20,
+  25, 19, 7, 1, 27, 4, 10, 22, 28, 15, 5, 43, 53, 44, 48, 46, 16, 2, 32, 18, 50, 49, 45, 36, 39, 31, 21,
+];
+
+const BEAD_R = 17;
 
 function svgEl(name, attrs) {
   const node = document.createElementNS(SVG_NS, name);
@@ -30,97 +84,227 @@ function svgEl(name, attrs) {
   return node;
 }
 
-function faceOrigin(face) {
-  const [col, row] = FACE_SLOT[face];
-  const step = DOT * 2 + FACE_GAP;
-  return { x: PAD_X + col * step, y: PAD_Y + row * step };
-}
-
-function stickerPoint(face, index) {
-  const origin = faceOrigin(face);
-  return {
-    x: origin.x + (index % 3) * DOT,
-    y: origin.y + Math.floor(index / 3) * DOT,
-  };
-}
-
-function buildDotNet(container) {
-  const width = PAD_X * 2 + DOT * 2 + 3 * (DOT * 2 + FACE_GAP);
-  const height = PAD_Y + DOT * 2 + 2 * (DOT * 2 + FACE_GAP) + 22;
-  const svg = svgEl("svg", { viewBox: `0 0 ${width} ${height}` });
-  const lines = svgEl("g", { class: "path-net-lines", "aria-hidden": "true" });
-  const folds = [
-    ["U", 6, "F", 0],
-    ["U", 7, "F", 1],
-    ["U", 8, "F", 2],
-    ["L", 2, "F", 0],
-    ["L", 5, "F", 3],
-    ["L", 8, "F", 6],
-    ["F", 2, "R", 0],
-    ["F", 5, "R", 3],
-    ["F", 8, "R", 6],
-    ["R", 2, "B", 0],
-    ["R", 5, "B", 3],
-    ["R", 8, "B", 6],
-    ["F", 6, "D", 0],
-    ["F", 7, "D", 1],
-    ["F", 8, "D", 2],
+function intersect(c1, r1, c2, r2) {
+  const dx = c2.x - c1.x;
+  const dy = c2.y - c1.y;
+  const d = Math.hypot(dx, dy);
+  const a = (r1 * r1 - r2 * r2 + d * d) / (2 * d);
+  const h = Math.sqrt(Math.max(0, r1 * r1 - a * a));
+  const xm = c1.x + (a * dx) / d;
+  const ym = c1.y + (a * dy) / d;
+  const rx = (-dy * h) / d;
+  const ry = (dx * h) / d;
+  if (h < 1e-8) return [{ x: xm, y: ym }];
+  return [
+    { x: xm + rx, y: ym + ry },
+    { x: xm - rx, y: ym - ry },
   ];
-  for (const [faceA, indexA, faceB, indexB] of folds) {
-    const a = stickerPoint(faceA, indexA);
-    const b = stickerPoint(faceB, indexB);
-    lines.appendChild(
-      svgEl("line", {
-        x1: a.x,
-        y1: a.y,
-        x2: b.x,
-        y2: b.y,
-        class: "path-net-fold",
+}
+
+function shortestAngle(a0, a1) {
+  return Math.atan2(Math.sin(a1 - a0), Math.cos(a1 - a0));
+}
+
+function quarterPerm(face) {
+  const perm = Array.from({ length: 54 }, (_, i) => i);
+  for (const cycle of CYCLES[face]) {
+    for (let i = 0; i < 4; i++) perm[cycle[i]] = cycle[(i + 1) % 4];
+  }
+  return perm;
+}
+
+const QUARTER = Object.fromEntries(FACES.map((face) => [face, quarterPerm(face)]));
+
+function composePerm(first, second) {
+  return first.map((_, i) => second[first[i]]);
+}
+
+export function permForMove(move) {
+  const face = move[0];
+  const turns = move.endsWith("2") ? 2 : move.endsWith("'") ? 3 : 1;
+  let perm = QUARTER[face];
+  for (let i = 1; i < turns; i++) perm = composePerm(perm, QUARTER[face]);
+  return perm;
+}
+
+function ringLanes(dots, center, ringIndexes) {
+  const members = ringIndexes
+    .map((index) => ({ index, angle: Math.atan2(dots[index].y - center.y, dots[index].x - center.x) }))
+    .sort((a, b) => a.angle - b.angle);
+  const gaps = members.map((member, i) => {
+    const next = members[(i + 1) % members.length].angle;
+    let gap = next - member.angle;
+    if (i === members.length - 1) gap = next + Math.PI * 2 - member.angle;
+    return gap;
+  });
+  let start = 0;
+  for (let i = 1; i < gaps.length; i++) if (gaps[i] > gaps[start]) start = i;
+  const order = members.slice(start + 1).concat(members.slice(0, start + 1));
+  const groups = [[order[0]]];
+  for (let i = 0; i < order.length - 1; i++) {
+    let gap = order[i + 1].angle - order[i].angle;
+    gap = ((gap % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    if (gap > 0.35) groups.push([order[i + 1]]);
+    else groups[groups.length - 1].push(order[i + 1]);
+  }
+  const lanes = [];
+  if (groups.length === 4 && groups.every((group) => group.length === 3)) {
+    for (let lane = 0; lane < 3; lane++) lanes.push(groups.map((group) => group[lane].index));
+  }
+  return { lanes, angles: members.map((member) => member.angle) };
+}
+
+function cycleMatchesLane(cycle, lane, slotDot) {
+  const placed = cycle.map((slot) => slotDot[slot]);
+  for (const reversed of [false, true]) {
+    const seq = reversed ? [...lane].reverse() : lane;
+    for (let rot = 0; rot < 4; rot++) {
+      if (seq.every((dot, i) => dot === placed[(i + rot) % 4])) return true;
+    }
+  }
+  return false;
+}
+
+/** Crossings of three concentric-arc families, plus which facelet sits on each. */
+export function createRingModel() {
+  const reach = 180;
+  const centers = [0, 1, 2].map((i) => {
+    const angle = ((i * 120 - 90) * Math.PI) / 180;
+    return { x: reach * Math.cos(angle), y: reach * Math.sin(angle) };
+  });
+  const side = Math.hypot(centers[0].x - centers[1].x, centers[0].y - centers[1].y);
+  const radii = [0.8, 0.92, 1.05].map((frac) => frac * side);
+  const dots = [];
+  const onRing = Array.from({ length: 3 }, () => Array.from({ length: 3 }, () => []));
+  for (let a = 0; a < 3; a++) {
+    for (let b = a + 1; b < 3; b++) {
+      for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+          for (const point of intersect(centers[a], radii[i], centers[b], radii[j])) {
+            const index = dots.length;
+            dots.push(point);
+            onRing[a][i].push(index);
+            onRing[b][j].push(index);
+          }
+        }
+      }
+    }
+  }
+
+  const lanes = [[], [], []];
+  const arcs = [];
+  for (let family = 0; family < 3; family++) {
+    for (let ring = 0; ring < 3; ring++) {
+      const built = ringLanes(dots, centers[family], onRing[family][ring]);
+      lanes[family].push(...built.lanes);
+      const angles = built.angles.slice().sort((a, b) => a - b);
+      let maxGap = -1;
+      let maxAt = 0;
+      for (let i = 0; i < angles.length; i++) {
+        const next = i === angles.length - 1 ? angles[0] + Math.PI * 2 : angles[i + 1];
+        const gap = next - angles[i];
+        if (gap > maxGap) {
+          maxGap = gap;
+          maxAt = i;
+        }
+      }
+      const start = angles[(maxAt + 1) % angles.length];
+      const end = angles[maxAt];
+      let sweep = (end - start + Math.PI * 2) % (Math.PI * 2);
+      const margin = Math.min(0.28, maxGap * 0.18);
+      arcs.push({
+        cx: centers[family].x,
+        cy: centers[family].y,
+        r: radii[ring],
+        a0: start - margin,
+        sweep: Math.min(Math.PI * 2 - 0.02, sweep + margin * 2),
+      });
+    }
+  }
+
+  let goodCycles = 0;
+  for (const face of FACES) {
+    for (const cycle of CYCLES[face]) {
+      if (lanes[FACE_FAMILY[face]].some((lane) => cycleMatchesLane(cycle, lane, SLOT_DOT))) goodCycles += 1;
+    }
+  }
+
+  const faceStep = {};
+  const slotPos = SLOT_DOT.map((dot) => dots[dot]);
+  for (const face of FACES) {
+    const center = centers[FACE_FAMILY[face]];
+    const familyLanes = lanes[FACE_FAMILY[face]];
+    const deltas = [];
+    for (const cycle of CYCLES[face]) {
+      if (!familyLanes.some((lane) => cycleMatchesLane(cycle, lane, SLOT_DOT))) continue;
+      for (let i = 0; i < 4; i++) {
+        const from = slotPos[cycle[i]];
+        const to = slotPos[cycle[(i + 1) % 4]];
+        const a0 = Math.atan2(from.y - center.y, from.x - center.x);
+        const a1 = Math.atan2(to.y - center.y, to.x - center.x);
+        const delta = shortestAngle(a0, a1);
+        if (Math.abs(delta) < 2.15) deltas.push(delta);
+      }
+    }
+    deltas.sort((a, b) => a - b);
+    faceStep[face] = deltas.length ? deltas[Math.floor(deltas.length / 2)] : 1;
+  }
+
+  return { dots, centers, radii, arcs, slotDot: SLOT_DOT, slotPos, faceStep, goodCycles, lanes };
+}
+
+function arcPath(cx, cy, r, a0, sweep) {
+  const x0 = cx + r * Math.cos(a0);
+  const y0 = cy + r * Math.sin(a0);
+  const x1 = cx + r * Math.cos(a0 + sweep);
+  const y1 = cy + r * Math.sin(a0 + sweep);
+  const large = sweep > Math.PI ? 1 : 0;
+  return `M ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1}`;
+}
+
+function buildRingMap(container, model) {
+  const samples = [];
+  for (const dot of model.dots) samples.push(dot);
+  for (const arc of model.arcs) {
+    samples.push(
+      { x: arc.cx + arc.r * Math.cos(arc.a0), y: arc.cy + arc.r * Math.sin(arc.a0) },
+      { x: arc.cx + arc.r * Math.cos(arc.a0 + arc.sweep), y: arc.cy + arc.r * Math.sin(arc.a0 + arc.sweep) },
+    );
+  }
+  const pad = 46;
+  const minX = Math.min(...samples.map((p) => p.x)) - pad;
+  const minY = Math.min(...samples.map((p) => p.y)) - pad;
+  const maxX = Math.max(...samples.map((p) => p.x)) + pad;
+  const maxY = Math.max(...samples.map((p) => p.y)) + pad;
+  const svg = svgEl("svg", { viewBox: `${minX} ${minY} ${maxX - minX} ${maxY - minY}` });
+  const tracks = svgEl("g", { class: "path-rings", "aria-hidden": "true" });
+  for (const arc of model.arcs) {
+    tracks.appendChild(
+      svgEl("path", {
+        d: arcPath(arc.cx, arc.cy, arc.r, arc.a0, arc.sweep),
+        class: "path-ring",
       }),
     );
   }
-  for (const face of ["U", "L", "F", "R", "B", "D"]) {
-    for (let index = 0; index < 9; index++) {
-      const here = stickerPoint(face, index);
-      if (index % 3 < 2) {
-        const next = stickerPoint(face, index + 1);
-        lines.appendChild(svgEl("line", { x1: here.x, y1: here.y, x2: next.x, y2: next.y, class: "path-net-edge" }));
-      }
-      if (index < 6) {
-        const next = stickerPoint(face, index + 3);
-        lines.appendChild(svgEl("line", { x1: here.x, y1: here.y, x2: next.x, y2: next.y, class: "path-net-edge" }));
-      }
-    }
+  svg.appendChild(tracks);
+  const beads = svgEl("g", { class: "path-beads" });
+  for (let slot = 0; slot < 54; slot++) {
+    const point = model.slotPos[slot];
+    beads.appendChild(
+      svgEl("circle", {
+        cx: point.x,
+        cy: point.y,
+        r: BEAD_R,
+        "data-i": slot,
+        class: "path-bead",
+      }),
+    );
   }
-  svg.appendChild(lines);
-
-  const dots = svgEl("g", { class: "path-net-dots" });
-  for (const face of ["U", "L", "F", "R", "B", "D"]) {
-    const origin = faceOrigin(face);
-    const label = svgEl("text", {
-      x: origin.x + DOT,
-      y: origin.y - 16,
-      "text-anchor": "middle",
-      class: `path-net-label is-${face}`,
-    });
-    label.textContent = face;
-    svg.appendChild(label);
-    const start = FACES.indexOf(face) * 9;
-    for (let index = 0; index < 9; index++) {
-      const point = stickerPoint(face, index);
-      dots.appendChild(
-        svgEl("circle", {
-          cx: point.x,
-          cy: point.y,
-          r: DOT_R,
-          "data-i": start + index,
-          class: "path-net-dot",
-        }),
-      );
-    }
-  }
-  svg.appendChild(dots);
+  svg.appendChild(beads);
+  const travelers = svgEl("g", { class: "path-travelers" });
+  svg.appendChild(travelers);
   container.replaceChildren(svg);
+  return { svg, travelers };
 }
 
 function loadDepth() {
@@ -139,6 +323,20 @@ function saveDepth(depth) {
   } catch {
     /* quota / private mode */
   }
+}
+
+function travelDelta(from, to, center, desired) {
+  const a0 = Math.atan2(from.y - center.y, from.x - center.x);
+  const a1 = Math.atan2(to.y - center.y, to.x - center.x);
+  const base = shortestAngle(a0, a1);
+  const k = Math.round((desired - base) / (Math.PI * 2));
+  return { a0, delta: base + Math.PI * 2 * k, r0: Math.hypot(from.x - center.x, from.y - center.y), r1: Math.hypot(to.x - center.x, to.y - center.y) };
+}
+
+function pointOnTravel(center, travel, t) {
+  const angle = travel.a0 + travel.delta * t;
+  const radius = travel.r0 + (travel.r1 - travel.r0) * t;
+  return { x: center.x + radius * Math.cos(angle), y: center.y + radius * Math.sin(angle) };
 }
 
 function init() {
@@ -160,8 +358,10 @@ function init() {
   const proofEl = document.getElementById("path-proof");
   const detourEl = document.getElementById("path-detour");
   const scoreEl = countEl?.parentElement;
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  buildDotNet(net);
+  const model = createRingModel();
+  const { travelers } = buildRingMap(net, model);
 
   const scene = document.createElement("div");
   scene.className = "path-iso-scene";
@@ -189,13 +389,78 @@ function init() {
   let optimal = null;
   let searchError = "";
   let revealed = false;
+  let animating = false;
+  let animFrame = 0;
+  let slideGen = 0;
+
+  function beads() {
+    return net.querySelectorAll(".path-bead");
+  }
 
   function paint() {
-    play.querySelectorAll("[data-i]").forEach((cell) => {
-      const color = COLOR_HEX[facelets[Number(cell.dataset.i)]] || "#333";
-      if (cell.localName === "circle") cell.setAttribute("fill", color);
-      else cell.style.background = color;
+    travelers.replaceChildren();
+    for (const bead of beads()) {
+      bead.setAttribute("opacity", "1");
+      const color = COLOR_HEX[facelets[Number(bead.dataset.i)]] || "#333";
+      bead.setAttribute("fill", color);
+    }
+    iso.querySelectorAll("[data-i]").forEach((cell) => {
+      cell.style.background = COLOR_HEX[facelets[Number(cell.dataset.i)]] || "#333";
     });
+  }
+
+  function cancelSlide() {
+    slideGen += 1;
+    if (animFrame) cancelAnimationFrame(animFrame);
+    animFrame = 0;
+    animating = false;
+  }
+
+  function slide(move, before, done) {
+    const perm = permForMove(move);
+    const face = move[0];
+    const steps = move.endsWith("2") ? 2 : 1;
+    const forward = !move.endsWith("'");
+    const step = model.faceStep[face] || 1;
+    const desired = (forward ? 1 : -1) * step * steps;
+    const center = model.centers[FACE_FAMILY[face]];
+    const moving = [];
+    for (let slot = 0; slot < 54; slot++) {
+      const dest = perm[slot];
+      if (dest === slot) continue;
+      const from = model.slotPos[slot];
+      const to = model.slotPos[dest];
+      moving.push({
+        color: COLOR_HEX[before[slot]] || "#333",
+        travel: travelDelta(from, to, center, desired),
+        node: svgEl("circle", { r: BEAD_R, class: "path-bead", fill: COLOR_HEX[before[slot]] || "#333" }),
+      });
+      const home = net.querySelector(`.path-bead[data-i="${slot}"]`);
+      if (home) home.setAttribute("opacity", "0");
+    }
+    for (const item of moving) travelers.appendChild(item.node);
+    const duration = steps === 2 ? 520 : 380;
+    const t0 = performance.now();
+    const gen = ++slideGen;
+    animating = true;
+    const frame = (now) => {
+      if (gen !== slideGen) return;
+      const t = Math.min(1, (now - t0) / duration);
+      const eased = t * t * (3 - 2 * t);
+      for (const item of moving) {
+        const point = pointOnTravel(center, item.travel, eased);
+        item.node.setAttribute("cx", point.x);
+        item.node.setAttribute("cy", point.y);
+      }
+      if (t < 1) {
+        animFrame = requestAnimationFrame(frame);
+        return;
+      }
+      animFrame = 0;
+      animating = false;
+      done();
+    };
+    animFrame = requestAnimationFrame(frame);
   }
 
   function syncDepthButtons() {
@@ -207,7 +472,7 @@ function init() {
   }
 
   function syncControls() {
-    const locked = phase !== "play";
+    const locked = phase !== "play" || animating;
     pad.querySelectorAll("button").forEach((button) => {
       button.disabled = locked;
     });
@@ -239,7 +504,7 @@ function init() {
     if (optimal) {
       kickerEl.textContent = "From the scramble";
       optimalEl.textContent = optimal.moves.join(" ") || "—";
-      proofEl.textContent = "These turns take the scramble back to solved. The net stays where you left it.";
+      proofEl.textContent = "These turns take the scramble back to solved. The rings stay where you left them.";
     } else {
       kickerEl.textContent = "Scramble reversed";
       optimalEl.textContent = invertAlgNotation(scramble);
@@ -312,6 +577,7 @@ function init() {
   }
 
   function newRound() {
+    cancelSlide();
     roundGen += 1;
     phase = "play";
     optimal = null;
@@ -333,14 +599,11 @@ function init() {
     resultEl.hidden = true;
     paint();
     syncControls();
-    setStatus("Turn a face. Each turn redraws this map.");
+    setStatus("Turn a face. The beads slide along their ring.");
     pump(roundGen, createShortestPathSearch(scramble));
   }
 
-  function playMove(move) {
-    if (phase !== "play") return;
-    applyMove(facelets, move);
-    played.push(move);
+  function finishMove() {
     paint();
     syncControls();
     if (isSolved(facelets)) {
@@ -351,12 +614,25 @@ function init() {
     }
   }
 
-  function undo() {
-    if (phase !== "play" || played.length === 0) return;
-    const move = played.pop();
-    applyMove(facelets, invertAlgNotation(move));
-    paint();
+  function playMove(move) {
+    if (phase !== "play" || animating) return;
+    const before = facelets.slice();
+    applyMove(facelets, move);
+    played.push(move);
     syncControls();
+    if (reduceMotion) finishMove();
+    else slide(move, before, finishMove);
+  }
+
+  function undo() {
+    if (phase !== "play" || played.length === 0 || animating) return;
+    const move = played.pop();
+    const before = facelets.slice();
+    const inverse = invertAlgNotation(move);
+    applyMove(facelets, inverse);
+    syncControls();
+    if (reduceMotion) finishMove();
+    else slide(inverse, before, finishMove);
   }
 
   pad.addEventListener("click", (event) => {
@@ -368,7 +644,7 @@ function init() {
   undoBtn.addEventListener("click", undo);
   newBtn.addEventListener("click", newRound);
   showBtn.addEventListener("click", () => {
-    if (phase !== "play") return;
+    if (phase !== "play" || animating) return;
     phase = "reveal";
     syncControls();
     maybeReveal();
@@ -376,7 +652,7 @@ function init() {
 
   document.querySelector(".path-depth").addEventListener("click", (event) => {
     const button = event.target.closest("[data-depth]");
-    if (!button) return;
+    if (!button || animating) return;
     const next = Number(button.dataset.depth);
     if (!PATH_LENGTHS.includes(next) || next === depth) return;
     depth = next;

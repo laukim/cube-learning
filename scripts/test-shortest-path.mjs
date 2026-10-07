@@ -14,7 +14,7 @@ const {
   shortestPath,
 } = await import("../js/shortest-path.js");
 
-await import("../js/path-game.js");
+const { createRingModel, permForMove } = await import("../js/path-game.js");
 
 function assert(cond, msg) {
   if (!cond) throw new Error(msg);
@@ -199,12 +199,13 @@ assert(indexHtml.includes('href="./timer.html"'), "coach still links to the time
 assert(indexHtml.includes('href="./path.html"'), "coach links to the path game");
 assert(timerHtml.includes('href="./"'), "timer still links home");
 assert(timerHtml.includes('href="./path.html"'), "timer links to the path game");
-assert(pathHtml.includes("Cube net"), "path page title");
-assert(pathHtml.includes("Colored dots"), "page describes the dot map");
-assert(pathHtml.includes('id="path-net"'), "flat net is on the page");
+assert(pathHtml.includes("Ring map"), "path page title");
+assert(pathHtml.includes("Colored beads"), "page describes the bead map");
+assert(pathHtml.includes('id="path-net"'), "ring map is on the page");
 assert(!pathHtml.includes("path-graph"), "state graph is not the page");
-assert(indexHtml.includes('title="Cube net"'), "coach names the net page");
-assert(timerHtml.includes('title="Cube net"'), "timer names the net page");
+assert(!pathHtml.includes("Cube net"), "cross net is not the page title");
+assert(indexHtml.includes('title="Ring map"'), "coach names the ring page");
+assert(timerHtml.includes('title="Ring map"'), "timer names the ring page");
 assert(pathHtml.includes('href="./timer.html"'), "path links to the timer");
 assert(pathHtml.includes("js/path-game.js"), "path page script");
 assert(pathHtml.includes('data-depth="3"') && pathHtml.includes('data-depth="5"'), "difficulties");
@@ -213,5 +214,20 @@ for (const name of HTM_MOVE_NAMES) {
   assert(pathHtml.includes(`data-move="${name}"`), `missing move button ${name}`);
 }
 assert(PATH_LENGTHS.join() === "3,4,5", "selectable lengths");
+
+const ring = createRingModel();
+assert(ring.dots.length === 54, "54 beads at arc crossings");
+assert(new Set(ring.slotDot).size === 54, "each bead is one sticker");
+assert(ring.arcs.length === 9, "three families, three rings");
+assert(ring.goodCycles >= 20, `face turns slide on rings, got ${ring.goodCycles}`);
+assert(Math.hypot(ring.dots[0].x - -90.67, ring.dots[0].y - 52.35) < 0.05, "crossing geometry");
+const solvedLetters = "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB";
+for (const move of HTM_MOVE_NAMES) {
+  const cube = new Cube();
+  cube.move(move);
+  const perm = permForMove(move);
+  const moved = Array.from({ length: 54 }, (_, i) => solvedLetters[perm.indexOf(i)]).join("");
+  assert(moved === cube.asString(), `bead slide matches cubejs for ${move}`);
+}
 
 console.log("shortest path ok");

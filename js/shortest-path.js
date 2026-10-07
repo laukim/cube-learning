@@ -163,29 +163,33 @@ function scratchSolved() {
   return true;
 }
 
-function scratchKey() {
+function keyFrom(cp, co, ep, eo) {
   return String.fromCharCode(
-    48 + scratchCp[0] * 3 + scratchCo[0],
-    48 + scratchCp[1] * 3 + scratchCo[1],
-    48 + scratchCp[2] * 3 + scratchCo[2],
-    48 + scratchCp[3] * 3 + scratchCo[3],
-    48 + scratchCp[4] * 3 + scratchCo[4],
-    48 + scratchCp[5] * 3 + scratchCo[5],
-    48 + scratchCp[6] * 3 + scratchCo[6],
-    48 + scratchCp[7] * 3 + scratchCo[7],
-    48 + scratchEp[0] * 2 + scratchEo[0],
-    48 + scratchEp[1] * 2 + scratchEo[1],
-    48 + scratchEp[2] * 2 + scratchEo[2],
-    48 + scratchEp[3] * 2 + scratchEo[3],
-    48 + scratchEp[4] * 2 + scratchEo[4],
-    48 + scratchEp[5] * 2 + scratchEo[5],
-    48 + scratchEp[6] * 2 + scratchEo[6],
-    48 + scratchEp[7] * 2 + scratchEo[7],
-    48 + scratchEp[8] * 2 + scratchEo[8],
-    48 + scratchEp[9] * 2 + scratchEo[9],
-    48 + scratchEp[10] * 2 + scratchEo[10],
-    48 + scratchEp[11] * 2 + scratchEo[11],
+    48 + cp[0] * 3 + co[0],
+    48 + cp[1] * 3 + co[1],
+    48 + cp[2] * 3 + co[2],
+    48 + cp[3] * 3 + co[3],
+    48 + cp[4] * 3 + co[4],
+    48 + cp[5] * 3 + co[5],
+    48 + cp[6] * 3 + co[6],
+    48 + cp[7] * 3 + co[7],
+    48 + ep[0] * 2 + eo[0],
+    48 + ep[1] * 2 + eo[1],
+    48 + ep[2] * 2 + eo[2],
+    48 + ep[3] * 2 + eo[3],
+    48 + ep[4] * 2 + eo[4],
+    48 + ep[5] * 2 + eo[5],
+    48 + ep[6] * 2 + eo[6],
+    48 + ep[7] * 2 + eo[7],
+    48 + ep[8] * 2 + eo[8],
+    48 + ep[9] * 2 + eo[9],
+    48 + ep[10] * 2 + eo[10],
+    48 + ep[11] * 2 + eo[11],
   );
+}
+
+function scratchKey() {
+  return keyFrom(scratchCp, scratchCo, scratchEp, scratchEo);
 }
 
 function lettersFromArrays(cp, co, ep, eo) {
@@ -475,6 +479,124 @@ export function createShortestPathSearch(scramble, options = {}) {
       return failed;
     },
   };
+}
+
+function identityPieces() {
+  return {
+    cp: Uint8Array.from([0, 1, 2, 3, 4, 5, 6, 7]),
+    co: new Uint8Array(8),
+    ep: Uint8Array.from([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]),
+    eo: new Uint8Array(12),
+  };
+}
+
+function copyPieces(cp, co, ep, eo) {
+  return {
+    cp: Uint8Array.from(cp),
+    co: Uint8Array.from(co),
+    ep: Uint8Array.from(ep),
+    eo: Uint8Array.from(eo),
+  };
+}
+
+let cachedSolvedId = "";
+
+/** Stable id of the solved cube. Same id the local graph uses. */
+export function solvedStateId() {
+  if (!cachedSolvedId) {
+    const start = identityPieces();
+    cachedSolvedId = keyFrom(start.cp, start.co, start.ep, start.eo);
+  }
+  return cachedSolvedId;
+}
+
+/**
+ * State ids from `startAlg`, then after each move in `moves`.
+ * Index 0 is the scrambled position when `startAlg` is the scramble.
+ */
+export function pathStateIds(startAlg, moves = []) {
+  const state = identityPieces();
+  for (const move of parseHtm(startAlg)) applyInPlace(state.cp, state.co, state.ep, state.eo, move);
+  const ids = [keyFrom(state.cp, state.co, state.ep, state.eo)];
+  for (const name of moves) {
+    const index = MOVE_INDEX.get(name);
+    if (index === undefined) throw new Error(`Unknown move: ${name}`);
+    applyInPlace(state.cp, state.co, state.ep, state.eo, index);
+    ids.push(keyFrom(state.cp, state.co, state.ep, state.eo));
+  }
+  return ids;
+}
+
+/**
+ * The cube graph around a scramble: every position within `radius` face
+ * turns, plus the edges between them. Radius 2 is 262 positions — a full
+ * ring of clusters, small enough to draw on a phone.
+ */
+export function localGraph(scramble, radius = 2) {
+  const depthLimit = radius < 0 ? 0 : radius | 0;
+  const state = identityPieces();
+  for (const move of parseHtm(scramble)) applyInPlace(state.cp, state.co, state.ep, state.eo, move);
+
+  const nodes = [
+    {
+      id: keyFrom(state.cp, state.co, state.ep, state.eo),
+      depth: 0,
+      parentId: "",
+      viaName: "",
+    },
+  ];
+  const pieces = [copyPieces(state.cp, state.co, state.ep, state.eo)];
+  const indexById = new Map([[nodes[0].id, 0]]);
+  const directed = new Map();
+  const edges = [];
+  const seenEdge = new Set();
+
+  function link(fromId, toId, move) {
+    directed.set(`${fromId}>${toId}`, move);
+    const inverse = inverseName(move);
+    directed.set(`${toId}>${fromId}`, inverse);
+    const pair = fromId < toId ? `${fromId}|${toId}` : `${toId}|${fromId}`;
+    if (seenEdge.has(pair)) return;
+    seenEdge.add(pair);
+    edges.push({ from: fromId, to: toId, move });
+  }
+
+  let qh = 0;
+  while (qh < nodes.length) {
+    const src = qh++;
+    if (nodes[src].depth >= depthLimit) continue;
+    // Copy the parent. applyInPlace writes through its arguments, and
+    // pieces[src] must stay put for the other 17 turns.
+    const base = pieces[src];
+    const workCp = base.cp.slice();
+    const workCo = base.co.slice();
+    const workEp = base.ep.slice();
+    const workEo = base.eo.slice();
+    for (let move = 0; move < MOVES.length; move++) {
+      applyInPlace(workCp, workCo, workEp, workEo, move);
+      const id = scratchKey();
+      const name = moveName(move);
+      let dst = indexById.get(id);
+      if (dst === undefined) {
+        dst = nodes.length;
+        nodes.push({
+          id,
+          depth: nodes[src].depth + 1,
+          parentId: nodes[src].id,
+          viaName: name,
+        });
+        indexById.set(id, dst);
+        pieces.push(copyPieces(scratchCp, scratchCo, scratchEp, scratchEo));
+      }
+      link(nodes[src].id, id, name);
+      workCp.set(base.cp);
+      workCo.set(base.co);
+      workEp.set(base.ep);
+      workEo.set(base.eo);
+    }
+  }
+
+  return { nodes, edges, directed, startId: nodes[0].id };
 }
 
 /** Run the search to completion. */

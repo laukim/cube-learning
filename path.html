@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#0b1210" />
     <meta
       name="description"
-      content="Shortest path: scramble a 3×3 a few moves and solve it. The fewest face turns are a shortest path on the cube's graph."
+      content="Shortest path: a graph of cube positions. Scramble a few moves and walk back. The fewest face turns are a shortest path."
     />
     <title>Shortest path — 3×3 Coach</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -15,7 +15,7 @@
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=path1" />
+    <link rel="stylesheet" href="styles.css?v=path2" />
   </head>
   <body class="path-page">
     <div class="ambient" aria-hidden="true"></div>
@@ -34,82 +34,89 @@
 
     <main class="path-main">
       <section class="path-play" id="path-play" data-phase="play" aria-label="Shortest path puzzle">
-        <h1>Shortest path</h1>
-        <p class="path-lead">
-          Scramble is a few face turns from solved. Get back in as few turns as you can.
-        </p>
-        <div class="path-depth" role="group" aria-label="Scramble length">
-          <span class="path-depth-label">Scramble</span>
-          <button type="button" class="path-depth-btn is-active" data-depth="3" aria-pressed="true">3</button>
-          <button type="button" class="path-depth-btn" data-depth="4" aria-pressed="false">4</button>
-          <button type="button" class="path-depth-btn" data-depth="5" aria-pressed="false">5</button>
+        <div class="path-top">
+          <div class="path-title">
+            <h1>Shortest path</h1>
+            <p class="path-lead">
+              Each dot is a position. Each line is a face turn. The center is your scramble — find a short way to solved.
+            </p>
+          </div>
+          <div class="path-top-side">
+            <div class="path-depth" role="group" aria-label="Scramble length">
+              <span class="path-depth-label">Scramble</span>
+              <button type="button" class="path-depth-btn is-active" data-depth="3" aria-pressed="true">3</button>
+              <button type="button" class="path-depth-btn" data-depth="4" aria-pressed="false">4</button>
+              <button type="button" class="path-depth-btn" data-depth="5" aria-pressed="false">5</button>
+            </div>
+            <p class="path-score">
+              <span class="path-score-value" id="path-count" aria-live="polite">0</span>
+              <span class="path-score-label">moves</span>
+            </p>
+          </div>
         </div>
-        <p class="path-hold">Yellow on top · white on bottom · blue in front</p>
-        <div class="net path-net" id="path-net" aria-hidden="true"></div>
-        <p class="path-score">
-          <span class="path-score-value" id="path-count" aria-live="polite">0</span>
-          <span class="path-score-label">moves</span>
-        </p>
-        <p class="path-trace">
-          <span>Scramble</span>
-          <code id="path-scramble">—</code>
-        </p>
-        <p class="path-trace">
-          <span>Your turns</span>
-          <code id="path-player">—</code>
-        </p>
-        <div class="path-pad" id="path-pad" aria-label="Face turns">
-          <button type="button" class="move-btn" data-move="U">U</button>
-          <button type="button" class="move-btn" data-move="U'">U'</button>
-          <button type="button" class="move-btn" data-move="U2">U2</button>
-          <button type="button" class="move-btn" data-move="R">R</button>
-          <button type="button" class="move-btn" data-move="R'">R'</button>
-          <button type="button" class="move-btn" data-move="R2">R2</button>
-          <button type="button" class="move-btn" data-move="F">F</button>
-          <button type="button" class="move-btn" data-move="F'">F'</button>
-          <button type="button" class="move-btn" data-move="F2">F2</button>
-          <button type="button" class="move-btn" data-move="L">L</button>
-          <button type="button" class="move-btn" data-move="L'">L'</button>
-          <button type="button" class="move-btn" data-move="L2">L2</button>
-          <button type="button" class="move-btn" data-move="D">D</button>
-          <button type="button" class="move-btn" data-move="D'">D'</button>
-          <button type="button" class="move-btn" data-move="D2">D2</button>
-          <button type="button" class="move-btn" data-move="B">B</button>
-          <button type="button" class="move-btn" data-move="B'">B'</button>
-          <button type="button" class="move-btn" data-move="B2">B2</button>
-        </div>
-        <div class="path-actions">
-          <button type="button" class="btn btn-ghost" id="path-undo" disabled>Undo</button>
-          <button type="button" class="btn btn-primary" id="path-new">New scramble</button>
-          <button type="button" class="btn btn-ghost" id="path-show">Show optimal</button>
-        </div>
-        <p class="path-status" id="path-status" role="status">Turn a face to start.</p>
-      </section>
 
-      <aside class="path-lesson" aria-label="What the puzzle is">
-        <h2>Positions and turns</h2>
-        <p>
-          Every position of the cube is a <strong>node</strong>. Every face turn is an <strong>edge</strong> to a
-          neighboring position. The scramble drops you on a nearby node. Solving is a walk back to the solved node.
-          The fewest turns is a <strong>shortest path</strong>.
-        </p>
-        <p>
-          Quarter turns and half turns each count as one move. That is the half-turn metric — the same way a cross
-          solution counts <span class="inline-alg">U2</span> as one turn.
-        </p>
-        <div class="path-result" id="path-result" hidden>
+        <div class="path-graph-wrap">
+          <div id="path-graph" class="path-graph"></div>
+          <div class="path-legend" aria-hidden="true">
+            <span class="path-legend-item"><i class="path-swatch is-return"></i> undo scramble</span>
+            <span class="path-legend-item"><i class="path-swatch is-player"></i> your path</span>
+            <span class="path-legend-item" id="path-legend-short" hidden><i class="path-swatch is-optimal"></i> shortest</span>
+            <span class="path-legend-note">Dots within two turns of the scramble</span>
+          </div>
+        </div>
+
+        <div class="path-banner" id="path-result" hidden>
           <h2 id="path-headline">Shortest path</h2>
           <p class="path-kicker" id="path-kicker">From the scramble</p>
           <code class="alg" id="path-optimal"></code>
-          <div id="path-graph" class="path-graph"></div>
-          <p class="path-graph-note">
-            Each circle is a position. Each line is a face turn. The bright path is a shortest route back to solved.
-            The faint lines are other turns — the graph keeps branching like that.
-          </p>
           <p id="path-proof"></p>
           <p id="path-detour" hidden></p>
         </div>
-      </aside>
+
+        <div class="path-dock">
+          <div class="net path-net" id="path-net" aria-hidden="true"></div>
+          <div class="path-dock-copy">
+            <p class="path-hold">Yellow on top · white on bottom · blue in front</p>
+            <p class="path-trace">
+              <span>Scramble</span>
+              <code id="path-scramble">—</code>
+            </p>
+            <p class="path-trace">
+              <span>Your turns</span>
+              <code id="path-player">—</code>
+            </p>
+            <p class="path-status" id="path-status" role="status">Turn a face to start.</p>
+          </div>
+        </div>
+
+        <div class="path-controls">
+          <div class="path-pad" id="path-pad" aria-label="Face turns">
+            <button type="button" class="move-btn" data-move="U">U</button>
+            <button type="button" class="move-btn" data-move="U'">U'</button>
+            <button type="button" class="move-btn" data-move="U2">U2</button>
+            <button type="button" class="move-btn" data-move="R">R</button>
+            <button type="button" class="move-btn" data-move="R'">R'</button>
+            <button type="button" class="move-btn" data-move="R2">R2</button>
+            <button type="button" class="move-btn" data-move="F">F</button>
+            <button type="button" class="move-btn" data-move="F'">F'</button>
+            <button type="button" class="move-btn" data-move="F2">F2</button>
+            <button type="button" class="move-btn" data-move="L">L</button>
+            <button type="button" class="move-btn" data-move="L'">L'</button>
+            <button type="button" class="move-btn" data-move="L2">L2</button>
+            <button type="button" class="move-btn" data-move="D">D</button>
+            <button type="button" class="move-btn" data-move="D'">D'</button>
+            <button type="button" class="move-btn" data-move="D2">D2</button>
+            <button type="button" class="move-btn" data-move="B">B</button>
+            <button type="button" class="move-btn" data-move="B'">B'</button>
+            <button type="button" class="move-btn" data-move="B2">B2</button>
+          </div>
+          <div class="path-actions">
+            <button type="button" class="btn btn-ghost" id="path-undo" disabled>Undo</button>
+            <button type="button" class="btn btn-primary" id="path-new">New scramble</button>
+            <button type="button" class="btn btn-ghost" id="path-show">Show optimal</button>
+          </div>
+        </div>
+      </section>
     </main>
 
     <footer class="foot">
@@ -119,7 +126,7 @@
 
     <noscript>This game needs JavaScript to turn the cube and search for a shortest path.</noscript>
     <script src="vendor/cubejs.js?v=path1"></script>
-    <script type="module" src="js/path-game.js?v=path2"></script>
+    <script type="module" src="js/path-game.js?v=path3"></script>
     <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "fd680e4c7f304be681f2fca80e8000e2"}'></script><!-- End Cloudflare Web Analytics -->
   </body>
 </html>

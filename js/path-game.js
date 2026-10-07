@@ -275,7 +275,7 @@ function init() {
     } else if (phase === "solved" && optimal) {
       setStatus(`Solved in ${played.length}. A shorter way is ${optimal.length}.`);
     } else if (optimal) {
-      setStatus("A short way back from the scramble is below.");
+      setStatus("A short way back from the scramble is shown.");
     } else {
       setStatus("Showing the scramble reversed.");
     }

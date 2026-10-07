@@ -4155,12 +4155,8 @@ body.path-page .topbar {
   }
 
   .path-controls {
-    position: sticky;
-    bottom: 0;
-    z-index: 3;
-    margin-top: 0.55rem;
-    padding: 0.4rem 0 calc(0.3rem + env(safe-area-inset-bottom));
-    background: linear-gradient(180deg, rgba(11, 18, 16, 0), var(--bg) 28%);
+    margin-top: 0.7rem;
+    padding-bottom: calc(0.35rem + env(safe-area-inset-bottom));
   }
 }
 

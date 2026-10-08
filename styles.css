@@ -3149,8 +3149,7 @@ body.timer-cross .timer-stage {
 }
 
 .timer-split-averages {
-  width: max-content;
-  min-width: 100%;
+  width: 100%;
 }
 
 .timer-split-averages th,
@@ -3177,6 +3176,47 @@ body.timer-cross .timer-stage {
 
 .timer-split-avg-label-final {
   color: var(--timer-final) !important;
+}
+
+.timer-split-label-col {
+  width: 3.4rem;
+}
+
+.timer-period-averages-block {
+  margin-top: 0.55rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--line);
+}
+
+.timer-averages.timer-period-averages thead th {
+  white-space: normal;
+  vertical-align: bottom;
+  line-height: 1.15;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.6rem;
+  overflow-wrap: anywhere;
+}
+
+.timer-period-caption-note {
+  display: block;
+  margin-top: 0.12rem;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: var(--muted);
+}
+
+.timer-period-sub {
+  display: block;
+  margin-top: 0.12rem;
+  font-size: 0.58rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1.2;
+  text-transform: none;
+  color: var(--muted);
 }
 
 .timer-averages {
@@ -3229,14 +3269,14 @@ body.timer-cross .timer-stage {
 }
 
 .timer-averages.timer-split-averages {
-  width: max-content;
-  min-width: 100%;
+  table-layout: fixed;
+  width: 100%;
 }
 
 .timer-averages.timer-split-averages th,
 .timer-averages.timer-split-averages td {
   white-space: nowrap;
-  padding: 0.28rem 0.4rem;
+  padding: 0.28rem 0.22rem;
 }
 
 .timer-avg-ao5 {
@@ -3812,8 +3852,12 @@ body.timer-cross .timer-stage {
 
   .timer-averages.timer-split-averages th,
   .timer-averages.timer-split-averages td {
-    padding: 0.26rem 0.32rem;
-    font-size: 0.75rem;
+    padding: 0.22rem 0.12rem;
+    font-size: 0.72rem;
+  }
+
+  .timer-split-label-col {
+    width: 2.9rem;
   }
 }
 

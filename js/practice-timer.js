@@ -29,7 +29,7 @@ import {
 } from "./pll-case-trainer.js?v=pllreveal2";
 import { faceletsForScramble, renderReconstruction } from "./cube-reconstruction.js?v=cube1";
 import { cubeTimerDecision, faceletsSolved, normalizeMoves } from "./move-log.js?v=cube1";
-import { formatSolvedAt, normalizeSplits, sortSolves } from "./solve-order.js?v=sync1";
+import { formatSolvedAt, normalizeSplits, solveTimestamp, sortSolves } from "./solve-order.js?v=sync1";
 import { formatClock } from "./solve-timer.js?v=splits5";
 
 export const PRACTICE_TIMES_KEY = "cube-coach-practice-times";
@@ -457,9 +457,93 @@ export function computeSplitAverages(records) {
   return out;
 }
 
-export function computeStats(records) {
+/** Asia/Hong_Kong is UTC+8 all year, so day windows must not follow the browser zone. */
+export const HONG_KONG_TIME_ZONE = "Asia/Hong_Kong";
+const HKT_OFFSET_MS = 8 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Six calendar windows, left to right under ao5–all.
+ * Today, yesterday, last 7 days, and last 30 days are Hong Kong dates
+ * (the multi-day windows include today). This week is Monday 00:00 through
+ * the next Monday 00:00 in Asia/Hong_Kong.
+ */
+export const PERIOD_COLUMNS = [
+  { id: "today", label: "Today" },
+  { id: "yesterday", label: "Yesterday" },
+  { id: "last7", label: "Last 7 days" },
+  { id: "thisWeek", label: "This week", detail: "Mon–Sun", title: "This week (Mon–Sun, Asia/Hong_Kong)" },
+  { id: "last30", label: "Last 30 days" },
+  { id: "all", label: "All-time" },
+];
+
+function hongKongParts(ms) {
+  const shifted = new Date(Number(ms) + HKT_OFFSET_MS);
+  return {
+    year: shifted.getUTCFullYear(),
+    month: shifted.getUTCMonth(),
+    day: shifted.getUTCDate(),
+    weekday: shifted.getUTCDay(),
+  };
+}
+
+/** UTC timestamp of 00:00 Asia/Hong_Kong on the Hong Kong calendar day containing `ms`. */
+export function hongKongMidnight(ms) {
+  const { year, month, day } = hongKongParts(ms);
+  return Date.UTC(year, month, day) - HKT_OFFSET_MS;
+}
+
+export function periodBounds(now = Date.now()) {
+  const todayStart = hongKongMidnight(now);
+  const tomorrow = todayStart + DAY_MS;
+  const weekday = hongKongParts(now).weekday;
+  const daysSinceMonday = weekday === 0 ? 6 : weekday - 1;
+  const weekStart = todayStart - daysSinceMonday * DAY_MS;
+  return {
+    today: [todayStart, tomorrow],
+    yesterday: [todayStart - DAY_MS, todayStart],
+    last7: [todayStart - 6 * DAY_MS, tomorrow],
+    thisWeek: [weekStart, weekStart + 7 * DAY_MS],
+    last30: [todayStart - 29 * DAY_MS, tomorrow],
+  };
+}
+
+function solveInPeriod(record, bounds) {
+  const at = solveTimestamp(record);
+  return at >= bounds[0] && at < bounds[1];
+}
+
+/**
+ * Mean stage time in each Hong Kong period.
+ * Uses the same per-stage split filter as the ao table: a finite split counts,
+ * solves without that split do not. All-time is every stored split, including
+ * rows with no timestamp. Empty windows are null.
+ */
+export function computePeriodMeans(records, now = Date.now()) {
+  const bounds = periodBounds(now);
+  const out = {};
+  for (const step of SPLIT_STEPS) {
+    const stageRows = [];
+    for (const row of records || []) {
+      const ms = Number(row?.splits?.[step.id]);
+      if (Number.isFinite(ms) && ms >= 0) stageRows.push(row);
+    }
+    const means = {};
+    for (const col of PERIOD_COLUMNS) {
+      const windowRows = col.id === "all" ? stageRows : stageRows.filter((row) => solveInPeriod(row, bounds[col.id]));
+      const times = windowRows.map((row) => Number(row.splits[step.id]));
+      means[col.id] = times.length ? mean(times) : null;
+    }
+    out[step.id] = means;
+  }
+  return out;
+}
+
+export function computeStats(records, now = Date.now()) {
   const ordered = sortSolves(records).filter((row) => row && typeof row === "object");
   const times = ordered.map((r) => r.ms).filter((ms) => Number.isFinite(ms) && ms > 0);
+  const splitAverages = computeSplitAverages(ordered);
+  const periodMeans = computePeriodMeans(ordered, now);
   const empty = {
     count: 0,
     mean: null,
@@ -468,7 +552,8 @@ export function computeStats(records) {
     trimmed: null,
     ...emptyWindowStats(),
     splits: null,
-    splitAverages: computeSplitAverages(ordered),
+    splitAverages,
+    periodMeans,
   };
   if (!times.length) return { ...empty, splits: computeSplitStats(ordered) };
 
@@ -481,7 +566,8 @@ export function computeStats(records) {
     trimmed: times.length >= 3 ? mean(sorted.slice(1, -1)) : null,
     ...computeWindowStats(times),
     splits: computeSplitStats(ordered),
-    splitAverages: computeSplitAverages(ordered),
+    splitAverages,
+    periodMeans,
   };
 }
 
@@ -932,6 +1018,10 @@ export function renderStats(stats, previous = null, { splitShift = false, stages
 
 const SPLIT_AVERAGE_COLUMNS = [...SPLIT_AVERAGE_WINDOWS.map((n) => `ao${n}`), "all"];
 
+function splitAverageColgroup() {
+  return `<colgroup><col class="timer-split-label-col" /><col span="6" /></colgroup>`;
+}
+
 function renderSplitAverageTable(splitAverages) {
   const head = SPLIT_AVERAGE_COLUMNS.map((col) => `<th scope="col">${col}</th>`).join("");
   const body = SPLIT_STEPS.map((step) => {
@@ -944,8 +1034,41 @@ function renderSplitAverageTable(splitAverages) {
         ${cells}
       </tr>`;
   }).join("");
-  return `<div class="timer-split-averages-scroll">
-    <table class="timer-averages timer-split-averages">
+  return `<table class="timer-averages timer-split-averages">
+      ${splitAverageColgroup()}
+      <thead>
+        <tr>
+          <th scope="col"></th>
+          ${head}
+        </tr>
+      </thead>
+      <tbody>${body}</tbody>
+    </table>`;
+}
+
+function renderPeriodHeader(col) {
+  const title = col.title || col.detail;
+  const titleAttr = title ? ` title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}"` : "";
+  const detail = col.detail ? `<span class="timer-period-sub">${escapeHtml(col.detail)}</span>` : "";
+  return `<th scope="col"${titleAttr}>${escapeHtml(col.label)}${detail}</th>`;
+}
+
+function renderPeriodAverageTable(periodMeans) {
+  const head = PERIOD_COLUMNS.map((col) => renderPeriodHeader(col)).join("");
+  const body = SPLIT_STEPS.map((step) => {
+    const row = periodMeans?.[step.id] || {};
+    const cells = PERIOD_COLUMNS.map(
+      (col) => `<td data-period-window="${col.id}">${dash(row[col.id])}</td>`
+    ).join("");
+    return `<tr data-period-avg="${step.id}">
+        <th scope="row" class="timer-split-avg-label timer-split-avg-label-${step.id}">${step.short}</th>
+        ${cells}
+      </tr>`;
+  }).join("");
+  return `<div class="timer-period-averages-block">
+    <table class="timer-averages timer-split-averages timer-period-averages">
+      ${splitAverageColgroup()}
+      <caption>Period means <span class="timer-period-caption-note">Asia/Hong_Kong</span></caption>
       <thead>
         <tr>
           <th scope="col"></th>
@@ -984,7 +1107,7 @@ export function renderAverageTable(stats, previous = null, { splits = true } = {
       </thead>
       <tbody>${body}</tbody>
     </table>
-    ${splits ? renderSplitAverageTable(stats?.splitAverages) : ""}
+    ${splits ? `<div class="timer-split-averages-scroll">${renderSplitAverageTable(stats?.splitAverages)}${renderPeriodAverageTable(stats?.periodMeans)}</div>` : ""}
   </div>`;
 }
 

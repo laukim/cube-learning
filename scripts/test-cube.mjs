@@ -1280,10 +1280,13 @@ const {
   bindChartInteract,
   CHART_PAD,
   clearPracticeTimes,
+  computePeriodMeans,
   computeSplitAverages,
   computeSplitStats,
   computeStageAverages,
   computeStats,
+  HONG_KONG_TIME_ZONE,
+  hongKongMidnight,
   averageShift,
   deletePracticeTime,
   formatSignedDelta,
@@ -1311,6 +1314,8 @@ const {
   saveInspectionSeconds,
   saveTimerMode,
   sliceChartRecords,
+  PERIOD_COLUMNS,
+  periodBounds,
   splitBests,
   splitDurationsFromMarks,
   splitStageTimes,
@@ -1649,6 +1654,100 @@ assert(
     emptySplitHtml.includes('data-split-avg="final"'),
   "empty session still shows Cross, F2L, and Final rows"
 );
+assert(PERIOD_COLUMNS.map((col) => col.id).join() === "today,yesterday,last7,thisWeek,last30,all", "period columns follow Today through All-time");
+assert(HONG_KONG_TIME_ZONE === "Asia/Hong_Kong", "period days use Hong Kong time");
+const hktNow = Date.UTC(2026, 9, 8, 2, 0, 0);
+const hktToday = hongKongMidnight(hktNow);
+assert(hktToday === Date.UTC(2026, 9, 7, 16, 0, 0), "Hong Kong midnight is 16:00 the previous UTC day");
+const hktClock = new Intl.DateTimeFormat("en-GB", {
+  timeZone: HONG_KONG_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+}).format(new Date(hktToday));
+assert(hktClock === "08/10/2026, 00:00", "that midnight is 8 Oct 2026 00:00 in Asia/Hong_Kong");
+assert(
+  new Intl.DateTimeFormat("en-GB", {
+    timeZone: HONG_KONG_TIME_ZONE,
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date(hktToday - 1)) === "07, 23:59",
+  "one millisecond earlier is still 7 Oct in Hong Kong"
+);
+const hktBounds = periodBounds(hktNow);
+assert(hktBounds.today[0] === hktToday && hktBounds.today[1] === hktToday + 86400000, "today is the Hong Kong calendar day");
+assert(hktBounds.yesterday[1] === hktToday && hktBounds.yesterday[0] === hktToday - 86400000, "yesterday is the previous Hong Kong day");
+assert(hktBounds.last7[0] === hktToday - 6 * 86400000 && hktBounds.last7[1] === hktToday + 86400000, "last 7 days includes today and the six days before it");
+assert(hktBounds.thisWeek[0] === Date.UTC(2026, 9, 4, 16, 0, 0) && hktBounds.thisWeek[1] === Date.UTC(2026, 9, 11, 16, 0, 0), "this week is Monday through Sunday in Hong Kong");
+assert(hktBounds.last30[0] === hktToday - 29 * 86400000, "last 30 days includes today and the 29 days before it");
+const sundayNow = Date.UTC(2026, 9, 11, 2, 0, 0);
+assert(periodBounds(sundayNow).thisWeek[0] === hktBounds.thisWeek[0], "Sunday still belongs to the Monday-start Hong Kong week");
+const periodRows = [
+  { id: "today-a", ms: 20000, at: hktToday + 3600000, splits: { cross: 4000, f2l: 10000, final: 6000 } },
+  { id: "today-b", ms: 22000, at: hktToday + 5 * 3600000, splits: { cross: 8000, f2l: 12000, final: 2000 } },
+  { id: "yesterday", ms: 18000, at: hktToday - 3600000, splits: { cross: 2000, f2l: 4000, final: 2000 } },
+  { id: "monday", ms: 21000, at: Date.UTC(2026, 9, 4, 16, 30, 0), splits: { cross: 10000, f2l: 11000, final: 1000 } },
+  { id: "prev-sunday", ms: 24000, at: Date.UTC(2026, 9, 4, 16, 0, 0) - 1000, splits: { cross: 12000, f2l: 12000, final: 1200 } },
+  { id: "before-last7", ms: 26000, at: Date.UTC(2026, 9, 1, 15, 0, 0), splits: { cross: 14000, f2l: 14000, final: 1400 } },
+  { id: "before-last30", ms: 28000, at: Date.UTC(2026, 8, 8, 4, 0, 0), splits: { cross: 16000, f2l: 16000, final: 1600 } },
+  { id: "unstamped", ms: 15000, at: 0, splits: { cross: 3000, f2l: 3000, final: 300 } },
+  { id: "next-midnight", ms: 30000, at: hktToday + 86400000, splits: { cross: 100000, f2l: 100000, final: 10000 } },
+  { id: "single", ms: 1000, at: hktToday + 1000 },
+];
+const periodMeans = computePeriodMeans(periodRows, hktNow);
+assert(periodMeans.cross.today === 6000, "today averages only the Hong Kong calendar day");
+assert(periodMeans.cross.yesterday === 2000, "yesterday stops at Hong Kong midnight");
+assert(periodMeans.cross.last7 === 7200, "last 7 days is seven Hong Kong dates through today");
+assert(periodMeans.cross.thisWeek === 24800, "this week is Mon–Sun and includes a later day this week");
+assert(Math.abs(periodMeans.cross.last30 - 50000 / 6) < 1e-6, "last 30 days drops solves before the Hong Kong window");
+assert(Math.abs(periodMeans.cross.all - 169000 / 9) < 1e-6, "all-time keeps every stored split, including undated ones");
+assert(periodMeans.f2l.today === 11000 && periodMeans.final.yesterday === 2000, "F2L and Final use the same windows");
+assert(periodMeans.f2l.all !== periodMeans.cross.all, "stage means stay independent");
+const periodStats = computeStats(periodRows, hktNow);
+assert(
+  periodStats.periodMeans.cross.all === periodStats.splitAverages.cross.all &&
+    periodStats.periodMeans.f2l.all === periodStats.splitAverages.f2l.all &&
+    periodStats.periodMeans.final.all === periodStats.splitAverages.final.all,
+  "all-time period means match the ao table all column"
+);
+const crossOnly = [{ id: "cross-only", ms: 5000, at: hktToday + 1000, splits: { cross: 1500 } }];
+assert(
+  computePeriodMeans(crossOnly, hktNow).cross.all === computeSplitAverages(crossOnly).cross.all &&
+    computePeriodMeans(crossOnly, hktNow).f2l.all == null &&
+    computePeriodMeans(crossOnly, hktNow).final.all == null,
+  "period means use the same per-stage split filter as the ao table"
+);
+const periodHtml = renderAverageTable(periodStats);
+assert(periodHtml.indexOf("timer-period-averages") > periodHtml.indexOf('data-split-window="all"'), "period table sits under the ao5–all table");
+for (const label of ["Today", "Yesterday", "Last 7 days", "This week", "Last 30 days", "All-time"]) {
+  assert(periodHtml.includes(label), `period table lists ${label}`);
+}
+assert(periodHtml.includes("Mon–Sun, Asia/Hong_Kong"), "this week is labelled as a Hong Kong Monday–Sunday week");
+const periodHead = periodHtml.slice(periodHtml.indexOf("timer-period-averages"));
+const periodOrder = ["Today", "Yesterday", "Last 7 days", "This week", "Last 30 days", "All-time"].map((label) => periodHead.indexOf(label));
+assert(periodOrder.every((at, i) => at >= 0 && (i === 0 || at > periodOrder[i - 1])), "period columns run Today through All-time");
+assert(/data-period-avg="cross"[\s\S]*?data-period-window="today">6\.00</.test(periodHtml), "today cross mean uses the clock format");
+assert(/data-period-avg="cross"[\s\S]*?data-period-window="all">18\.77</.test(periodHtml), "all-time cross mean uses the clock format");
+assert(/data-period-avg="cross"[\s\S]*?data-period-window="last30">8\.33</.test(periodHtml), "last 30 days formats the truncated mean");
+for (const stage of ["cross", "f2l", "final"]) {
+  assert(periodHtml.includes(`data-period-avg="${stage}"`), `period table includes ${stage}`);
+}
+assert(!periodHtml.includes("NaN"), "empty period cells are not NaN");
+const noYesterday = periodRows.filter((row) => row.id !== "yesterday");
+const noYesterdayHtml = renderAverageTable(computeStats(noYesterday, hktNow));
+assert(/data-period-avg="cross"[\s\S]*?data-period-window="yesterday">—</.test(noYesterdayHtml), "an empty Hong Kong day uses the em dash");
+assert(
+  /data-period-avg="cross"[\s\S]*?data-period-window="today">—</.test(emptySplitHtml) &&
+    /data-period-avg="f2l"[\s\S]*?data-period-window="all">—</.test(emptySplitHtml) &&
+    /data-period-avg="final"[\s\S]*?data-period-window="last7">—</.test(emptySplitHtml),
+  "an empty session dashes every period cell"
+);
+assert(splitAvgHtml.includes('data-split-window="ao5"') && splitAvgHtml.includes('data-split-window="ao100"'), "the ao table columns stay ao5 through ao100");
 const timesBefore = renderTimesList(splitRows);
 assert(timesBefore.includes("timer-times-list") && !timesBefore.includes("timer-split-averages"), "solve list does not gain the split average rows");
 assert(renderProgressChart(many).includes("timer-chart-ao50"), "chart plots ao50 once the window is full");
@@ -1783,6 +1882,7 @@ assert(loadChartWindow(sessionStore, PLL_CHART_WINDOW_KEY) === 0, "PLL chart win
 const pllStats = renderStats(computeStats([{ id: "p", ms: 1800, at: 1 }]), null, { stages: false });
 assert(pllStats.includes("Average") && pllStats.includes("1.80") && !pllStats.includes("Cross avg"), "PLL stats are the attempt, not Cross or F2L");
 assert(!pllStats.includes("data-split-avg"), "PLL stats omit Cross, F2L, and Final rolling rows");
+assert(!pllStats.includes("data-period-avg") && !pllStats.includes("timer-period-averages"), "PLL stats omit the period means table");
 assert(renderProgressChart([]).includes("Solve twice"), "solve chart empty copy stays");
 assert(
   renderProgressChart([], { emptyLabel: "Time two cases and a progress chart appears here." }).includes("Time two cases"),

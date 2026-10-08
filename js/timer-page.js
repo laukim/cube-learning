@@ -1,5 +1,5 @@
-import { initPracticeTimer } from "./practice-timer.js?v=cross1";
-import { initTimesSync } from "./times-sync.js?v=cross1";
+import { initPracticeTimer } from "./practice-timer.js?v=history1";
+import { initTimesSync } from "./times-sync.js?v=history1";
 
 let sync;
 const timer = initPracticeTimer({

@@ -10,6 +10,7 @@ import {
   loadPracticeTimes,
   memoryStore,
   PRACTICE_TIMES_KEY,
+  renderProgressChart,
   renderTimesList,
 } from "../js/practice-timer.js";
 import { mergeSolves, planSync, reconcileSolves } from "../js/solve-order.js";
@@ -75,6 +76,10 @@ function sqliteD1() {
       const results = [];
       for (const statement of statements) results.push(await statement.run());
       return results;
+    },
+    count(sub) {
+      const row = db.prepare("SELECT COUNT(*) AS n FROM solves WHERE user_sub = ?").get(sub);
+      return Number(row?.n || 0);
     },
   };
 }
@@ -319,5 +324,84 @@ assert(source.includes("ORDER BY solved_at ASC, id ASC"), "D1 orders by the solv
 
 clearPracticeTimes(orderStore);
 assert(loadPracticeTimes(orderStore).length === 0, "clear still empties the local timer");
+
+const historyStore = memoryStore();
+for (let i = 0; i < 501; i++) {
+  addPracticeTime(
+    {
+      id: `h${String(i).padStart(4, "0")}`,
+      ms: 12000 + (i % 40) * 10,
+      at: earlyAt + i * 1000,
+      scramble: "R U",
+      splits: { cross: 3000 + (i % 7) * 50, f2l: 6000 + (i % 5) * 40, final: 2000 + (i % 3) * 30 },
+    },
+    historyStore
+  );
+}
+const history = loadPracticeTimes(historyStore);
+assert(history.length === 501, "local history keeps solves past 500");
+assert(history[0].id === "h0000" && history.at(-1).id === "h0500", "oldest and newest local solves stay");
+const historyStats = computeStats(history);
+assert(historyStats.count === 501, "stats count every stored solve");
+assert(historyStats.ao5 != null && historyStats.ao50 != null && historyStats.ao100 != null, "ao5 through ao100 use the full history");
+assert(historyStats.splitAverages.cross.ao100 != null, "Cross ao100 uses the full split history");
+assert(historyStats.splitAverages.f2l.ao5 != null, "F2L ao5 uses stored splits");
+assert(historyStats.splitAverages.final.all != null, "Final all-time mean uses every split");
+const historyList = renderTimesList(history);
+assert(historyList.includes('data-id="h0000"') && historyList.includes('data-id="h0500"'), "the times list can show every solve");
+const allChart = renderProgressChart(history, { windowSize: 0 });
+assert(allChart.includes(">501<"), "the all chart includes every solve");
+assert(renderProgressChart(history, { windowSize: 50 }).includes("last 50 of 501"), "the chart window still draws a recent slice");
+
+const capDb = sqliteD1();
+const capFetch = apiFetch(capDb, verifyPayload);
+const capToken = sessionToken("cap-sub", "cap@example.com");
+const uploaded = await syncAccount({ store: historyStore, token: capToken, fetchImpl: capFetch });
+assert(uploaded.length === 501 && uploaded[0].id === "h0000", "a full sync uploads every solve past 500");
+assert(capDb.count("cap-sub") === 501, "D1 keeps every uploaded solve");
+
+async function listCap() {
+  const response = await handleTimesRequest(
+    new Request("https://3x3coach.mocholate.workers.dev/api/times", {
+      headers: { authorization: `Bearer ${capToken}` },
+    }),
+    { DB: capDb },
+    { verify: verifyPayload }
+  );
+  return response.json();
+}
+
+const listed = await listCap();
+assert(listed.records.length === 501, "reading the list does not delete solves past 500");
+assert(listed.records[0].id === "h0000" && listed.records.at(-1).id === "h0500", "oldest and newest rows stay in D1");
+const listedAgain = await listCap();
+assert(listedAgain.records.length === 501 && capDb.count("cap-sub") === 501, "a second read still has every row");
+
+const shortStore = memoryStore();
+for (const row of history.slice(-10)) addPracticeTime(row, shortStore);
+const pulled = await syncAccount({ store: shortStore, token: capToken, fetchImpl: capFetch });
+assert(pulled.length === 501 && pulled[0].id === "h0000", "a device that only held the newest solves receives the older ones");
+assert(capDb.count("cap-sub") === 501, "a short local list does not delete older D1 solves");
+
+deletePracticeTime("h0250", shortStore);
+await pushAccountChange({
+  store: shortStore,
+  token: capToken,
+  event: { reason: "delete", id: "h0250" },
+  fetchImpl: capFetch,
+});
+const afterDelete = await listCap();
+assert(afterDelete.records.length === 500, "an explicit delete removes only that solve");
+assert(!afterDelete.records.some((row) => row.id === "h0250"), "the deleted solve is gone");
+assert(afterDelete.records[0].id === "h0000" && capDb.count("cap-sub") === 500, "the rest of the history stays in D1");
+
+const solvesSource = readFileSync(new URL("../worker/solves.js", import.meta.url), "utf8");
+const listFn = solvesSource.slice(
+  solvesSource.indexOf("export async function listSolves"),
+  solvesSource.indexOf("export async function upsertSolves")
+);
+assert(!listFn.includes("DELETE") && !listFn.includes("deleteSolves"), "listing solves does not delete by count");
+const practiceSource = readFileSync(new URL("../js/practice-timer.js", import.meta.url), "utf8");
+assert(!practiceSource.includes("PRACTICE_MAX"), "local saves do not cap how many solves are kept");
 
 console.log("times sync ok");

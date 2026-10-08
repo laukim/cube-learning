@@ -5,9 +5,12 @@
   "type": "module",
   "scripts": {
     "start": "npx --yes serve .",
-    "test": "node scripts/test-cube.mjs && node scripts/test-times-sync.mjs && node scripts/test-cross-drill.mjs"
+    "test": "node scripts/test-cube.mjs && node scripts/test-times-sync.mjs && node scripts/test-cross-drill.mjs && node scripts/test-cube-moves.mjs",
+    "build:smartcube": "node scripts/bundle-smartcube.mjs"
   },
   "dependencies": {
-    "cubejs": "^1.3.2"
+    "cubejs": "^1.3.2",
+    "esbuild": "^0.28.2",
+    "smartcube-web-bluetooth": "github:poliva/smartcube-web-bluetooth"
   }
 }

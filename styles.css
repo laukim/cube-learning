@@ -2900,6 +2900,89 @@ body.timer-cross .timer-stage {
   background: color-mix(in srgb, var(--orange) 16%, transparent);
 }
 
+.cube-connect {
+  margin-bottom: 0.9rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+.cube-connect-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.cube-connect-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+}
+
+.cube-connect-status,
+.cube-connect-meta,
+.cube-connect-note,
+.cube-connect-feed {
+  margin: 0.3rem 0 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.cube-connect-meta {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.cube-connect-feed {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  overflow-wrap: anywhere;
+}
+
+.cube-connect-net {
+  margin-top: 0.55rem;
+}
+
+.cube-net {
+  display: block;
+  width: min(100%, 13rem);
+  height: auto;
+}
+
+.practice-reconstruction {
+  width: min(100%, 34rem);
+  text-align: left;
+}
+
+.timer-reconstruction-kicker,
+.timer-reconstruction-algs,
+.timer-reconstruction-pause {
+  margin: 0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.timer-reconstruction-kicker {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.timer-reconstruction-moves {
+  margin: 0.25rem 0 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.timer-recon-move {
+  white-space: nowrap;
+}
+
 .timer-account {
   display: flex;
   flex-wrap: wrap;

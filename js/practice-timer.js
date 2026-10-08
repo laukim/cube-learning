@@ -27,6 +27,8 @@ import {
   savePllSelection,
   toggleSelectedId,
 } from "./pll-case-trainer.js?v=pllreveal2";
+import { faceletsForScramble, renderReconstruction } from "./cube-reconstruction.js?v=cube1";
+import { cubeTimerDecision, faceletsSolved, normalizeMoves } from "./move-log.js?v=cube1";
 import { formatSolvedAt, normalizeSplits, sortSolves } from "./solve-order.js?v=sync1";
 import { formatClock } from "./solve-timer.js?v=splits5";
 
@@ -119,6 +121,8 @@ function normalizeRecord(row, index) {
   };
   const splits = normalizeSplits(row.splits);
   if (splits) record.splits = splits;
+  const moves = normalizeMoves(row.moves);
+  if (moves) record.moves = moves;
   return record;
 }
 
@@ -233,6 +237,8 @@ export function addPracticeTime(entry, store = browserStore()) {
   };
   const splits = normalizeSplits(entry?.splits);
   if (splits) record.splits = splits;
+  const moves = normalizeMoves(entry?.moves);
+  if (moves) record.moves = moves;
   if (entry && typeof entry === "object") entry.id = record.id;
   records.push(record);
   return savePracticeTimes(records, store);
@@ -866,6 +872,7 @@ export function renderTimesList(records) {
             return `<span class="split-${step.id}${bestCls}"><em>${step.short}</em> ${formatClock(row.splits[step.id])}</span>`;
           }).join("")}</div>`
         : "";
+      const reconstruction = renderReconstruction(row.moves);
       const when = formatSolvedAt(row.at);
       const whenHtml = when
         ? `<time class="timer-time-when" datetime="${escapeHtml(new Date(row.at).toISOString())}">${escapeHtml(when)}</time>`
@@ -878,6 +885,7 @@ export function renderTimesList(records) {
           <button type="button" class="timer-time-delete" data-delete="${escapeHtml(row.id)}" aria-label="Delete ${formatClock(row.ms)}">×</button>
         </div>
         ${splits}
+        ${reconstruction}
         ${scramble}
       </li>`;
     })
@@ -1040,6 +1048,7 @@ export function initPracticeTimer({
   const clockValue = document.getElementById("practice-clock-value");
   const scrambleEl = document.getElementById("practice-scramble");
   const statusEl = document.getElementById("practice-status");
+  const reconEl = document.getElementById("practice-reconstruction");
   const timesEl = document.getElementById("timer-times");
   const statsEl = document.getElementById("timer-stats");
   const splitStatsEl = document.getElementById("timer-split-stats");
@@ -1083,6 +1092,15 @@ export function initPracticeTimer({
     pllCase: null,
     crossCase: null,
     crossReveal: false,
+    moves: [],
+    lastMoves: null,
+    cubeConnected: false,
+    cubeArmed: false,
+    cubeSawMove: false,
+    cubeWasUnsolved: false,
+    latestFacelets: "",
+    cubeStopTimer: 0,
+    cubeHold: false,
   };
 
   function pllOn() {
@@ -1105,9 +1123,38 @@ export function initPracticeTimer({
     return loadPracticeTimes(store);
   }
 
+  function cubeDrivesTimer() {
+    return state.cubeConnected && !pllOn() && !crossOn();
+  }
+
   function statusForIdle() {
     if (pllOn() && !state.pllCase) return "Select at least one PLL case";
+    if (cubeDrivesTimer()) {
+      return state.cubeArmed
+        ? "Scramble matched — turn the cube to start. Space still works."
+        : "Cube connected · apply the scramble to arm. Space or tap still starts.";
+    }
     return idleStatus(state.mode);
+  }
+
+  function paintReconstruction(moves) {
+    if (!reconEl) return;
+    const html = renderReconstruction(moves);
+    reconEl.hidden = !html;
+    reconEl.innerHTML = html;
+  }
+
+  function clearCubeStop() {
+    if (state.cubeStopTimer) window.clearTimeout(state.cubeStopTimer);
+    state.cubeStopTimer = 0;
+  }
+
+  function logCubeMove(move, cubeT) {
+    const t = state.phase === "running" ? Math.max(0, Date.now() - state.startedAt) : 0;
+    const row = { move, t };
+    if (Number.isFinite(cubeT)) row.cubeT = cubeT;
+    state.moves.push(row);
+    state.cubeSawMove = true;
   }
 
   function setPhase(phase) {
@@ -1175,7 +1222,102 @@ export function initPracticeTimer({
   function newScramble({ announce = false } = {}) {
     state.scramble = generatePracticeScramble();
     if (scrambleEl) scrambleEl.textContent = state.scramble;
+    state.cubeArmed = false;
     if (announce) setStatus("New scramble");
+    reconsiderCube();
+  }
+
+  function cubeDecision(extra = {}) {
+    const inspectionSeconds = Number(inspectEl?.value) || 0;
+    const target = pllOn() || crossOn() ? "" : faceletsForScramble(state.scramble);
+    return cubeTimerDecision({
+      phase: state.phase,
+      mode: state.mode,
+      armed: state.cubeArmed,
+      inspectionSeconds,
+      facelets: state.latestFacelets,
+      target,
+      solved: faceletsSolved(state.latestFacelets),
+      sawMove: state.cubeSawMove,
+      wasUnsolved: state.cubeWasUnsolved,
+      hold: state.cubeHold,
+      ...extra,
+    });
+  }
+
+  function scheduleCubeStop() {
+    if (state.cubeStopTimer) return;
+    state.cubeStopTimer = window.setTimeout(() => {
+      state.cubeStopTimer = 0;
+      if (state.phase !== "running") return;
+      if (cubeDecision().action === "stop") stopTiming();
+    }, 80);
+  }
+
+  function applyCubeDecision(decision, move, cubeT) {
+    if (decision.action === "inspect") {
+      state.cubeArmed = true;
+      startInspection();
+      if (state.phase === "inspecting") {
+        setStatus("Scramble matched — inspection running. The first turn starts the timer.");
+      }
+      return;
+    }
+    if (decision.action === "arm") {
+      state.cubeArmed = true;
+      if (state.phase === "idle") setStatus(statusForIdle());
+      return;
+    }
+    if (decision.action === "disarm") {
+      state.cubeArmed = false;
+      if (state.phase === "idle") setStatus(statusForIdle());
+      return;
+    }
+    if (decision.action === "release") {
+      state.cubeHold = false;
+      return;
+    }
+    if (decision.action === "start") {
+      startTiming();
+      logCubeMove(move, cubeT);
+      return;
+    }
+    if (decision.action === "log") {
+      logCubeMove(move, cubeT);
+      return;
+    }
+    if (decision.action === "stop") scheduleCubeStop();
+  }
+
+  function reconsiderCube() {
+    if (!state.cubeConnected || !state.latestFacelets || state.phase !== "idle") return;
+    applyCubeDecision(cubeDecision());
+  }
+
+  function onCubeFacelets(facelets) {
+    state.latestFacelets = String(facelets || "");
+    if (!state.cubeConnected) return;
+    if (state.phase === "running" && state.latestFacelets && !faceletsSolved(state.latestFacelets)) {
+      state.cubeWasUnsolved = true;
+    }
+    applyCubeDecision(cubeDecision());
+  }
+
+  function onCubeMove(move, cubeT) {
+    if (!state.cubeConnected || !move) return;
+    applyCubeDecision(cubeDecision({ move, solved: false }), move, cubeT);
+  }
+
+  function setCubeConnected(connected) {
+    state.cubeConnected = Boolean(connected);
+    if (!state.cubeConnected) {
+      state.cubeArmed = false;
+      clearCubeStop();
+    }
+    if (state.phase === "idle") {
+      setStatus(statusForIdle());
+      if (state.cubeConnected) reconsiderCube();
+    }
   }
 
   function paintCross() {
@@ -1407,9 +1549,11 @@ export function initPracticeTimer({
     state.raf = 0;
     window.clearInterval(state.inspectTimer);
     state.inspectTimer = 0;
+    clearCubeStop();
   }
 
   function cancelSession() {
+    const holdCube = state.cubeConnected && (state.phase === "inspecting" || state.cubeArmed);
     cancelTimers();
     setPhase("idle");
     state.startedAt = 0;
@@ -1417,6 +1561,11 @@ export function initPracticeTimer({
     state.lastTapElapsed = 0;
     state.lastSplits = null;
     state.lastMs = 0;
+    state.moves = [];
+    state.cubeHold = holdCube;
+    state.cubeArmed = false;
+    state.cubeSawMove = false;
+    paintReconstruction(null);
     paintClock(0);
     updateBestHighlight();
     setStatus(statusForIdle());
@@ -1435,8 +1584,15 @@ export function initPracticeTimer({
     state.marks = [];
     state.lastTapElapsed = 0;
     state.lastSplits = null;
+    state.moves = [];
+    state.cubeSawMove = false;
+    state.cubeHold = false;
+    state.cubeWasUnsolved = Boolean(state.latestFacelets) && !faceletsSolved(state.latestFacelets);
+    state.cubeArmed = false;
     clockBtn.classList.remove("is-best");
-    setStatus(runningStatus(state.mode, state.marks));
+    paintReconstruction(null);
+    const running = runningStatus(state.mode, state.marks);
+    setStatus(cubeDrivesTimer() ? `${running} · the cube stops it when solved` : running);
     tickRunning();
   }
 
@@ -1529,20 +1685,28 @@ export function initPracticeTimer({
       state.lastMs = ms;
       state.marks = [];
       state.lastTapElapsed = 0;
+      const moves = normalizeMoves(state.moves);
+      state.lastMoves = moves;
+      state.moves = [];
+      state.cubeSawMove = false;
+      state.cubeArmed = false;
       const record = { ms, at: Date.now(), scramble: state.scramble };
       if (splits) record.splits = splits;
+      if (moves) record.moves = moves;
       addPracticeTime(record, store);
       onRecordsChanged?.({ reason: "add", record });
       paintClock(ms);
+      paintReconstruction(moves);
       renderRecords();
       newScramble();
       const splitBits = splits
         ? SPLIT_STEPS.map((step) => `${step.short} ${formatClock(splits[step.id])}`).join(" · ")
         : "";
+      const moveBits = moves ? ` ${moves.length} cube move${moves.length === 1 ? "" : "s"} saved.` : "";
       setStatus(
         splitBits
-          ? `Stopped at ${formatClock(ms)} · ${splitBits}. Scramble ready.`
-          : `Stopped at ${formatClock(ms)}. Scramble ready for the next solve.`
+          ? `Stopped at ${formatClock(ms)} · ${splitBits}.${moveBits} Scramble ready.`
+          : `Stopped at ${formatClock(ms)}.${moveBits} Scramble ready for the next solve.`
       );
     } else {
       state.lastSplits = null;
@@ -1588,6 +1752,8 @@ export function initPracticeTimer({
     state.lastSplits = null;
     state.lastMs = 0;
     state.marks = [];
+    state.lastMoves = null;
+    paintReconstruction(null);
     paintClock(0);
     syncPllChrome();
     syncSessionControls();
@@ -1602,8 +1768,10 @@ export function initPracticeTimer({
       newScramble();
     }
     renderRecords();
+    state.cubeArmed = false;
     setStatus(statusForIdle());
     syncModeButtons();
+    reconsiderCube();
   }
 
   clockBtn.addEventListener("click", () => {
@@ -1784,5 +1952,9 @@ export function initPracticeTimer({
     cancel: cancelSession,
     getPhase: () => state.phase,
     getMode: () => state.mode,
+    getScramble: () => state.scramble,
+    onCubeFacelets,
+    onCubeMove,
+    setCubeConnected,
   };
 }

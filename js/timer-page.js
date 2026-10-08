@@ -1,5 +1,6 @@
-import { initPracticeTimer } from "./practice-timer.js?v=history1";
-import { initTimesSync } from "./times-sync.js?v=history1";
+import { initPracticeTimer } from "./practice-timer.js?v=cube1";
+import { initSmartCube } from "./smart-cube.js?v=cube1";
+import { initTimesSync } from "./times-sync.js?v=cube1";
 
 let sync;
 const timer = initPracticeTimer({
@@ -9,3 +10,4 @@ const timer = initPracticeTimer({
 sync = initTimesSync({
   onSynced: () => timer?.refresh?.(),
 });
+initSmartCube({ timer });

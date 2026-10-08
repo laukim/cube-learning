@@ -12,7 +12,7 @@
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=cross1" />
+    <link rel="stylesheet" href="styles.css?v=cube1" />
   </head>
   <body class="timer-page">
     <div class="ambient" aria-hidden="true"></div>
@@ -74,9 +74,21 @@
         </button>
         <ol class="practice-splits" id="practice-splits" hidden></ol>
         <p class="practice-status" id="practice-status">Space or tap to start · next scramble appears when you stop</p>
+        <div class="practice-reconstruction" id="practice-reconstruction" hidden></div>
       </section>
 
       <section class="timer-side" aria-label="Solve times and progress">
+        <section class="cube-connect" id="cube-connect" aria-label="Smart cube">
+          <div class="cube-connect-head">
+            <h2 class="cube-connect-title">Smart cube</h2>
+            <button type="button" class="btn btn-small" id="cube-connect-btn">Connect</button>
+          </div>
+          <p class="cube-connect-status" id="cube-connect-status">Checking Bluetooth…</p>
+          <p class="cube-connect-meta" id="cube-connect-meta" hidden></p>
+          <div class="cube-connect-net" id="cube-connect-net" hidden></div>
+          <p class="cube-connect-feed" id="cube-connect-feed" hidden></p>
+          <p class="cube-connect-note">Chrome on a Mac. GAN i4 and GAN12 ui Maglev — names starting with GAN, MG, or AiCube. No CubeStation app.</p>
+        </section>
         <div class="timer-account" id="timer-account">
           <div id="timer-google-slot">
             <button type="button" class="btn btn-small" id="timer-sign-in">Sign in with Google</button>
@@ -146,10 +158,10 @@
 
     <footer class="foot">
       <span id="timer-foot-note">Works offline · times stay on this device</span>
-      <span>Space or tap the clock · splits record Cross, F2L, then Final · Cross drill times the white cross · PLL times one case</span>
+      <span>Space or tap the clock still works with no cube · a connected GAN cube can start and stop the solve</span>
     </footer>
 
-    <script type="module" src="js/timer-page.js?v=history1"></script>
+    <script type="module" src="js/timer-page.js?v=cube1"></script>
     <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "fd680e4c7f304be681f2fca80e8000e2"}'></script><!-- End Cloudflare Web Analytics -->
   </body>
 </html>

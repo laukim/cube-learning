@@ -10,6 +10,12 @@ python3 -m http.server 5173
 
 Open `http://127.0.0.1:5173/`.
 
+## Smart cube
+
+The timer can pair a GAN smart cube from **Chrome on a Mac** (Web Bluetooth, HTTPS). GAN i4 Maglev and GAN12 ui Maglev use the Gen4 protocol; the picker looks for names starting with `GAN`, `MG`, or `AiCube`. No CubeStation app.
+
+Connect on the timer page, apply the scramble with white on the bottom and blue in front, and the clock arms when the cube matches. The first turn starts it (after inspection, if inspection is on). Solved stops it and saves a timestamped move list. Space or tap still times a solve when no cube is connected.
+
 ## Cloudflare
 
 Deploy uses Wrangler static assets (`npx wrangler deploy`); `.assetsignore` excludes `node_modules` (and `.git` / `.wrangler`) so they are not uploaded.

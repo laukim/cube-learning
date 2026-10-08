@@ -404,4 +404,53 @@ assert(!listFn.includes("DELETE") && !listFn.includes("deleteSolves"), "listing 
 const practiceSource = readFileSync(new URL("../js/practice-timer.js", import.meta.url), "utf8");
 assert(!practiceSource.includes("PRACTICE_MAX"), "local saves do not cap how many solves are kept");
 
+const moves = [
+  { move: "R", t: 0, cubeT: 400 },
+  { move: "U'", t: 320 },
+  { move: "R'", t: 640 },
+];
+const moveStore = memoryStore();
+addPracticeTime({ id: "with-moves", ms: 9800, at: earlyAt, scramble: "R U R'", moves }, moveStore);
+const moveDb = sqliteD1();
+const moveFetch = apiFetch(moveDb, verifyPayload);
+const moveToken = sessionToken("moves-sub", "moves@example.com");
+const moved = await syncAccount({ store: moveStore, token: moveToken, fetchImpl: moveFetch });
+assert(moved.length === 1 && moved[0].moves[1].move === "U'" && moved[0].moves[1].t === 320, "sync round-trips the move log");
+assert(moved[0].moves[0].cubeT === 400, "the cube clock stays on the first turn");
+const moveList = await handleTimesRequest(
+  new Request("https://3x3coach.mocholate.workers.dev/api/times", {
+    headers: { authorization: `Bearer ${moveToken}` },
+  }),
+  { DB: moveDb },
+  { verify: verifyPayload }
+);
+const moveBody = await moveList.json();
+assert(JSON.stringify(moveBody.records[0].moves) === JSON.stringify(moved[0].moves), "D1 returns the same moves_json");
+
+const legacy = sqliteD1();
+await legacy.prepare(
+  `CREATE TABLE solves (
+    user_sub TEXT NOT NULL,
+    id TEXT NOT NULL,
+    ms INTEGER NOT NULL,
+    solved_at INTEGER NOT NULL,
+    scramble TEXT NOT NULL DEFAULT '',
+    splits_json TEXT,
+    PRIMARY KEY (user_sub, id)
+  )`
+).run();
+await legacy.prepare(
+  `INSERT INTO solves (user_sub, id, ms, solved_at, scramble, splits_json) VALUES (?, ?, ?, ?, ?, ?)`
+).bind("moves-sub", "old-row", 8000, earlyAt, "F", null).run();
+const legacyFetch = apiFetch(legacy, verifyPayload);
+const legacyRows = await syncAccount({ store: memoryStore(), token: moveToken, fetchImpl: legacyFetch });
+assert(legacyRows.some((row) => row.id === "old-row" && !row.moves), "a row from before moves_json still loads");
+const withOld = memoryStore();
+addPracticeTime({ id: "old-row", ms: 8000, at: earlyAt, scramble: "F" }, withOld);
+addPracticeTime({ id: "new-row", ms: 9000, at: midAt, scramble: "U", moves }, withOld);
+const legacyMerged = await syncAccount({ store: withOld, token: moveToken, fetchImpl: legacyFetch });
+assert(legacyMerged.find((row) => row.id === "old-row") && !legacyMerged.find((row) => row.id === "old-row").moves, "the old row stays valid");
+assert(legacyMerged.find((row) => row.id === "new-row").moves[0].move === "R", "a new solve can store moves next to old rows");
+assert(legacy.count("moves-sub") === 2, "adding moves_json does not delete existing solves");
+
 console.log("times sync ok");

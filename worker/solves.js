@@ -1,3 +1,4 @@
+import { normalizeMoves } from "../js/move-log.js";
 import { normalizeSplits } from "../js/solve-order.js";
 
 const MAX_MS = 48 * 60 * 60 * 1000;
@@ -12,8 +13,11 @@ const CREATE_TABLE = `CREATE TABLE IF NOT EXISTS solves (
   solved_at INTEGER NOT NULL,
   scramble TEXT NOT NULL DEFAULT '',
   splits_json TEXT,
+  moves_json TEXT,
   PRIMARY KEY (user_sub, id)
 )`;
+
+const ADD_MOVES = `ALTER TABLE solves ADD COLUMN moves_json TEXT`;
 
 const CREATE_INDEX = `CREATE INDEX IF NOT EXISTS solves_by_time ON solves (user_sub, solved_at, id)`;
 
@@ -23,6 +27,7 @@ export function ensureSchema(db) {
     pending = (async () => {
       await db.prepare(CREATE_TABLE).run();
       await db.prepare(CREATE_INDEX).run();
+      await addMovesColumn(db);
     })();
     ready.set(db, pending);
   }
@@ -49,7 +54,19 @@ export function normalizeStoredSolve(row) {
   };
   const splits = normalizeSplits(row.splits);
   if (splits) record.splits = splits;
+  const moves = normalizeMoves(row.moves);
+  if (moves) record.moves = moves;
   return record;
+}
+
+async function addMovesColumn(db) {
+  try {
+    await db.prepare(ADD_MOVES).run();
+  } catch (error) {
+    const message = String(error?.message || error);
+    if (/duplicate column/i.test(message)) return;
+    throw error;
+  }
 }
 
 function validId(id) {
@@ -59,7 +76,7 @@ function validId(id) {
 export async function listSolves(db, sub) {
   const listed = await db
     .prepare(
-      `SELECT id, ms, solved_at, scramble, splits_json
+      `SELECT id, ms, solved_at, scramble, splits_json, moves_json
        FROM solves
        WHERE user_sub = ?
        ORDER BY solved_at ASC, id ASC`
@@ -70,13 +87,21 @@ export async function listSolves(db, sub) {
 }
 
 export async function upsertSolves(db, sub, records) {
-  const sql = `INSERT INTO solves (user_sub, id, ms, solved_at, scramble, splits_json)
-    VALUES (?, ?, ?, ?, ?, ?)
+  const sql = `INSERT INTO solves (user_sub, id, ms, solved_at, scramble, splits_json, moves_json)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT (user_sub, id) DO NOTHING`;
   const statements = records.map((row) =>
     db
       .prepare(sql)
-      .bind(sub, row.id, row.ms, row.at, row.scramble, row.splits ? JSON.stringify(row.splits) : null)
+      .bind(
+        sub,
+        row.id,
+        row.ms,
+        row.at,
+        row.scramble,
+        row.splits ? JSON.stringify(row.splits) : null,
+        row.moves ? JSON.stringify(row.moves) : null
+      )
   );
   await runAll(db, statements);
 }
@@ -117,6 +142,14 @@ function mapRow(row) {
       if (splits) record.splits = splits;
     } catch {
       /* keep the solve even if the stage split JSON is unreadable */
+    }
+  }
+  if (row.moves_json) {
+    try {
+      const moves = normalizeMoves(JSON.parse(row.moves_json));
+      if (moves) record.moves = moves;
+    } catch {
+      /* keep the solve even if the move log JSON is unreadable */
     }
   }
   return record;

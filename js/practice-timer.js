@@ -36,7 +36,6 @@ export const PRACTICE_MODE_KEY = "cube-coach-practice-mode";
 export const PRACTICE_CHART_WINDOW_KEY = "cube-coach-practice-chart-window";
 export const PLL_INSPECT_KEY = "cube-coach-pll-trainer-inspect";
 export const PLL_CHART_WINDOW_KEY = "cube-coach-pll-trainer-chart-window";
-export const PRACTICE_MAX = 500;
 export const TIMER_MODE_SINGLE = "single";
 export const TIMER_MODE_SPLITS = "splits";
 export const TIMER_MODE_PLL = "pll";
@@ -207,13 +206,13 @@ export function renderLiveSplits({ marks = [], elapsed = 0, running = false, spl
 }
 
 export function savePracticeTimes(records, store = browserStore()) {
-  const trimmed = sortSolves(records).slice(-PRACTICE_MAX);
+  const saved = sortSolves(records);
   try {
-    store?.setItem?.(PRACTICE_TIMES_KEY, JSON.stringify(trimmed));
+    store?.setItem?.(PRACTICE_TIMES_KEY, JSON.stringify(saved));
   } catch {
     /* quota / private mode */
   }
-  return trimmed;
+  return saved;
 }
 
 function newSolveId() {

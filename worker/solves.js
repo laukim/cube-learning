@@ -1,6 +1,5 @@
 import { normalizeSplits } from "../js/solve-order.js";
 
-const MAX_SOLVES = 500;
 const MAX_MS = 48 * 60 * 60 * 1000;
 const MAX_AT = 4102444800000;
 
@@ -67,15 +66,7 @@ export async function listSolves(db, sub) {
     )
     .bind(sub)
     .all();
-  const records = (listed?.results || []).map(mapRow).filter(Boolean);
-  if (records.length <= MAX_SOLVES) return records;
-  const extra = records.slice(0, records.length - MAX_SOLVES);
-  await deleteSolves(
-    db,
-    sub,
-    extra.map((row) => row.id)
-  );
-  return records.slice(-MAX_SOLVES);
+  return (listed?.results || []).map(mapRow).filter(Boolean);
 }
 
 export async function upsertSolves(db, sub, records) {

@@ -26,6 +26,7 @@ export async function handleTimesRequest(request, env, deps = {}) {
       const body = await readJson(request);
       if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "Invalid body" }, 400);
       if (body.clear === true) await clearSolves(env.DB, sub);
+      // Per request only. Stored history is not capped; the client sends the rest in later requests.
       const deleteIds = Array.isArray(body.deleteIds) ? body.deleteIds.slice(0, 500) : [];
       if (deleteIds.length) await deleteSolves(env.DB, sub, deleteIds);
       const upsert = [];

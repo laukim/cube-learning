@@ -1,5 +1,5 @@
 import { GOOGLE_CLIENT_ID } from "./google-client.js?v=sync1";
-import { loadPracticeTimes, savePracticeTimes } from "./practice-timer.js?v=cross1";
+import { loadPracticeTimes, savePracticeTimes } from "./practice-timer.js?v=history1";
 import { planSync, reconcileSolves } from "./solve-order.js?v=sync1";
 import {
   decodeJwtPayload,
@@ -14,6 +14,8 @@ import {
 } from "./times-account.js?v=sync1";
 
 const API = "/api/times";
+/** Worker accepts this many upserts or deletes per request. Stored history is not capped. */
+const SYNC_BATCH = 500;
 
 function browserStore() {
   try {
@@ -31,22 +33,30 @@ export async function syncAccount({ store, token, fetchImpl = fetch } = {}) {
   if (state.sub && state.sub !== sub) throw coded("account");
   writeSyncState(store, { ...state, sub });
 
-  const remote = await requestTimes(fetchImpl, token);
-  const plan = planSync({
+  let records = (await requestTimes(fetchImpl, token)).records;
+  let plan = planFor(store, state, records);
+  let pending = plan.upsert.length + plan.deleteIds.length;
+  while (pending > 0) {
+    const posted = await requestTimes(fetchImpl, token, {
+      upsert: plan.upsert.slice(0, SYNC_BATCH),
+      deleteIds: plan.deleteIds.slice(0, SYNC_BATCH),
+    });
+    records = posted.records;
+    plan = planFor(store, state, records);
+    const next = plan.upsert.length + plan.deleteIds.length;
+    if (next >= pending) break;
+    pending = next;
+  }
+  return saveRemote(store, sub, records);
+}
+
+function planFor(store, state, records) {
+  return planSync({
     local: loadPracticeTimes(store),
-    remote: remote.records,
+    remote: records,
     uploadedIds: state.uploadedIds,
     deletedIds: state.deletedIds,
   });
-  let records = remote.records;
-  if (plan.upsert.length || plan.deleteIds.length) {
-    const posted = await requestTimes(fetchImpl, token, {
-      upsert: plan.upsert,
-      deleteIds: plan.deleteIds,
-    });
-    records = posted.records;
-  }
-  return saveRemote(store, sub, records);
 }
 
 export async function pushAccountChange({ store, token, event, fetchImpl = fetch } = {}) {

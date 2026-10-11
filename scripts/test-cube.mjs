@@ -1301,6 +1301,7 @@ const {
   PLL_INSPECT_KEY,
   memoryStore,
   nearestChartIndex,
+  normalizeScramble,
   renderAverageTable,
   renderChartTooltip,
   renderLiveSplits,
@@ -1394,7 +1395,23 @@ assert(
   renderTimesList([{ id: "s1", ms: 12340, at: 1, scramble: "R U R' U'" }]).includes("R U R' U'"),
   "times list shows scramble moves"
 );
+const listedScramble = renderTimesList([{ id: "s1", ms: 12340, at: 1, scramble: "R U R' U'" }]);
+assert(listedScramble.includes('data-load-scramble="s1"'), "a time row loads its scramble");
+assert(listedScramble.includes("Tap a time to run that scramble"), "the list says a tap loads the scramble");
+assert(!listedScramble.includes("timer-time-rerun"), "the time row has no separate rerun control");
 assert(!renderTimesList([{ id: "s2", ms: 10000, at: 2, scramble: "" }]).includes("timer-time-scramble"), "blank scramble omitted");
+assert(!renderTimesList([{ id: "s2", ms: 10000, at: 2, scramble: "" }]).includes("data-load-scramble"), "a solve with no scramble is not tappable");
+const kimScramble = "B' F' U' F' U' R2 L2 B' D B' U2 D R2 D' F2 D B U2 L' R";
+assert(normalizeScramble(kimScramble) === kimScramble, "a pasted solve scramble is kept");
+assert(normalizeScramble("  r  u   r' u' ") === "R U R' U'", "pasted scramble is normalized");
+assert(normalizeScramble("Scramble: R U2' R′") === "R U2 R'", "scramble label and primes normalize");
+assert(normalizeScramble("R U x") === "" && normalizeScramble("not moves") === "", "prose and rotations are not a scramble");
+const rerunStore = memoryStore();
+addPracticeTime({ ms: 48900, at: 1, scramble: kimScramble }, rerunStore);
+const rerunRows = addPracticeTime({ ms: 45120, at: 2, scramble: kimScramble }, rerunStore);
+assert(rerunRows.length === 2 && rerunRows[0].id !== rerunRows[1].id, "a rerun is saved as a new solve");
+assert(rerunRows[0].ms === 48900 && rerunRows[1].ms === 45120, "the original time stays");
+assert(rerunRows.every((row) => row.scramble === kimScramble), "both solves keep the same scramble");
 assert(!renderTimesList([{ id: "d1", ms: 12000, at: 1 }, { id: "d2", ms: 10500, at: 2 }]).includes("vs last"), "times list does not compare with the previous solve");
 assert(formatSignedDelta(-1500, "ao5").text === "-1.50" && formatSignedDelta(-1500, "ao5").tone === "faster", "signed delta is faster");
 assert(formatSignedDelta(-1500, "ao5").label.includes("ao5"), "signed delta names the average");

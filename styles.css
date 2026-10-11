@@ -2391,6 +2391,49 @@ body.timer-page .topbar {
   outline: none;
 }
 
+.practice-scramble.is-rerun {
+  border-color: rgba(255, 200, 87, 0.72);
+  box-shadow: 0 0 0 1px rgba(255, 200, 87, 0.28);
+  color: var(--warn);
+}
+
+.practice-scramble-kicker.is-rerun {
+  color: var(--warn);
+}
+
+.practice-scramble-load {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: min(100%, 36rem);
+}
+
+.practice-scramble-load[hidden] {
+  display: none;
+}
+
+.practice-scramble-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 1px solid var(--line);
+  background: rgba(8, 14, 12, 0.55);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 0.45rem 0.85rem;
+  font: inherit;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+}
+
+.practice-scramble-input:focus-visible {
+  outline: none;
+  border-color: rgba(109, 255, 176, 0.45);
+}
+
+.practice-scramble-load .btn {
+  flex: 0 0 auto;
+}
+
 .practice-clock {
   appearance: none;
   border: 1px solid var(--line);
@@ -3640,6 +3683,12 @@ body.timer-cross .timer-stage {
   overflow-y: auto;
 }
 
+.timer-times-hint {
+  margin: 0 0 0.35rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
 .timer-times-list li {
   display: flex;
   flex-direction: column;
@@ -3647,6 +3696,35 @@ body.timer-cross .timer-stage {
   padding: 0.5rem 0.2rem;
   border-bottom: 1px solid var(--line);
   font-variant-numeric: tabular-nums;
+}
+
+.timer-times-list li.timer-time-item {
+  position: relative;
+  padding: 0.12rem 0.05rem;
+}
+
+.timer-time-load {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.28rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.4rem 2.7rem 0.45rem 0.2rem;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.timer-time-load:hover,
+.timer-time-load:focus-visible {
+  background: rgba(255, 200, 87, 0.08);
+  outline: none;
 }
 
 .timer-time-row {
@@ -3709,6 +3787,15 @@ body.timer-cross .timer-stage {
   line-height: 1.35;
   white-space: normal;
   overflow-wrap: anywhere;
+}
+
+.timer-time-item .timer-time-delete {
+  position: absolute;
+  top: 0.2rem;
+  right: 0.05rem;
+  z-index: 1;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
 }
 
 .timer-time-delete {
@@ -3885,6 +3972,12 @@ body.timer-cross .timer-stage {
   .timer-mode-btn {
     min-height: 44px;
     padding: 0.4rem 0.7rem;
+  }
+
+  .practice-scramble-load .btn,
+  .timer-time-item .timer-time-delete {
+    min-height: 44px;
+    min-width: 44px;
   }
 
   body.timer-page .foot {

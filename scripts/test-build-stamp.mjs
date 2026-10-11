@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { APP_BUILD, APP_VERSION } from "../worker/app-version.js";
 import { applyBuildStamp, versionEtag } from "../worker/build-stamp.js";
-import worker from "../worker/index.js";
+import worker, { PAGE_PATHS } from "../worker/index.js";
 import {
   allocateBuild,
   buildFromCommitCount,
@@ -149,8 +149,21 @@ function assetsOf(pages) {
 const pages = {
   "/": readFileSync("index.html", "utf8"),
   "/index.html": readFileSync("index.html", "utf8"),
+  "/timer": readFileSync("timer.html", "utf8"),
   "/timer.html": readFileSync("timer.html", "utf8"),
 };
+
+function wranglerRunWorkerFirst() {
+  const raw = readFileSync("wrangler.jsonc", "utf8").replace(/^\s*\/\/.*$/gm, "");
+  return JSON.parse(raw).assets.run_worker_first;
+}
+
+const workerFirst = wranglerRunWorkerFirst();
+assert(workerFirst.includes("/api/*"), "the times API still runs in the worker");
+for (const path of PAGE_PATHS) {
+  assert(workerFirst.includes(path), `run_worker_first is missing ${path}, so assets would skip the footer stamp`);
+}
+assert(PAGE_PATHS.has("/timer"), "the extensionless timer URL is a stamped page");
 
 const sharedDb = memoryDb();
 const envA = { ASSETS: assetsOf(pages), CF_VERSION_METADATA: versionA, DB: sharedDb };
@@ -172,6 +185,53 @@ const coachHtml = await coach.text();
 assert(stampText(coachHtml) === timerStamp, "coach and timer share this deploy's version");
 assert(coachHtml.includes("Works offline · no account"), "coach keeps the offline note");
 assert(coachHtml.includes("Pieces"), "coach keeps the cube tip");
+
+const prettyTimer = await worker.fetch(new Request("https://3x3coach.example/timer"), envA);
+assert(prettyTimer.status === 200, "extensionless /timer is served");
+const prettyHtml = await prettyTimer.text();
+const prettyStamp = stampText(prettyHtml);
+assert(prettyStamp === timerStamp, `/timer footer matches /timer.html, was ${prettyStamp}`);
+assert(prettyStamp !== "v0.0.0-dev", "/timer does not keep the dev placeholder");
+assert(!prettyHtml.includes(versionA.id), "/timer footer does not include the deploy id");
+assert(prettyTimer.headers.get("content-type").includes("text/html"), "/timer is html");
+assert(prettyTimer.headers.get("etag") === `"${versionA.id}"`, "/timer etag matches this deploy");
+
+function htmlHandlingAssets(files) {
+  const redirects = {
+    "/index.html": "/",
+    "/timer.html": "/timer",
+    "/timer/": "/timer",
+  };
+  return {
+    async fetch(request) {
+      const { pathname } = new URL(request.url);
+      const target = redirects[pathname];
+      if (target) return new Response(null, { status: 307, headers: { location: target } });
+      const html = files[pathname];
+      if (!html) return new Response("missing", { status: 404 });
+      return new Response(html, {
+        headers: { "content-type": "text/html", "cache-control": "public, max-age=0, must-revalidate" },
+      });
+    },
+  };
+}
+
+const handledEnv = {
+  ASSETS: htmlHandlingAssets({
+    "/": pages["/"],
+    "/timer": pages["/timer"],
+  }),
+  CF_VERSION_METADATA: versionA,
+  DB: memoryDb(),
+};
+const handledTimer = await worker.fetch(new Request("https://3x3coach.example/timer"), handledEnv);
+assert(handledTimer.status === 200, "canonical /timer is stamped when assets redirect the .html URL");
+const handledStamp = stampText(await handledTimer.text());
+assert(handledStamp === stampText(coachHtml), `canonical /timer shares the coach version, was ${handledStamp}`);
+assert(handledStamp !== "v0.0.0-dev", "canonical /timer is not the dev placeholder");
+const handledLegacy = await worker.fetch(new Request("https://3x3coach.example/timer.html"), handledEnv);
+assert(handledLegacy.status === 307, "/timer.html still redirects to the canonical timer URL");
+assert(handledLegacy.headers.get("location") === "/timer", "/timer.html redirects to /timer");
 
 const next = await worker.fetch(new Request("https://3x3coach.example/timer.html"), {
   ASSETS: assetsOf(pages),

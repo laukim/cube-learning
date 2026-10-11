@@ -8,8 +8,9 @@
  *
  * TODO(coaching): segment a stored log into Cross, each F2L pair, OLL, and PLL.
  * `reconstructionHooks` is the hand-off; this module only normalizes the log.
- * Practice-timer Cross / F2L marks are taken from live facelets during the
- * solve (applyCubeSplitMarks), not from this log after the fact.
+ * Practice-timer Cross / F2L / pair marks are taken while the solve is running:
+ * each move advances a shadow cube, and a facelet packet resyncs it. The first
+ * time a stage is complete is kept, so a later solved packet does not restamp it.
  */
 
 const FACES = ["U", "R", "F", "D", "L", "B"];

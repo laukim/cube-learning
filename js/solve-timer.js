@@ -1,7 +1,7 @@
 import { stringToFacelets } from "./cube.js";
 import { analyze, STEPS } from "./solver.js";
 import { countNamedAlgs, countYTurns, formatAlgCounts } from "./coach-report.js";
-import { analyzeF2lFlow, formatF2lFlow } from "./f2l-trainer.js?v=f2l18r";
+import { analyzeF2lFlow, formatF2lFlow, stableSolvedSlotIds } from "./f2l-trainer.js?v=f2l18r";
 import {
   ROUX_SPLIT_GROUPS,
   ROUX_SPLIT_SHORT,
@@ -160,12 +160,16 @@ export function currentSplitMs(t, now) {
  */
 export function splitStagesFromFacelets(facelets) {
   const colors = faceletColors(facelets);
-  if (!colors) return { cross: false, f2l: false, solved: false };
+  if (!colors) return { cross: false, f2l: false, solved: false, pairs: [] };
   const result = analyze(colors);
+  const cross = Boolean(result.stepsDone?.[0]);
+  // Solved cubes skip the slot check inside analyze(); still list the four pairs.
+  const pairs = cross ? stableSolvedSlotIds(colors) || [] : [];
   return {
-    cross: Boolean(result.stepsDone?.[0]),
+    cross,
     f2l: Boolean(result.stepsDone?.[1]),
     solved: Boolean(result.solved),
+    pairs,
   };
 }
 

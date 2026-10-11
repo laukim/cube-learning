@@ -88,12 +88,20 @@ export function renderReconstruction(moves) {
   const pauseHtml = pause
     ? `<p class="timer-reconstruction-pause">Pause ${escapeHtml(formatGap(pause.ms))} before ${escapeHtml(pause.before)}</p>`
     : "";
-  return `<div class="timer-reconstruction">
-    <p class="timer-reconstruction-kicker">Reconstruction · ${hooks.moves.length} move${hooks.moves.length === 1 ? "" : "s"}</p>
-    <p class="timer-reconstruction-moves">${tokens}</p>
-    ${namedHtml}
-    ${pauseHtml}
-  </div>`;
+  const count = hooks.moves.length;
+  const countLabel = `${count} move${count === 1 ? "" : "s"}`;
+  return `<details class="timer-reconstruction">
+    <summary>
+      <span class="timer-reconstruction-kicker">Reconstruction · ${countLabel}</span>
+      <span class="timer-reconstruction-show">Show</span>
+      <span class="timer-reconstruction-hide">Hide</span>
+    </summary>
+    <div class="timer-reconstruction-panel">
+      <p class="timer-reconstruction-moves">${tokens}</p>
+      ${namedHtml}
+      ${pauseHtml}
+    </div>
+  </details>`;
 }
 
 export function reconstructionNotation(moves) {

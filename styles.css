@@ -3169,6 +3169,40 @@ body.timer-cross .timer-stage {
   text-align: left;
 }
 
+.timer-reconstruction > summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.timer-reconstruction > summary::-webkit-details-marker {
+  display: none;
+}
+
+.timer-reconstruction-show,
+.timer-reconstruction-hide {
+  flex: none;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.timer-reconstruction-hide,
+.timer-reconstruction[open] .timer-reconstruction-show {
+  display: none;
+}
+
+.timer-reconstruction[open] .timer-reconstruction-hide {
+  display: inline;
+}
+
+.timer-reconstruction-panel {
+  margin-top: 0.15rem;
+}
+
 .timer-reconstruction-kicker,
 .timer-reconstruction-algs,
 .timer-reconstruction-pause {
@@ -3178,9 +3212,32 @@ body.timer-cross .timer-stage {
 }
 
 .timer-reconstruction-kicker {
+  margin: 0;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.timer-time-item .timer-reconstruction {
+  margin: 0 2.4rem 0.15rem 1.5rem;
+}
+
+.timer-pair-marks {
+  margin: 0.1rem 0 0 1.5rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-pair-marks span {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.68rem;
+}
+
+.practice-splits li.split-pair {
+  min-width: 4.4rem;
 }
 
 .timer-reconstruction-moves {

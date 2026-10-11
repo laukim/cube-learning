@@ -29,13 +29,33 @@ export function sortSolves(records) {
     .map((item) => item.row);
 }
 
+const F2L_PAIR_IDS = new Set(["FR", "BR", "BL", "FL"]);
+const MAX_SPLIT_MS = 48 * 60 * 60 * 1000;
+
+function normalizePairs(raw) {
+  if (!Array.isArray(raw)) return [];
+  const out = [];
+  const seen = new Set();
+  for (const item of raw) {
+    const id = String(item?.id || "");
+    const at = Number(item?.at);
+    if (!F2L_PAIR_IDS.has(id) || seen.has(id)) continue;
+    if (!Number.isFinite(at) || at < 0 || at > MAX_SPLIT_MS) continue;
+    seen.add(id);
+    out.push({ id, at: Math.round(at) });
+  }
+  return out;
+}
+
 export function normalizeSplits(raw) {
   if (!raw || typeof raw !== "object") return null;
   const cross = Number(raw.cross);
   const f2l = Number(raw.f2l);
   const final = Number(raw.final);
   if (![cross, f2l, final].every((n) => Number.isFinite(n) && n >= 0)) return null;
-  return { cross, f2l, final };
+  const pairs = normalizePairs(raw.pairs);
+  if (!pairs.length) return { cross, f2l, final };
+  return { cross, f2l, final, pairs };
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

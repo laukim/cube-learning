@@ -87,6 +87,9 @@ assert(hooks.notation === "R U' R2" && hooks.pauses.length === 1 && hooks.pauses
 assert(hooks.cross == null && hooks.f2lPairs == null && hooks.oll == null && hooks.pll == null, "stage analysis is left for a follow-up");
 const html = renderReconstruction(stored);
 assert(html.includes("R") && html.includes("U'") && html.includes("R2") && html.includes("Pause"), "reconstruction lists the moves");
+assert(html.includes("<details") && !html.includes("<details open") && !html.includes(" open"), "reconstruction starts collapsed");
+assert(html.includes("Reconstruction · 3 moves") && html.includes(">Show<"), "reconstruction summary is the expand control");
+assert(html.indexOf("<summary>") < html.indexOf("timer-reconstruction-moves"), "the move string sits inside the expand panel");
 const rightyHtml = renderReconstruction([
   { move: "R", t: 0 },
   { move: "U", t: 200 },

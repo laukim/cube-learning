@@ -2350,9 +2350,15 @@ body.timer-page .topbar {
   min-height: 28rem;
 }
 
+.timer-stage:has(#cube-connect-3d:not([hidden])) {
+  justify-content: flex-start;
+}
+
 .timer-side {
   min-height: 0;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .practice-scramble-kicker {
@@ -3035,13 +3041,106 @@ body.timer-cross .timer-stage {
   overflow-wrap: anywhere;
 }
 
+.cube-mirror-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.35rem;
+  width: min(100%, 22rem);
+  margin-top: 0.35rem;
+  flex: 0 0 auto;
+  overflow: hidden;
+}
+
+.cube-mirror-kicker {
+  margin: 0;
+  align-self: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.cube-mirror-scene {
+  position: relative;
+  width: 100%;
+  height: clamp(210px, 28vw, 270px);
+  perspective: 900px;
+  perspective-origin: 50% 42%;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  border-radius: 16px;
+  outline: none;
+}
+
+.cube-mirror-scene:active {
+  cursor: grabbing;
+}
+
+.cube-mirror-scene:focus-visible {
+  box-shadow: 0 0 0 2px rgba(109, 255, 176, 0.45);
+}
+
+.cube-mirror {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+}
+
+.cube-mirror .cubie,
+.cube-mirror .cubie-sticker,
+.cube-mirror .cubie-plastic,
+.cube-mirror .turn-group {
+  pointer-events: none;
+}
+
+.cube-mirror .cubie-plastic {
+  background: #242424;
+}
+
+.cube-mirror .cubie-sticker {
+  inset: 12%;
+  border-radius: 4px;
+  cursor: default;
+}
+
+.cube-mirror-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.cube-connect-flat {
+  align-self: center;
+  width: auto;
+  text-align: left;
+}
+
+.cube-connect-flat summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.cube-connect-flat summary:focus-visible {
+  outline: 2px solid rgba(109, 255, 176, 0.45);
+  outline-offset: 2px;
+}
+
 .cube-connect-net {
-  margin-top: 0.55rem;
+  margin-top: 0.45rem;
 }
 
 .cube-net {
   display: block;
-  width: min(100%, 13rem);
+  width: min(100%, 11rem);
   height: auto;
 }
 
@@ -4013,6 +4112,14 @@ body.timer-cross .timer-stage {
 
   .timer-stage {
     min-height: 22rem;
+  }
+
+  .cube-mirror-scene {
+    height: 200px;
+  }
+
+  .timer-stage:has(#cube-connect-3d:not([hidden])) {
+    justify-content: flex-start;
   }
 
   .practice-clock {

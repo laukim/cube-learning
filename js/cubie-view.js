@@ -322,4 +322,4 @@ export function createCubieCube(cubeEl) {
   };
 }
 
-export { parseMove, CW_DEG };
+export { parseMove, CW_DEG, faceletIndex };

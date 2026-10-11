@@ -1,9 +1,36 @@
-import { connectSmartCube } from "../vendor/smartcube-web-bluetooth.js";
-import { bluetoothAdapterMessage, bluetoothBlocker, connectErrorMessage } from "./bluetooth-support.js?v=cube1";
+import { connectSmartCube, getCachedMacForDevice } from "../vendor/smartcube-web-bluetooth.js";
+import {
+  MAC_FORM_HELP,
+  bindMacPrompt,
+  bluetoothAdapterMessage,
+  bluetoothBlocker,
+  connectErrorMessage,
+  createMacAddressProvider,
+  normalizeCubeMac,
+  promptForCubeMac,
+  shouldApplyAdapterIdleStatus,
+} from "./bluetooth-support.js?v=cube2";
 import { renderCubeNet } from "./cube-reconstruction.js?v=cube1";
 import { ganFaceletsToApp, ganMoveToApp } from "./move-log.js?v=cube1";
 
 const FEED_LIMIT = 24;
+const MAC_DRAFT_KEY = "gan-cube-mac-draft";
+
+function readMacDraft() {
+  try {
+    return normalizeCubeMac(localStorage.getItem(MAC_DRAFT_KEY) || "");
+  } catch {
+    return "";
+  }
+}
+
+function writeMacDraft(mac) {
+  try {
+    localStorage.setItem(MAC_DRAFT_KEY, mac);
+  } catch {
+    /* private mode or a full store */
+  }
+}
 
 /**
  * Connect panel for a GAN smart cube (Gen3/Gen4, including i4 and GAN12 ui Maglev).
@@ -16,7 +43,12 @@ export function initSmartCube({ timer } = {}) {
   const netEl = document.getElementById("cube-connect-net");
   const feedEl = document.getElementById("cube-connect-feed");
   const button = document.getElementById("cube-connect-btn");
+  const macForm = document.getElementById("cube-connect-mac");
+  const macInput = document.getElementById("cube-connect-mac-input");
+  const macCancel = document.getElementById("cube-connect-mac-cancel");
+  const macHelp = document.getElementById("cube-connect-mac-help");
   if (!root || !statusEl || !button) return { disconnect() {} };
+  if (macHelp) macHelp.textContent = MAC_FORM_HELP;
 
   let session = null;
   let battery = null;
@@ -24,6 +56,7 @@ export function initSmartCube({ timer } = {}) {
   let feed = [];
   let busy = false;
   let adapterNote = "";
+  let statusSettled = false;
 
   function setStatus(text) {
     statusEl.textContent = text;
@@ -58,11 +91,13 @@ export function initSmartCube({ timer } = {}) {
   }
 
   async function disconnect() {
+    statusSettled = true;
     const current = session;
     session = null;
     battery = null;
     facelets = "";
     feed = [];
+    if (macForm) macForm.hidden = true;
     timer?.setCubeConnected?.(false);
     paint();
     setStatus("Disconnected. Space or tap still times a solve.");
@@ -109,8 +144,10 @@ export function initSmartCube({ timer } = {}) {
       return;
     }
     if (event?.type === "DISCONNECT") {
+      statusSettled = true;
       session = null;
       battery = null;
+      if (macForm) macForm.hidden = true;
       timer?.setCubeConnected?.(false);
       paint();
       setStatus("Cube disconnected. Space or tap still times a solve.");
@@ -118,6 +155,7 @@ export function initSmartCube({ timer } = {}) {
   }
 
   async function connect() {
+    statusSettled = true;
     const blocked = adapterNote || bluetoothBlocker();
     if (blocked) {
       setStatus(blocked);
@@ -129,6 +167,16 @@ export function initSmartCube({ timer } = {}) {
     setStatus("Choose the GAN cube in the Chrome dialog…");
     const pending = connectSmartCube({
       onStatus: (message) => setStatus(message),
+      macAddressProvider: createMacAddressProvider({
+        getCachedMac(device) {
+          try {
+            return getCachedMacForDevice(device);
+          } catch {
+            return null;
+          }
+        },
+        requestMac,
+      }),
     });
     try {
       const conn = await pending;
@@ -154,12 +202,29 @@ export function initSmartCube({ timer } = {}) {
       if (conn.capabilities?.battery) conn.sendCommand({ type: "REQUEST_BATTERY" }).catch(() => {});
       if (conn.capabilities?.hardware) conn.sendCommand({ type: "REQUEST_HARDWARE" }).catch(() => {});
     } catch (error) {
+      if (macForm) macForm.hidden = true;
       setStatus(connectErrorMessage(error));
     } finally {
       busy = false;
       paint();
     }
   }
+
+  const requestMac =
+    macForm && macInput && macCancel
+      ? bindMacPrompt({
+          form: macForm,
+          input: macInput,
+          cancelButton: macCancel,
+          setStatus,
+          initialValue: readMacDraft,
+          onAccept: writeMacDraft,
+        })
+      : async () => {
+          const typed = promptForCubeMac();
+          if (typed) writeMacDraft(typed);
+          return typed || null;
+        };
 
   button.addEventListener("click", () => {
     button.blur();
@@ -169,7 +234,7 @@ export function initSmartCube({ timer } = {}) {
 
   bluetoothAdapterMessage().then((blocked) => {
     adapterNote = blocked;
-    if (session || busy) return;
+    if (!shouldApplyAdapterIdleStatus({ connected: Boolean(session), busy, settled: statusSettled })) return;
     setStatus(blocked || "Not connected. Chrome on a Mac can pair a GAN cube — no CubeStation app.");
   });
   paint();

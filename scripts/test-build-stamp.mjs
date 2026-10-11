@@ -180,11 +180,27 @@ assert(!timerStamp.includes("Works offline"), "the version line is not the help 
 assert(timer.headers.get("etag") === `"${versionA.id}"`, "etag changes with the deploy");
 assert(timer.headers.get("cache-control").includes("must-revalidate"), "browser revalidates before reuse");
 
-const coach = await worker.fetch(new Request("https://3x3coach.example/"), envA);
-const coachHtml = await coach.text();
-assert(stampText(coachHtml) === timerStamp, "coach and timer share this deploy's version");
-assert(coachHtml.includes("Works offline · no account"), "coach keeps the offline note");
-assert(coachHtml.includes("Pieces"), "coach keeps the cube tip");
+const home = await worker.fetch(new Request("https://3x3coach.example/"), envA);
+const homeHtml = await home.text();
+assert(home.status === 200, "home is served");
+assert(stampText(homeHtml) === timerStamp, "home and /timer.html share this deploy's version");
+assert(homeHtml.includes("Works offline · times stay on this device"), "home keeps the offline note");
+assert(homeHtml.includes("a connected GAN cube"), "home keeps the cube tip");
+assert(homeHtml.includes('class="timer-page"'), "home is the timer");
+assert(!homeHtml.includes(">Coach<"), "home does not link to the on-screen coach");
+assert(!homeHtml.includes("Pieces"), "home does not describe on-screen turns");
+
+const timerAlias = await worker.fetch(new Request("https://3x3coach.example/timer"), envA);
+assert(timerAlias.status === 200, "/timer is served");
+const aliasHtml = await timerAlias.text();
+assert(stampText(aliasHtml) === timerStamp, "/timer shares this deploy's version");
+assert(aliasHtml.includes('id="practice-clock"'), "/timer is the timer page");
+assert(aliasHtml.includes("a connected GAN cube"), "/timer keeps the cube tip");
+
+const indexFile = await worker.fetch(new Request("https://3x3coach.example/index.html"), envA);
+const indexHtml = await indexFile.text();
+assert(stampText(indexHtml) === timerStamp, "/index.html shares the version");
+assert(indexHtml.includes('class="timer-page"'), "/index.html is the timer, not the on-screen coach");
 
 const prettyTimer = await worker.fetch(new Request("https://3x3coach.example/timer"), envA);
 assert(prettyTimer.status === 200, "extensionless /timer is served");
@@ -227,8 +243,21 @@ const handledEnv = {
 const handledTimer = await worker.fetch(new Request("https://3x3coach.example/timer"), handledEnv);
 assert(handledTimer.status === 200, "canonical /timer is stamped when assets redirect the .html URL");
 const handledStamp = stampText(await handledTimer.text());
-assert(handledStamp === stampText(coachHtml), `canonical /timer shares the coach version, was ${handledStamp}`);
+assert(handledStamp === stampText(homeHtml), `canonical /timer shares the home version, was ${handledStamp}`);
 assert(handledStamp !== "v0.0.0-dev", "canonical /timer is not the dev placeholder");
+const handledTimerHtml = await (
+  await worker.fetch(new Request("https://3x3coach.example/timer"), handledEnv)
+).text();
+assert(handledTimerHtml.includes('class="timer-page"'), "canonical /timer is the timer, not the on-screen coach");
+assert(!handledTimerHtml.includes(">Coach<"), "canonical /timer does not link to the on-screen coach");
+const handledHome = await worker.fetch(new Request("https://3x3coach.example/"), handledEnv);
+const handledHomeHtml = await handledHome.text();
+assert(handledHome.status === 200, "canonical / is served when assets redirect /index.html");
+assert(handledHomeHtml.includes('class="timer-page"'), "canonical / is the timer");
+assert(stampText(handledHomeHtml) === handledStamp, "canonical / shares the timer version");
+const handledIndex = await worker.fetch(new Request("https://3x3coach.example/index.html"), handledEnv);
+assert(handledIndex.status === 307, "/index.html redirects to the timer home under html_handling");
+assert(handledIndex.headers.get("location") === "/", "/index.html redirects to /");
 const handledLegacy = await worker.fetch(new Request("https://3x3coach.example/timer.html"), handledEnv);
 assert(handledLegacy.status === 307, "/timer.html still redirects to the canonical timer URL");
 assert(handledLegacy.headers.get("location") === "/timer", "/timer.html redirects to /timer");

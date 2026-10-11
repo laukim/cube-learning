@@ -4,566 +4,220 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0b1210" />
-    <meta name="description" content="3×3 coach: CFOP and Roux — scramble a solve or drill stages with live hints." />
-    <title>3×3 Coach — CFOP & Roux</title>
+    <meta name="description" content="Smart-cube timer for 3×3. Connect a GAN cube, time Cross · F2L · Final, and review coaching stats." />
+    <link rel="canonical" href="/" />
+    <title>3×3 Coach</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
       rel="stylesheet"
     />
-      <link rel="stylesheet" href="styles.css?v=ver1" />
-    <link rel="stylesheet" href="vendor/erno-cube.css?v=f2l18r" />
+    <link rel="stylesheet" href="styles.css?v=ver1" />
   </head>
-  <body class="hints-open">
+  <body class="timer-page">
     <div class="ambient" aria-hidden="true"></div>
-    <div
-      class="pop-flash"
-      id="pop-flash"
-      aria-hidden="true"
-      style="position:fixed;inset:0;z-index:9999;pointer-events:none;display:flex;align-items:center;justify-content:center;background:#ff2a2a;opacity:0"
-    >
-      <span class="pop-flash-label" id="pop-flash-label">POP</span>
-    </div>
 
     <header class="topbar">
-      <a class="brand" href="./">
+      <a class="brand" href="/">
         <span class="brand-mark" aria-hidden="true"></span>
         <span class="brand-name">3×3 Coach</span>
       </a>
-      <nav class="site-nav" aria-label="App pages">
-        <a class="site-nav-link is-active" href="./" aria-current="page">Coach</a>
-        <a class="site-nav-link" href="./timer.html">Timer</a>
-      </nav>
-      <div class="method-switch" role="group" aria-label="Solving method">
-        <button type="button" class="method-btn is-active" data-method="cfop" id="method-cfop" aria-pressed="true">
-          CFOP
-        </button>
-        <button type="button" class="method-btn" data-method="roux" id="method-roux" aria-pressed="false">
-          Roux
-        </button>
-      </div>
     </header>
 
-    <main class="layout">
-      <section class="stage" aria-label="Cube workspace">
-        <div class="stage-glow" aria-hidden="true"></div>
-
-        <div class="stage-main">
-          <div class="cube-wrap" id="cube-wrap">
-            <div id="erno-container" aria-label="3D cube"></div>
-            <p class="flick-toast" id="flick-toast" aria-live="polite"></p>
-            <p class="f2l-case-overlay" id="f2l-case-overlay" hidden>
-              <strong id="f2l-case-overlay-id">—</strong>
-              <span id="f2l-case-overlay-hand"></span>
-            </p>
-            <p class="orbit-hint">
-              Flick a face to turn · drag empty space around the cube to look
-            </p>
+    <main class="timer-page-main">
+      <section class="timer-stage" aria-label="Scramble and timer">
+        <p class="practice-scramble-kicker" id="practice-scramble-kicker">Scramble</p>
+        <button type="button" class="practice-scramble" id="practice-scramble" title="Tap for a new scramble" aria-label="Current scramble. Tap for a new scramble.">
+          —
+        </button>
+        <form class="practice-scramble-load" id="practice-scramble-load">
+          <input
+            id="practice-scramble-input"
+            class="practice-scramble-input"
+            type="text"
+            inputmode="text"
+            autocomplete="off"
+            autocapitalize="characters"
+            spellcheck="false"
+            placeholder="Paste a scramble"
+            aria-label="Scramble to load"
+          />
+          <button type="submit" class="btn btn-ghost btn-small">Load</button>
+        </form>
+        <div class="timer-mode" role="group" aria-label="Timer mode">
+          <button type="button" class="timer-mode-btn is-active" data-timer-mode="single" aria-pressed="true">
+            Single
+          </button>
+          <button type="button" class="timer-mode-btn" data-timer-mode="cross" aria-pressed="false">
+            Cross drill
+          </button>
+          <button type="button" class="timer-mode-btn" data-timer-mode="splits" aria-pressed="false">
+            Cross · F2L · Final
+          </button>
+          <button type="button" class="timer-mode-btn" data-timer-mode="pll" aria-pressed="false">
+            PLL cases
+          </button>
+        </div>
+        <div class="cross-drill" id="cross-drill" hidden>
+          <p class="cross-drill-hold">White on bottom, blue in front</p>
+          <div class="cross-drill-actions">
+            <button type="button" class="btn btn-ghost" id="cross-drill-repeat">Repeat this case</button>
+            <button type="button" class="btn btn-primary" id="cross-drill-next">Next</button>
           </div>
-
-          <div class="move-pad" id="move-pad" aria-label="Face turns">
-            <div class="move-row">
-              <button type="button" class="move-btn" data-move="U">U</button>
-              <button type="button" class="move-btn" data-move="U'">U'</button>
-            </div>
-            <div class="move-row">
-              <button type="button" class="move-btn" data-move="R">R</button>
-              <button type="button" class="move-btn" data-move="R'">R'</button>
-            </div>
-            <div class="move-row">
-              <button type="button" class="move-btn" data-move="F">F</button>
-              <button type="button" class="move-btn" data-move="F'">F'</button>
-            </div>
-            <div class="move-row">
-              <button type="button" class="move-btn" data-move="L">L</button>
-              <button type="button" class="move-btn" data-move="L'">L'</button>
-            </div>
-            <div class="move-row">
-              <button type="button" class="move-btn" data-move="D">D</button>
-              <button type="button" class="move-btn" data-move="D'">D'</button>
-            </div>
-            <div class="move-row">
-              <button type="button" class="move-btn" data-move="B">B</button>
-              <button type="button" class="move-btn" data-move="B'">B'</button>
-            </div>
-            <div class="move-row move-row-meta">
-              <button type="button" class="move-btn" data-move="y">y</button>
-              <button type="button" class="move-btn" data-move="y'">y'</button>
-              <button type="button" class="move-btn" data-move="x2">x2</button>
-            </div>
-            <div class="move-row move-row-slice" id="move-row-slice" hidden>
-              <button type="button" class="move-btn" data-move="M">M</button>
-              <button type="button" class="move-btn" data-move="M'">M'</button>
-              <button type="button" class="move-btn" data-move="M2">M2</button>
-            </div>
+          <button
+            type="button"
+            class="btn btn-ghost btn-small cross-drill-show"
+            id="cross-drill-show"
+            aria-expanded="false"
+            aria-controls="cross-drill-solution"
+          >
+            Show optimal cross
+          </button>
+          <div class="cross-drill-solution" id="cross-drill-solution" hidden>
+            <p class="cross-drill-solution-kicker" id="cross-drill-solution-kicker"></p>
+            <code class="alg cross-drill-alg" id="cross-drill-alg"></code>
           </div>
         </div>
-
-        <div class="stage-dock">
-          <div class="scramble-card is-idle-cta" id="scramble-card">
-            <button type="button" class="scramble-card-hit" id="btn-scramble-card" title="New scramble to do on a real cube">
-              <span class="scramble-card-kicker" id="scramble-kicker">Scramble</span>
-              <code class="scramble-card-alg" id="scramble-alg">Tap for a scramble</code>
-            </button>
+        <div class="pll-trainer-case" id="pll-trainer-case" hidden></div>
+        <p class="coach-level" id="coach-level" hidden></p>
+        <button type="button" class="practice-clock" id="practice-clock" data-phase="idle" aria-label="Start timer">
+          <span class="practice-clock-value" id="practice-clock-value">0.00</span>
+        </button>
+        <ol class="practice-splits" id="practice-splits" hidden></ol>
+        <div class="coach-focus" id="coach-focus" hidden></div>
+        <p class="coach-session" id="coach-session" hidden></p>
+        <p class="practice-status" id="practice-status">Space or tap to start · next scramble appears when you stop</p>
+        <div class="practice-reconstruction" id="practice-reconstruction" hidden></div>
+        <div class="cube-mirror-slot" id="cube-connect-3d" hidden>
+          <p class="cube-mirror-kicker">Live cube</p>
+          <div
+            class="cube-mirror-scene"
+            id="cube-connect-scene"
+            tabindex="0"
+            aria-label="Live 3D cube. Drag to look around. Arrow keys turn the view."
+          >
+            <div class="cube-mirror" id="cube-connect-cube" role="img" aria-label="Live 3D smart cube"></div>
           </div>
-
-          <div class="solve-timer" id="solve-timer" data-phase="idle">
-            <div class="solve-timer-row">
-              <div class="solve-timer-clock-wrap">
-                <span class="solve-timer-label" id="solve-timer-label">Timer</span>
-                <time class="solve-timer-clock" id="solve-timer-clock">0.00</time>
-              </div>
-              <p class="solve-timer-status" id="solve-timer-status">Scramble to time a full solve</p>
-            </div>
-            <ol class="solve-timer-splits" id="solve-timer-splits" hidden></ol>
-          </div>
-
-          <div class="f2l-case-badge" id="f2l-case-badge" hidden>
-            <span class="f2l-case-id" id="f2l-case-id">—</span>
-            <span class="f2l-case-hand" id="f2l-case-hand">R/U</span>
-          </div>
-
-          <div class="move-trace" id="move-trace" aria-live="polite" aria-label="Move history">
-            <span class="move-trace-label">Moves</span>
-            <code class="move-trace-alg" id="move-trace-alg">—</code>
-            <span class="move-trace-last" id="move-trace-last" hidden></span>
-          </div>
-
-          <div class="toolbar">
-            <button type="button" class="btn btn-ghost" id="btn-undo" disabled title="Undo last move (Z)">Undo</button>
-            <button type="button" class="btn btn-ghost" id="btn-toggle-pad" aria-pressed="true" title="Hide or show U R F… buttons">
-              Hide moves
-            </button>
-            <button type="button" class="btn btn-ghost" id="btn-reset">Reset</button>
-            <button type="button" class="btn btn-primary" id="btn-scramble">Scramble</button>
-            <button type="button" class="btn btn-ghost" id="btn-cross-case" hidden>New cross</button>
-            <button type="button" class="btn btn-ghost" id="btn-fb-case" hidden>New FB</button>
-            <button type="button" class="btn btn-ghost" id="btn-sb-case" hidden>New SB</button>
-            <button type="button" class="btn btn-ghost" id="btn-f2l-prev" hidden>Prev</button>
-            <button type="button" class="btn btn-ghost" id="btn-f2l-again" hidden>Again</button>
-            <button type="button" class="btn btn-ghost" id="btn-f2l-case" hidden>Next F2L</button>
-            <label class="f2l-jump" id="f2l-jump" hidden>
-              <span class="f2l-jump-label">Jump to</span>
-              <select id="f2l-jump-select" aria-label="Jump to F2L case, then continue in CubeHead order">
-                <option value="">Case…</option>
-              </select>
-            </label>
-            <button type="button" class="btn btn-ghost" id="btn-f2l-random" hidden title="Random order of the groups you tick. Each selected case appears once before any repeat. Prev and Next stay in CubeHead order.">
-              Random
-            </button>
-            <button type="button" class="btn btn-ghost" id="btn-oll-again" hidden>Again</button>
-            <button type="button" class="btn btn-ghost" id="btn-oll-case" hidden>Next OLL</button>
-            <button type="button" class="btn btn-ghost" id="btn-pll-again" hidden>Again</button>
-            <button type="button" class="btn btn-ghost" id="btn-pll-case" hidden>Next PLL</button>
-            <button type="button" class="btn btn-ghost" id="btn-cmll-again" hidden>Again</button>
-            <button type="button" class="btn btn-ghost" id="btn-cmll-case" hidden>Next CMLL</button>
-            <button type="button" class="btn btn-ghost" id="btn-lse-again" hidden>Again</button>
-            <button type="button" class="btn btn-ghost" id="btn-lse-case" hidden>Next LSE</button>
-            <button type="button" class="btn btn-ghost" id="btn-hints" aria-pressed="false" title="Show or hide the guide panel">
-              Guide
-            </button>
-            <button type="button" class="btn btn-ghost" id="btn-hint" disabled title="Scramble first — then this shows the next coaching step">Next hint</button>
-          </div>
+          <p class="cube-mirror-hint" id="cube-connect-hint">Reading the cube…</p>
+          <details class="cube-connect-flat" id="cube-connect-flat" hidden>
+            <summary>Flat view</summary>
+            <div class="cube-connect-net" id="cube-connect-net"></div>
+          </details>
         </div>
       </section>
 
-      <aside class="panel" id="guide-panel" aria-label="Method guide and drills">
-        <div class="hints-sheet-bar">
-          <span class="hints-sheet-label">Guide</span>
-          <button type="button" class="btn btn-ghost hints-sheet-close" id="btn-close-hints">
-            Cube
-          </button>
-        </div>
-        <div class="panel-intro" id="panel-intro">
-          <h1 id="panel-title">CFOP drills. White bottom, yellow top.</h1>
-          <p class="panel-audience" id="panel-audience">
-            CFOP practice if you already know the method — not a from-zero tutorial. White on bottom, yellow on top.
+      <section class="timer-side" aria-label="Solve times and progress">
+        <section class="cube-connect" id="cube-connect" aria-label="Smart cube">
+          <div class="cube-connect-head">
+            <h2 class="cube-connect-title">Smart cube</h2>
+            <button type="button" class="btn btn-small" id="cube-connect-btn">Connect</button>
+          </div>
+          <p class="cube-connect-status" id="cube-connect-status" aria-live="polite">Checking Bluetooth…</p>
+          <form class="cube-connect-mac" id="cube-connect-mac" hidden>
+            <label class="cube-connect-mac-label" for="cube-connect-mac-input">Bluetooth MAC</label>
+            <div class="cube-connect-mac-row">
+              <input
+                id="cube-connect-mac-input"
+                class="cube-connect-mac-input"
+                name="mac"
+                autocomplete="off"
+                autocapitalize="off"
+                spellcheck="false"
+                placeholder="aa:bb:cc:dd:ee:ff"
+                aria-describedby="cube-connect-mac-help"
+              />
+              <button type="submit" class="btn btn-small btn-primary">Use MAC</button>
+              <button type="button" class="btn btn-small btn-ghost" id="cube-connect-mac-cancel">Cancel</button>
+            </div>
+            <p class="cube-connect-mac-help" id="cube-connect-mac-help"></p>
+          </form>
+          <p class="cube-connect-meta" id="cube-connect-meta" hidden></p>
+          <p class="cube-connect-feed" id="cube-connect-feed" hidden></p>
+          <p class="cube-connect-note">
+            Chrome on a Mac. GAN i4 and GAN12 ui Maglev — names starting with GAN, MG, or AiCube. No CubeStation app.
+            Gen2, Gen3, and Gen4 need the cube's Bluetooth MAC. If Connect cannot read it, enable
+            <span class="cube-connect-code">chrome://flags/#enable-web-bluetooth-new-permissions-backend</span>
+            or enter the address when asked.
           </p>
-          <p id="panel-blurb">
-            Scramble a timed solve, or open a tab to drill one stage. Cross → F2L → 2-look OLL → 2-look PLL. First turn
-            starts the timer.
+        </section>
+        <div class="timer-account" id="timer-account">
+          <div id="timer-google-slot">
+            <button type="button" class="btn btn-small" id="timer-sign-in">Sign in with Google</button>
+          </div>
+          <div class="timer-account-user" id="timer-account-user" hidden>
+            <span id="timer-account-email"></span>
+            <button type="button" class="btn btn-ghost btn-small" id="timer-sign-out">Sign out</button>
+          </div>
+          <p class="timer-account-status" id="timer-account-status">Times stay on this device</p>
+        </div>
+        <details class="pll-trainer-pick" id="pll-trainer-pick" open hidden>
+          <summary id="pll-trainer-pick-label">Cases</summary>
+          <div class="pll-trainer-presets" role="group" aria-label="PLL case sets">
+            <button type="button" data-pll-preset="two">2-look</button>
+            <button type="button" data-pll-preset="all">All</button>
+            <button type="button" data-pll-preset="none">None</button>
+          </div>
+          <div id="pll-trainer-cases"></div>
+          <p class="pll-trainer-pick-note">
+            T, Y, Ua, Ub, H, and Z are the 2-look set.
           </p>
+        </details>
+        <div class="timer-toolbar">
+          <label class="timer-inspect">
+            Inspection
+            <select id="timer-inspect" aria-label="Inspection time">
+              <option value="0">0s</option>
+              <option value="3">3s</option>
+              <option value="5">5s</option>
+              <option value="10">10s</option>
+              <option value="15">15s</option>
+            </select>
+          </label>
+          <label class="timer-chart-window">
+            Chart
+            <select id="timer-chart-window" aria-label="Chart solve window">
+              <option value="25">Last 25</option>
+              <option value="50" selected>Last 50</option>
+              <option value="100">Last 100</option>
+              <option value="0">All</option>
+            </select>
+          </label>
+          <button type="button" class="btn btn-ghost btn-small" id="timer-clear" disabled>Clear times</button>
         </div>
-
-        <div class="mode-tabs" role="tablist" aria-label="Practice mode">
-          <button type="button" class="mode-tab is-active" role="tab" aria-selected="true" data-mode="guide" id="tab-guide">
-            Guide
-          </button>
-          <button type="button" class="mode-tab" role="tab" aria-selected="false" data-mode="cross" id="tab-cross" data-methods="cfop">
-            Cross
-          </button>
-          <button type="button" class="mode-tab" role="tab" aria-selected="false" data-mode="f2l" id="tab-f2l" data-methods="cfop">
-            F2L
-          </button>
-          <button type="button" class="mode-tab" role="tab" aria-selected="false" data-mode="oll" id="tab-oll" data-methods="cfop">
-            OLL
-          </button>
-          <button type="button" class="mode-tab" role="tab" aria-selected="false" data-mode="pll" id="tab-pll" data-methods="cfop">
-            PLL
-          </button>
-          <button type="button" class="mode-tab" role="tab" aria-selected="false" data-mode="fb" id="tab-fb" data-methods="roux" hidden>
-            FB
-          </button>
-          <button type="button" class="mode-tab" role="tab" aria-selected="false" data-mode="sb" id="tab-sb" data-methods="roux" hidden>
-            SB
-          </button>
-          <button type="button" class="mode-tab" role="tab" aria-selected="false" data-mode="cmll" id="tab-cmll" data-methods="roux" hidden>
-            CMLL
-          </button>
-          <button type="button" class="mode-tab" role="tab" aria-selected="false" data-mode="lse" id="tab-lse" data-methods="roux" hidden>
-            LSE
-          </button>
-          <button type="button" class="mode-tab" role="tab" aria-selected="false" data-mode="match" id="tab-match">
-            Match
-          </button>
-          <button type="button" class="mode-tab" role="tab" aria-selected="false" data-mode="algs" id="tab-algs">
-            Algs
-          </button>
-        </div>
-
-        <div class="panel-body" id="panel-guide" data-panel="guide">
-          <ol class="steps" id="steps"></ol>
-
-          <div class="hint-card" id="hint-card" hidden>
-            <div class="hint-kicker" id="hint-kicker">Step</div>
-            <h2 class="hint-title" id="hint-title"></h2>
-            <p class="hint-copy" id="hint-copy"></p>
-            <div class="alg-block">
-              <code class="alg" id="hint-alg"></code>
-              <button type="button" class="btn btn-small" id="btn-apply-alg">Apply on cube</button>
-            </div>
-            <p class="hint-note" id="hint-note"></p>
-          </div>
-
-          <div class="solved-banner" id="solved-banner" hidden>
-            <strong id="solved-banner-title">Solved.</strong>
-            <span id="solved-banner-copy"> Full solve done.</span>
-          </div>
-
-          <div class="solve-analysis" id="solve-analysis" hidden></div>
-        </div>
-
-        <div class="panel-body" id="panel-cross" data-panel="cross" hidden>
-          <div class="f2l-progress" id="cross-progress" aria-label="Cross edges"></div>
-
-          <div class="hint-card" id="cross-hint-card">
-            <div class="hint-kicker" id="cross-hint-kicker">Cross</div>
-            <h2 class="hint-title" id="cross-hint-title">Ready</h2>
-            <p class="hint-copy" id="cross-hint-copy">
-              Tap <strong>New cross</strong>. White stays on the bottom. Build the white + — each edge matching its
-              centre — then tap <strong>Cross hint</strong> for the next edge to solve.
-            </p>
-            <div class="alg-block">
-              <code class="alg" id="cross-hint-alg"></code>
-              <button type="button" class="btn btn-small" id="btn-cross-apply" hidden>Apply on cube</button>
-            </div>
-            <p class="hint-note" id="cross-hint-note"></p>
-          </div>
-
-          <div class="solved-banner" id="cross-solved-banner" hidden>
-            <strong>Cross complete.</strong> New cross to drill again.
-          </div>
-
-          <div class="f2l-tips" id="cross-tips"></div>
-        </div>
-
-        <div class="panel-body" id="panel-f2l" data-panel="f2l" hidden>
-          <div class="f2l-group-filter" id="f2l-group-filter">
-            <p class="f2l-group-filter-label" id="f2l-group-filter-label">Random includes</p>
-            <div
-              class="f2l-group-filter-list"
-              id="f2l-group-filter-list"
-              role="group"
-              aria-label="F2L groups included in Random"
-            ></div>
-          </div>
-          <div class="f2l-progress" id="f2l-progress" aria-label="Slots solved"></div>
-
-          <div class="hint-card" id="f2l-hint-card">
-            <div class="hint-kicker" id="f2l-hint-kicker">F2L</div>
-            <h2 class="hint-title" id="f2l-hint-title">Ready</h2>
-            <p class="hint-copy" id="f2l-hint-copy">
-              Drill the <strong>41 standard F2L cases</strong> (CubeHead order).
-              Use <strong>Jump to</strong> to start at any ID (e.g. <strong>10R</strong>), then
-              <strong>Prev</strong> / <strong>Again</strong> / <strong>Next F2L</strong> follow the list.
-              Twins share a number (<strong>1R</strong> / <strong>1L</strong>); no left twin → just
-              <strong>11</strong>. One pair per case — stay on this ID until Next or Prev.
-              <strong>Random</strong> walks the groups you tick (Disconnected,
-              Edge in slot, …) with no repeats until every selected case has been shown. After each case you’ll see a
-              <strong>scramble from solved</strong> so you can set it up on a real cube
-              (white D · blue F). Reference:
-              <a
-                class="ext-link"
-                href="https://www.youtube.com/watch?v=3tYj-9f4dA0"
-                target="_blank"
-                rel="noopener"
-                >CubeHead F2L</a
-              >.
-            </p>
-            <div class="alg-block">
-              <code class="alg" id="f2l-hint-alg"></code>
-              <button type="button" class="btn btn-small" id="btn-f2l-apply" hidden>Apply on cube</button>
-            </div>
-            <div class="setup-scramble" id="f2l-setup-block" hidden>
-              <p class="setup-scramble-kicker">Scramble on a real cube</p>
-              <p class="setup-scramble-note">From solved · white on D · blue on F</p>
-              <div class="alg-block">
-                <code class="alg" id="f2l-setup-alg"></code>
-                <button type="button" class="btn btn-small" id="btn-f2l-copy-setup">Copy</button>
-              </div>
-            </div>
-            <p class="hint-note" id="f2l-hint-note"></p>
-          </div>
-
-          <div class="solved-banner" id="f2l-solved-banner" hidden>
-            <strong>Case in.</strong> Stay here, or tap Next F2L / Prev / Again.
-          </div>
-
-          <div class="f2l-tips" id="f2l-tips"></div>
-        </div>
-
-        <div class="panel-body" id="panel-oll" data-panel="oll" hidden>
-          <div class="look-switch" role="group" aria-label="Which OLL look to drill">
-            <button type="button" class="method-btn" data-oll-look="cross" aria-pressed="false">Look 1 · Cross</button>
-            <button type="button" class="method-btn is-active" data-oll-look="corners" aria-pressed="true">
-              Look 2 · Corners
-            </button>
-          </div>
-          <div class="f2l-progress" id="oll-progress" aria-label="OLL steps"></div>
-
-          <div class="hint-card" id="oll-hint-card">
-            <div class="hint-kicker" id="oll-hint-kicker">2-look OLL · look 2</div>
-            <h2 class="hint-title" id="oll-hint-title">Ready</h2>
-            <div class="hint-layout">
-              <div class="hint-diagram" id="oll-hint-diagram" hidden></div>
-              <div class="hint-text">
-                <p class="hint-copy" id="oll-hint-copy">
-                  This tab starts on <strong>Look 2</strong> — the 7 corner algs, with the yellow cross already
-                  done. Tap <strong>Again</strong> / <strong>Next OLL</strong> for Sune, Anti-Sune, H, Pi, T,
-                  Bowtie, U. Switch to Look 1 if you want line / L / dot. Reference:
-                  <a
-                    class="ext-link"
-                    href="https://www.cube.academy/2-look-oll-algs"
-                    target="_blank"
-                    rel="noopener"
-                    >CubeHead 2-look OLL</a
-                  >.
-                </p>
-                <div class="alg-block">
-                  <code class="alg" id="oll-hint-alg"></code>
-                  <button type="button" class="btn btn-small" id="btn-oll-apply" hidden>Apply on cube</button>
-                </div>
-                <p class="hint-note" id="oll-hint-note"></p>
-              </div>
-            </div>
-          </div>
-
-          <div class="solved-banner" id="oll-solved-banner" hidden>
-            <strong id="oll-solved-title">Look 2 done — yellow face.</strong>
-            <span id="oll-solved-copy">Again = same case · Next OLL = next corner case · or open PLL.</span>
-          </div>
-
-          <div class="f2l-tips" id="oll-tips"></div>
-        </div>
-
-        <div class="panel-body" id="panel-pll" data-panel="pll" hidden>
-          <div class="look-switch" role="group" aria-label="Which PLL to open">
-            <button type="button" class="method-btn is-active" data-pll-look="two" aria-pressed="true">
-              2-look
-            </button>
-            <button type="button" class="method-btn" data-pll-look="known" aria-pressed="false">
-              Cases I know
-            </button>
-          </div>
-
-          <div id="pll-two">
-          <div class="f2l-progress" id="pll-progress" aria-label="PLL steps"></div>
-
-          <div class="hint-card" id="pll-hint-card">
-            <div class="hint-kicker" id="pll-hint-kicker">2-look PLL</div>
-            <h2 class="hint-title" id="pll-hint-title">Ready</h2>
-            <div class="hint-layout">
-              <div class="hint-diagram" id="pll-hint-diagram" hidden></div>
-              <div class="hint-text">
-                <p class="hint-copy" id="pll-hint-copy">
-                  Tap <strong>Again</strong> for the same case or <strong>Next PLL</strong> for the next in order
-                  (T → Y → Ua → Ub → H → Z). CubeHead 2-look PLL is
-                  <strong>6 algs</strong>: T or Y for corners, then Ua / Ub / H / Z for edges. Reference:
-                  <a
-                    class="ext-link"
-                    href="https://www.cube.academy/2-look-pll-algs"
-                    target="_blank"
-                    rel="noopener"
-                    >CubeHead 2-look PLL</a
-                  >.
-                </p>
-                <div class="alg-block">
-                  <code class="alg" id="pll-hint-alg"></code>
-                  <button type="button" class="btn btn-small" id="btn-pll-apply" hidden>Apply on cube</button>
-                </div>
-                <p class="hint-note" id="pll-hint-note"></p>
-              </div>
-            </div>
-          </div>
-
-          <div class="solved-banner" id="pll-solved-banner" hidden>
-            <strong>PLL complete.</strong> Again = same case · Next PLL = next in the list.
-          </div>
-
-          <div class="f2l-tips" id="pll-tips"></div>
-          </div>
-
-          <div id="pll-known" hidden>
-            <div class="look-switch pll-known-sort" role="group" aria-label="Sort cases">
-              <button type="button" class="method-btn is-active" data-pll-sort="probability" aria-pressed="true">
-                Probability
-              </button>
-              <button type="button" class="method-btn" data-pll-sort="weakest" aria-pressed="false">
-                Weakest first
-              </button>
-            </div>
-            <p class="pll-known-lead">
-              Twenty-one full PLL cases. The picture is the recognition — hold, steps, and the Cube Academy alg are under
-              each one. Switch to <strong>2-look</strong> for the drill.
-              <a class="ext-link" href="https://www.cube.academy/pll-algs" target="_blank" rel="noopener">Cube Academy PLL</a>.
-            </p>
-            <p class="hint-note" id="pll-known-note"></p>
-            <div id="pll-known-list" class="pll-known-list"></div>
-          </div>
-        </div>
-
-        <div class="panel-body" id="panel-fb" data-panel="fb" hidden>
-          <div class="f2l-progress" id="fb-progress" aria-label="First block pieces"></div>
-
-          <div class="hint-card" id="fb-hint-card">
-            <div class="hint-kicker" id="fb-hint-kicker">First block</div>
-            <h2 class="hint-title" id="fb-hint-title">Ready</h2>
-            <p class="hint-copy" id="fb-hint-copy">
-              Tap <strong>New FB</strong>. Build the left <strong>1×2×3</strong> — orange centre, DL edge, FL/BL, and
-              the two white–orange corners on D. Then tap <strong>FB hint</strong>.
-            </p>
-            <div class="alg-block">
-              <code class="alg" id="fb-hint-alg"></code>
-              <button type="button" class="btn btn-small" id="btn-fb-apply" hidden>Apply on cube</button>
-            </div>
-            <p class="hint-note" id="fb-hint-note"></p>
-          </div>
-
-          <div class="solved-banner" id="fb-solved-banner" hidden>
-            <strong>First block done.</strong> New FB to drill again, or open SB.
-          </div>
-
-          <div class="f2l-tips" id="fb-tips"></div>
-        </div>
-
-        <div class="panel-body" id="panel-sb" data-panel="sb" hidden>
-          <div class="f2l-progress" id="sb-progress" aria-label="Second block pieces"></div>
-
-          <div class="hint-card" id="sb-hint-card">
-            <div class="hint-kicker" id="sb-hint-kicker">Second block</div>
-            <h2 class="hint-title" id="sb-hint-title">Ready</h2>
-            <p class="hint-copy" id="sb-hint-copy">
-              Tap <strong>New SB</strong>. Mirror FB on the <strong>right</strong> (red) without breaking the left
-              block. Leave the M-slice free for LSE.
-            </p>
-            <div class="alg-block">
-              <code class="alg" id="sb-hint-alg"></code>
-              <button type="button" class="btn btn-small" id="btn-sb-apply" hidden>Apply on cube</button>
-            </div>
-            <p class="hint-note" id="sb-hint-note"></p>
-          </div>
-
-          <div class="solved-banner" id="sb-solved-banner" hidden>
-            <strong>Second block done.</strong> New SB again, or open CMLL.
-          </div>
-
-          <div class="f2l-tips" id="sb-tips"></div>
-        </div>
-
-        <div class="panel-body" id="panel-cmll" data-panel="cmll" hidden>
-          <div class="f2l-progress" id="cmll-progress" aria-label="CMLL steps"></div>
-
-          <div class="hint-card" id="cmll-hint-card">
-            <div class="hint-kicker" id="cmll-hint-kicker">2-look CMLL</div>
-            <h2 class="hint-title" id="cmll-hint-title">Ready</h2>
-            <div class="hint-layout">
-              <div class="hint-diagram" id="cmll-hint-diagram" hidden></div>
-              <div class="hint-text">
-                <p class="hint-copy" id="cmll-hint-copy">
-                  Tap <strong>Again</strong> / <strong>Next CMLL</strong>. Orient with <strong>Sune</strong>, then
-                  permute: headlights at back → <strong>Niklas</strong>; no headlights → diagonal alg.
-                </p>
-                <div class="alg-block">
-                  <code class="alg" id="cmll-hint-alg"></code>
-                  <button type="button" class="btn btn-small" id="btn-cmll-apply" hidden>Apply on cube</button>
-                </div>
-                <p class="hint-note" id="cmll-hint-note"></p>
-              </div>
-            </div>
-          </div>
-
-          <div class="solved-banner" id="cmll-solved-banner" hidden>
-            <strong>CMLL complete.</strong> Again = same case · Next CMLL = next in the list.
-          </div>
-
-          <div class="f2l-tips" id="cmll-tips"></div>
-        </div>
-
-        <div class="panel-body" id="panel-lse" data-panel="lse" hidden>
-          <div class="f2l-progress" id="lse-progress" aria-label="LSE steps"></div>
-
-          <div class="hint-card" id="lse-hint-card">
-            <div class="hint-kicker" id="lse-hint-kicker">LSE</div>
-            <h2 class="hint-title" id="lse-hint-title">Ready</h2>
-            <p class="hint-copy" id="lse-hint-copy">
-              Tap <strong>Again</strong> / <strong>Next LSE</strong>. Path: <strong>EO</strong> → <strong>UL/UR</strong>
-              → M-slice. Use the M buttons on the move pad.
-            </p>
-            <div class="alg-block">
-              <code class="alg" id="lse-hint-alg"></code>
-              <button type="button" class="btn btn-small" id="btn-lse-apply" hidden>Apply on cube</button>
-            </div>
-            <p class="hint-note" id="lse-hint-note"></p>
-          </div>
-
-          <div class="solved-banner" id="lse-solved-banner" hidden>
-            <strong>LSE complete.</strong> Again = same case · Next LSE = next in the list.
-          </div>
-
-          <div class="f2l-tips" id="lse-tips"></div>
-        </div>
-
-        <div class="panel-body" id="panel-match" data-panel="match" hidden>
-          <p class="match-help">
-            Paint every sticker to match a real scramble. Centres are fixed (yellow opposite white, green opposite blue,
-            orange opposite red). When you’re done, hold white on bottom / yellow on top, then Use this state.
-          </p>
-          <div class="palette" id="palette" role="listbox" aria-label="Sticker colors"></div>
-          <div class="net net-full" id="color-net" aria-label="Full cube color net"></div>
-          <div class="toolbar tight">
-            <button type="button" class="btn btn-ghost" id="btn-net-reset">Reset net</button>
-            <button type="button" class="btn btn-primary" id="btn-net-apply">Use this state</button>
-          </div>
-        </div>
-
-        <div class="panel-body" id="panel-algs" data-panel="algs" hidden>
-          <div class="alg-list" id="alg-list"></div>
-        </div>
-      </aside>
+        <p class="cross-drill-note" id="cross-drill-note" hidden>
+          Cross drill times stay on this device and are kept out of solve averages.
+        </p>
+        <div class="timer-stats" id="timer-stats"></div>
+        <div class="timer-split-stats" id="timer-split-stats"></div>
+        <div class="timer-chart" id="timer-chart" aria-live="polite"></div>
+        <div id="pll-case-summary" hidden></div>
+        <h2 class="timer-times-title" id="timer-times-title">Times</h2>
+        <div class="timer-times" id="timer-times"></div>
+      </section>
     </main>
+
+    <dialog class="timer-chart-dialog" id="timer-chart-dialog" aria-labelledby="timer-chart-dialog-title">
+      <div class="timer-chart-dialog-panel">
+        <header class="timer-chart-dialog-head">
+          <h2 id="timer-chart-dialog-title">Progress</h2>
+          <button type="button" class="btn btn-ghost btn-small" id="timer-chart-dialog-close">Close</button>
+        </header>
+        <p class="timer-chart-dialog-hint">Hover or tap a point to see that solve</p>
+        <div class="timer-chart timer-chart-is-enlarged" id="timer-chart-enlarged"></div>
+      </div>
+    </dialog>
 
     <footer class="foot">
       <p class="foot-notes">
-        <span>Works offline · no account</span>
-        <span><kbd>Pieces</kbd> turn · <kbd>Around</kbd> look · <kbd>Z</kbd> undo</span>
+        <span id="timer-foot-note">Works offline · times stay on this device</span>
+        <span>Space or tap the clock still works with no cube · a connected GAN cube starts and stops the solve, and marks Cross, each F2L pair, and F2L in splits mode</span>
       </p>
       <span class="build-stamp" data-build-stamp>v0.0.0-dev</span>
     </footer>
 
-    <script src="vendor/cubejs.js?v=f2l18r"></script>
-    <script src="vendor/erno.js?v=pllref8"></script>
-    <script type="module" src="js/main.js?v=pllref8"></script>
+    <script src="vendor/cubejs.js?v=cube3d2"></script>
+    <script type="module" src="js/timer-page.js?v=p2coach1"></script>
     <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "fd680e4c7f304be681f2fca80e8000e2"}'></script><!-- End Cloudflare Web Analytics -->
   </body>
 </html>

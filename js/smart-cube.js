@@ -10,9 +10,9 @@ import {
   promptForCubeMac,
   shouldApplyAdapterIdleStatus,
 } from "./bluetooth-support.js?v=cube2";
-import { createCubeMirror } from "./cube-mirror.js?v=cube3d1";
-import { renderCubeNet } from "./cube-reconstruction.js?v=cube3";
-import { ganFaceletsToApp, ganMoveToApp } from "./move-log.js?v=cube2";
+import { createCubeMirror } from "./cube-mirror.js?v=postsolve1";
+import { faceletsForScramble, renderCubeNet } from "./cube-reconstruction.js?v=postsolve1";
+import { ganFaceletsToApp, ganMoveToApp, normalizeMoves } from "./move-log.js?v=postsolve1";
 
 const FEED_LIMIT = 24;
 const MAC_DRAFT_KEY = "gan-cube-mac-draft";
@@ -65,6 +65,7 @@ export function initSmartCube({ timer } = {}) {
   let battery = null;
   let facelets = "";
   let mirroredFacelets = "";
+  let replaying = false;
   let feed = [];
   let busy = false;
   let adapterNote = "";
@@ -143,9 +144,33 @@ export function initSmartCube({ timer } = {}) {
     paint();
   }
 
+  function stopReplay() {
+    if (!replaying) return;
+    replaying = false;
+    mirror?.cancelReplay();
+  }
+
+  function replaySolve({ scramble, moves } = {}) {
+    if (!mirror || !session) return false;
+    const start = faceletsForScramble(scramble);
+    const list = normalizeMoves(moves);
+    if (!start || !list) return false;
+    replaying = true;
+    if (hintEl) hintEl.textContent = "Replaying this solve";
+    mirror.replay(start, list, {
+      onDone() {
+        replaying = false;
+        mirroredFacelets = "";
+        paint();
+      },
+    });
+    return true;
+  }
+
   function onEvent(event) {
     if (!session) return;
     if (event?.type === "MOVE") {
+      stopReplay();
       const move = ganMoveToApp(event);
       const cubeT = Number(event.cubeTimestamp);
       rememberMove(move);
@@ -154,6 +179,7 @@ export function initSmartCube({ timer } = {}) {
       return;
     }
     if (event?.type === "FACELETS") {
+      stopReplay();
       const app = ganFaceletsToApp(event.facelets);
       if (!app) return;
       facelets = app;
@@ -269,6 +295,8 @@ export function initSmartCube({ timer } = {}) {
   paint();
 
   // Lets the timer show the live cube without a GAN cube attached.
+  timer?.setReplayHandler?.(replaySolve);
+
   if (new URLSearchParams(location.search).get("cubePreview") === "1") {
     session = { name: "GAN i4", protocol: "GAN Gen4" };
     battery = 82;
@@ -277,8 +305,10 @@ export function initSmartCube({ timer } = {}) {
     feed = [];
     paint();
     setStatus("Preview — the cube by the timer tracks turns the same way a connected GAN cube does.");
+    const solvePreview = new URLSearchParams(location.search).get("solvePreview") === "1";
     const moves = ["R", "U", "R'", "U'", "F2", "D", "L'"];
     let index = 0;
+    if (solvePreview) return { disconnect };
     const step = () => {
       if (!session || index >= moves.length) return;
       const move = moves[index++];

@@ -187,8 +187,9 @@ function pauseLine(pause, splits) {
  * The pause line is the longest gap of at least 3s.
  * Named algs are longer last-layer matches after the F2L mark. Short triggers stay hidden.
  * `totalMs` adds turns per second to the summary. Without it the summary stays the move count.
+ * `strip: false` leaves the phase bar off when a post-solve ring already shows the share.
  */
-export function renderReconstruction(moves, splits, totalMs = null) {
+export function renderReconstruction(moves, splits, totalMs = null, options = {}) {
   const hooks = reconstructionHooks(moves, splits);
   if (!hooks.moves.length) return "";
   const meta = formatMoveMeta(hooks.moves, totalMs);
@@ -215,7 +216,7 @@ export function renderReconstruction(moves, splits, totalMs = null) {
   const pauseHtml = pauseText
     ? `<p class="timer-reconstruction-pause">${escapeHtml(pauseText)}</p>`
     : "";
-  const strip = renderPhaseStrip(hooks.segments, hooks.moves);
+  const strip = options.strip === false ? "" : renderPhaseStrip(hooks.segments, hooks.moves);
   return `<div class="timer-reconstruction-block">
     ${strip}
     <details class="timer-reconstruction">

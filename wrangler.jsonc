@@ -6,8 +6,8 @@
   "assets": {
     "directory": ".",
     "binding": "ASSETS",
-    // `/` is the timer home. /timer is the canonical timer URL; html_handling redirects /timer.html and /timer/ there.
-    "run_worker_first": ["/api/*", "/", "/index.html", "/timer", "/timer.html"]
+    // `/` is the timer home. /timer and /pll are canonical; html_handling redirects the .html and trailing-slash URLs there.
+    "run_worker_first": ["/api/*", "/", "/index.html", "/timer", "/timer.html", "/pll", "/pll.html"]
   },
   // Rewrites worker/app-version.js to vX.XX from the commit count before bundling.
   "build": {

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b1210" />
+    <meta name="description" content="PLL algorithms for 3×3: 2-look (T, Y, Ua, Ub, H, Z) and the 21 cases you know, with diagrams and cues." />
+    <link rel="canonical" href="/pll" />
+    <title>PLL algs — 3×3 Coach</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css?v=pllpage1" />
+  </head>
+  <body class="pll-page">
+    <div class="ambient" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <a class="brand" href="/">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-name">3×3 Coach</span>
+      </a>
+      <nav class="site-nav" aria-label="App pages">
+        <a class="site-nav-link" href="/">Timer</a>
+        <a class="site-nav-link is-active" href="/pll" aria-current="page">PLL algs</a>
+      </nav>
+    </header>
+
+    <main class="pll-page-main">
+      <h1 class="pll-page-title">PLL algs</h1>
+      <p class="pll-page-deck">Recognition, cues, and the algorithms. Timing stays on the timer.</p>
+
+      <div class="pll-look-bar">
+        <div class="look-switch" role="group" aria-label="Which PLL to open">
+          <button type="button" class="method-btn is-active" data-pll-look="two" aria-pressed="true">2-look</button>
+          <button type="button" class="method-btn" data-pll-look="known" aria-pressed="false">Cases I know</button>
+        </div>
+        <div class="look-switch pll-known-sort" id="pll-known-sort" role="group" aria-label="Sort cases" hidden>
+          <button type="button" class="method-btn is-active" data-pll-sort="probability" aria-pressed="true">
+            Probability
+          </button>
+          <button type="button" class="method-btn" data-pll-sort="weakest" aria-pressed="false">Weakest first</button>
+        </div>
+      </div>
+
+      <section id="pll-two" aria-label="2-look PLL">
+        <p class="pll-known-lead">
+          CubeHead 2-look PLL is <strong>6 algs</strong>: T or Y for corners, then Ua, Ub, H, or Z for edges. Order:
+          T → Y → Ua → Ub → H → Z.
+          <a class="ext-link" href="https://www.cube.academy/2-look-pll-algs" target="_blank" rel="noopener"
+            >CubeHead 2-look PLL</a
+          >.
+        </p>
+        <p class="hint-note">White on bottom · blue = F. Turn only U until the side colours match the picture.</p>
+        <div id="pll-two-list" class="pll-known-list pll-two-list"></div>
+        <div class="f2l-tips" id="pll-tips"></div>
+      </section>
+
+      <section id="pll-known" aria-label="Cases I know" hidden>
+        <p class="pll-known-lead">
+          Twenty-one full PLL cases. The picture is the recognition — hold, steps, and the Cube Academy alg are under
+          each one.
+          <a class="ext-link" href="https://www.cube.academy/pll-algs" target="_blank" rel="noopener">Cube Academy PLL</a>.
+        </p>
+        <p class="hint-note" id="pll-known-note"></p>
+        <div id="pll-known-list" class="pll-known-list"></div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <p class="foot-notes">
+        <span>Works offline · no account</span>
+        <span>White on bottom · blue = F</span>
+      </p>
+      <span class="build-stamp" data-build-stamp>v0.0.0-dev</span>
+    </footer>
+
+    <script type="module" src="js/pll-page.js?v=pllpage1"></script>
+    <!-- Cloudflare Web Analytics --><script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "fd680e4c7f304be681f2fca80e8000e2"}'></script><!-- End Cloudflare Web Analytics -->
+  </body>
+</html>

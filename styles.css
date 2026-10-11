@@ -4590,6 +4590,150 @@ body.timer-cross .timer-stage {
   }
 }
 
+html:has(body.pll-page),
+body.pll-page {
+  overflow: auto;
+  height: auto;
+  min-height: 100dvh;
+}
+
+body.timer-page .topbar,
+body.pll-page .topbar {
+  align-items: center;
+}
+
+body.pll-page .topbar {
+  max-width: 1440px;
+  margin-inline: auto;
+  width: 100%;
+}
+
+body.pll-page .foot {
+  max-width: 1440px;
+}
+
+.pll-page-main {
+  position: relative;
+  z-index: 1;
+  width: min(1440px, 100%);
+  margin: 0 auto;
+  padding: 0.35rem clamp(0.85rem, 3vw, 2rem) 2.25rem;
+  flex: 1 0 auto;
+}
+
+.pll-page-title {
+  margin: 0.15rem 0 0.25rem;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.7rem, 3vw, 2.2rem);
+  letter-spacing: -0.03em;
+}
+
+.pll-page-deck {
+  margin: 0 0 0.85rem;
+  color: var(--muted);
+  max-width: 40rem;
+}
+
+.pll-look-bar {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 0.75rem;
+  align-items: center;
+  margin: 0 0 0.85rem;
+  padding: 0.45rem 0 0.55rem;
+  background: rgba(11, 18, 16, 0.94);
+}
+
+.pll-look-bar .look-switch {
+  margin: 0;
+}
+
+.pll-two-case {
+  border-color: rgba(109, 255, 176, 0.25);
+  background: linear-gradient(160deg, rgba(109, 255, 176, 0.08), rgba(255, 255, 255, 0.02));
+}
+
+.pll-two-case .hint-kicker {
+  text-align: center;
+  margin: 0;
+}
+
+.pll-two-case .case-diagram {
+  margin: 0.45rem auto 0.15rem;
+}
+
+.pll-alg-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin-top: 0.65rem;
+}
+
+.pll-alg-row .pll-known-alg {
+  margin: 0;
+  flex: 1 1 8rem;
+}
+
+.pll-copy.is-copied {
+  color: var(--accent);
+  border-color: rgba(109, 255, 176, 0.45);
+}
+
+.pll-page .f2l-tips {
+  margin-top: 1.15rem;
+}
+
+@media (max-width: 920px) {
+  html:has(body.pll-page),
+  body.pll-page {
+    overflow: auto;
+    overscroll-behavior: auto;
+    height: auto;
+  }
+
+  body.pll-page .topbar {
+    padding: 0.55rem 0.7rem 0.15rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .pll-page .site-nav-link,
+  .timer-page .site-nav-link {
+    padding: 0.4rem 0.6rem;
+  }
+
+  .pll-look-bar {
+    display: grid;
+    gap: 0.45rem;
+  }
+
+  .pll-look-bar .look-switch {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+    border-radius: 16px;
+  }
+
+  .pll-look-bar .method-btn {
+    min-width: 0;
+    min-height: 44px;
+    padding: 0.55rem 0.35rem;
+    font-size: 0.8rem;
+    text-align: center;
+  }
+
+  .pll-copy {
+    min-height: 32px;
+    padding: 0.22rem 0.5rem;
+    font-size: 0.72rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

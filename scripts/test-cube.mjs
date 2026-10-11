@@ -821,6 +821,22 @@ assert(htmlSrc.includes('data-timer-mode="splits"'), "home keeps Cross · F2L ·
 assert(!htmlSrc.includes('id="move-pad"'), "the on-screen move pad is not a page");
 assert(!htmlSrc.includes(">Coach<"), "nav does not offer the on-screen coach");
 assert(!htmlSrc.includes("js/main.js"), "home does not boot the on-screen coach");
+assert(htmlSrc.includes('href="/pll"'), "timer home links to the PLL alg page");
+assert(htmlSrc.includes(">PLL algs<"), "the PLL link is labeled as algorithms");
+const pllPageSrc = readFileSync(join(root, "pll.html"), "utf8");
+assert(
+  pllPageSrc.includes('data-pll-look="two"') && pllPageSrc.includes('data-pll-look="known"'),
+  "PLL page toggles 2-look and Cases I know"
+);
+assert(pllPageSrc.includes("pll-known-list"), "PLL page has the Cases I know list");
+assert(pllPageSrc.includes("pll-two-list"), "PLL page has the 2-look cards");
+assert(pllPageSrc.includes("js/pll-page.js"), "PLL page boots the reference script");
+assert(pllPageSrc.includes("data-build-stamp"), "PLL page has a version stamp");
+assert(pllPageSrc.includes("cube.academy/2-look-pll-algs"), "2-look links to CubeHead");
+assert(pllPageSrc.includes("cube.academy/pll-algs"), "Cases I know links to Cube Academy");
+assert(!pllPageSrc.includes('id="move-pad"'), "PLL page has no move pad");
+assert(!pllPageSrc.includes("erno"), "PLL page has no on-screen cube");
+assert(!pllPageSrc.includes("js/main.js"), "PLL page does not boot the old coach");
 const erNoVer = mainSrc.match(/from "\.\/erno-view\.js\?v=([^"]+)"/)?.[1];
 assert(erNoVer, "erno-view import stays versioned");
 assert(
@@ -1260,6 +1276,23 @@ setPllLook("known");
 assert(getPllLook() === "known", "known look switches on");
 setPllLook("two");
 assert(getPllLook() === "two", "2-look look switches back");
+const { twoLookCards } = await import("../js/pll-page.js");
+const twoLook = twoLookCards();
+assert(twoLook.map((c) => c.id).join(" ") === "t y ua ub h z", "2-look reference follows the drill order");
+assert(twoLook.find((c) => c.id === "t").alg === PLL_T.alg, "T card uses the 2-look alg");
+assert(twoLook.find((c) => c.id === "y").alg === PLL_Y.alg, "Y card uses the 2-look alg");
+assert(twoLook.find((c) => c.id === "ua").alg === PLL_U.alg, "Ua card uses the 2-look alg, not Cases I know");
+assert(twoLook.find((c) => c.id === "ub").alg === PLL_UB.alg, "Ub card uses the 2-look alg");
+assert(twoLook.find((c) => c.id === "h").alg === PLL_H.alg, "H card uses the 2-look alg");
+assert(twoLook.find((c) => c.id === "z").alg === PLL_Z.alg, "Z card uses the 2-look alg");
+assert(twoLook.every((c) => c.cue && c.diagram), "each 2-look card has a cue and a diagram");
+assert(!twoLook.find((c) => c.id === "h").cue.includes("on the pad"), "the H cue does not send you to the move pad");
+const pllPageJs = readFileSync(join(root, "js/pll-page.js"), "utf8");
+assert(pllPageJs.includes("knownPllCasesSorted"), "Cases I know renders the selected sort");
+assert(pllPageJs.includes("bylayer-pll-known-sort"), "chosen PLL sort is remembered");
+assert(pllPageJs.includes("renderCaseDiagram"), "PLL page draws the in-app diagrams");
+assert(!pllPageJs.includes("knownPllSetupAlg"), "the reference does not scramble a cube");
+assert(!pllPageJs.includes("scramblePll"), "the reference does not run the on-screen PLL drill");
 
 const {
   addPracticeTime,

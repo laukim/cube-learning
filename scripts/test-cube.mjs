@@ -1276,6 +1276,7 @@ const {
   addPracticeTime,
   applyCubeSplitMarks,
   applySplitTap,
+  foldCubeSplitEvents,
   AVERAGE_WINDOWS,
   averageOf,
   averageTrimCount,
@@ -1464,12 +1465,32 @@ let auto = applyCubeSplitMarks({ mode: TIMER_MODE_SPLITS, marks: [], elapsed: 10
 assert(auto.action === "none" && auto.marks.length === 0, "a scramble does not mark a stage");
 auto = applyCubeSplitMarks({ mode: TIMER_MODE_SPLITS, marks: [], elapsed: 4120, facelets: crossOnlyLetters });
 assert(auto.action === "cross" && auto.marks[0] === 4120, "white cross marks itself");
-auto = applyCubeSplitMarks({ mode: TIMER_MODE_SPLITS, marks: auto.marks, elapsed: 5000, facelets: crossOnlyLetters });
+auto = applyCubeSplitMarks({
+  mode: TIMER_MODE_SPLITS,
+  marks: auto.marks,
+  pairs: auto.pairs,
+  elapsed: 5000,
+  facelets: crossOnlyLetters,
+});
 assert(auto.action === "none" && auto.marks.length === 1, "cross stays marked once");
-auto = applyCubeSplitMarks({ mode: TIMER_MODE_SPLITS, marks: auto.marks, elapsed: 6000, facelets: scrambledLetters });
+auto = applyCubeSplitMarks({
+  mode: TIMER_MODE_SPLITS,
+  marks: auto.marks,
+  pairs: auto.pairs,
+  elapsed: 6000,
+  facelets: scrambledLetters,
+});
 assert(auto.action === "none" && auto.marks[0] === 4120, "breaking the cross does not move the mark");
-auto = applyCubeSplitMarks({ mode: TIMER_MODE_SPLITS, marks: auto.marks, elapsed: 22460, facelets: f2lLetters });
+auto = applyCubeSplitMarks({
+  mode: TIMER_MODE_SPLITS,
+  marks: auto.marks,
+  pairs: auto.pairs,
+  elapsed: 22460,
+  facelets: f2lLetters,
+});
 assert(auto.action === "f2l" && auto.marks[1] === 22460, "F2L marks itself");
+assert(auto.pairs.find((pair) => pair.id === "FR").at === 22460, "the pair that was still open marks with F2L");
+assert(auto.pairs.find((pair) => pair.id === "BR").at === 4120, "an earlier pair mark is not restamped when F2L finishes");
 const autoSplits = splitDurationsFromMarks(auto.marks, 30680);
 assert(autoSplits.cross === 4120 && autoSplits.f2l === 18340 && autoSplits.final === 8220, "auto marks become Cross, F2L, and Final");
 const missedCross = applyCubeSplitMarks({ mode: TIMER_MODE_SPLITS, marks: [], elapsed: 22460, facelets: f2lLetters });
@@ -1483,6 +1504,72 @@ const tappedCross = applyCubeSplitMarks({
 assert(tappedCross.action === "f2l" && tappedCross.marks[0] === 3000 && tappedCross.marks[1] === 22460, "a manual cross tap stays and F2L still auto-marks");
 const singleAuto = applyCubeSplitMarks({ mode: TIMER_MODE_SINGLE, marks: [], elapsed: 4120, facelets: crossOnlyLetters });
 assert(singleAuto.action === "none" && singleAuto.marks.length === 0, "single mode does not auto-mark stages");
+const crossPairs = applyCubeSplitMarks({ mode: TIMER_MODE_SPLITS, marks: [], elapsed: 4010, facelets: crossOnlyLetters });
+assert(
+  crossPairs.pairs.map((pair) => pair.id).join(" ") === "BR BL FL" && crossPairs.pairs.every((pair) => pair.at === 4010),
+  "pairs already in are marked with the cross, in slot order"
+);
+
+// U R U R' U' from solved leaves the cross and three pairs. The inverse
+// U R U' R' U' restores F2L on R' and only solves the cube on the last U'.
+const f2lOpen = lettersAfter("U R U R' U'");
+const lateSolved = lettersAfter("");
+let replay = foldCubeSplitEvents(
+  [
+    { t: 4010, facelets: f2lOpen },
+    { t: 8000, move: "U" },
+    { t: 10000, move: "R" },
+    { t: 12000, move: "U'" },
+    { t: 16000, move: "R'" },
+    { t: 17000, move: "U'" },
+    { t: 48270, facelets: lateSolved },
+  ],
+  { seed: f2lOpen }
+);
+assert(replay.marks[0] === 4010, "cross stays at the first facelet that had it");
+assert(replay.marks[1] === 16000, "F2L marks on the move that first finishes the first two layers");
+assert(replay.pairs.find((pair) => pair.id === "FR").at === 16000, "the open pair marks on the insert, not at the solve");
+assert(replay.pairs.length === 4, "all four F2L slots are marked");
+const replaySplits = splitDurationsFromMarks(replay.marks, 48270);
+assert(replaySplits.f2l === 11990 && replaySplits.final === 32270, "final is the last layer, not a sliver after a late F2L mark");
+const faceletsOnly = foldCubeSplitEvents(
+  [
+    { t: 4010, facelets: f2lOpen },
+    { t: 48270, facelets: lateSolved },
+  ],
+  { seed: f2lOpen }
+);
+assert(faceletsOnly.marks[1] === 48270, "without moves, F2L waits for the solved facelet packet");
+assert(replay.marks[1] < faceletsOnly.marks[1], "move-by-move state marks F2L before that late packet");
+const pairRecord = {
+  id: "pairs-1",
+  ms: 48270,
+  at: 20,
+  scramble: "R U",
+  splits: {
+    cross: 4010,
+    f2l: 11990,
+    final: 32270,
+    pairs: [
+      { id: "BR", at: 4010 },
+      { id: "nope", at: 1 },
+      { id: "FR", at: 16000 },
+    ],
+  },
+  moves: [
+    { move: "R", t: 10 },
+    { move: "U", t: 400 },
+  ],
+};
+const pairStore = memoryStore();
+addPracticeTime(pairRecord, pairStore);
+const storedPairs = loadPracticeTimes(pairStore).find((row) => row.id === "pairs-1");
+assert(storedPairs.splits.pairs.map((pair) => pair.id).join(" ") === "BR FR", "stored pair marks drop junk and keep order");
+const pairList = renderTimesList([storedPairs]);
+assert(pairList.includes("timer-pair-marks") && pairList.includes("FR") && pairList.includes("16.00"), "times list shows when each pair finished");
+assert(pairList.includes("<details") && !pairList.includes("<details open"), "a saved reconstruction starts collapsed");
+assert(pairList.includes("Reconstruction · 2 moves") && pairList.includes(">Show<"), "the times list offers expand instead of the full move string");
+assert(!pairList.slice(pairList.indexOf("<summary>"), pairList.indexOf("</summary>")).includes(">R<"), "the summary line is not the move dump");
 
 const liveHtml = renderLiveSplits({ marks: [4120], elapsed: 9000, running: true });
 assert(liveHtml.includes("is-live") && liveHtml.includes("F2L"), "live split highlights F2L");

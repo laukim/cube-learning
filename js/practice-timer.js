@@ -8,7 +8,7 @@ import {
   renderCrossTimesList,
 } from "./cross-drill.js?v=cross1";
 import { randomCrossCase, warmCrossSolver } from "./cross-solver.js?v=cross1";
-import { randomScrambleMoves } from "./cube.js?v=timer4";
+import { applyMove, faceletsToString, randomScrambleMoves, stringToFacelets } from "./cube.js?v=timer4";
 import {
   addPllTrainerTime,
   caseMark,
@@ -27,10 +27,10 @@ import {
   savePllSelection,
   toggleSelectedId,
 } from "./pll-case-trainer.js?v=pllreveal2";
-import { faceletsForScramble, renderReconstruction } from "./cube-reconstruction.js?v=cube1";
-import { cubeTimerDecision, faceletsSolved, normalizeMoves } from "./move-log.js?v=cube1";
-import { formatSolvedAt, normalizeSplits, solveTimestamp, sortSolves } from "./solve-order.js?v=sync1";
-import { formatClock, splitStagesFromFacelets } from "./solve-timer.js?v=splitsauto1";
+import { faceletsForScramble, renderReconstruction } from "./cube-reconstruction.js?v=cube3";
+import { cubeTimerDecision, faceletsSolved, normalizeMoves } from "./move-log.js?v=cube2";
+import { formatSolvedAt, normalizeSplits, solveTimestamp, sortSolves } from "./solve-order.js?v=sync3";
+import { formatClock, splitStagesFromFacelets } from "./solve-timer.js?v=splitsauto2";
 
 export const PRACTICE_TIMES_KEY = "cube-coach-practice-times";
 export const PRACTICE_INSPECT_KEY = "cube-coach-practice-inspect";
@@ -165,19 +165,40 @@ export function applySplitTap({ mode, marks = [], elapsed = 0, lastTapElapsed = 
   return { action: "stop", marks };
 }
 
+const PAIR_IDS = ["FR", "BR", "BL", "FL"];
+
+function copyPairs(pairs) {
+  if (!Array.isArray(pairs)) return [];
+  const out = [];
+  const seen = new Set();
+  for (const item of pairs) {
+    const id = String(item?.id || "");
+    const at = Number(item?.at);
+    if (!PAIR_IDS.includes(id) || seen.has(id) || !Number.isFinite(at) || at < 0) continue;
+    seen.add(id);
+    out.push({ id, at });
+  }
+  return out;
+}
+
 /**
- * Append Cross / F2L marks from a live cube state.
- * First time a stage is complete only — a later break does not move the mark.
- * Marks already recorded (including a manual tap) stay put.
- * A 54-letter facelet string is what the connected cube sends.
+ * Append Cross, F2L, and per-slot marks from one cube state.
+ * The first time a stage or pair is complete wins. A later facelet — including
+ * the solved cube — does not move that mark, and breaking the cross does not
+ * either. Pairs count only while the white cross is intact, so a mid-insert
+ * phantom slot is ignored.
+ * Pass the state after every move. Facelet packets often arrive only on a
+ * pause, and the next one can be the solved cube.
  */
-export function applyCubeSplitMarks({ mode, marks = [], elapsed = 0, facelets = "" } = {}) {
+export function applyCubeSplitMarks({ mode, marks = [], pairs = [], elapsed = 0, facelets = "" } = {}) {
   const current = Array.isArray(marks) ? marks.slice(0, SPLIT_STEPS.length - 1) : [];
-  if (mode !== TIMER_MODE_SPLITS) return { action: "none", marks: current };
+  const currentPairs = copyPairs(pairs);
+  if (mode !== TIMER_MODE_SPLITS) return { action: "none", marks: current, pairs: currentPairs };
   const stages = splitStagesFromFacelets(facelets);
-  if (!stages.cross && !stages.f2l) return { action: "none", marks: current };
+  if (!stages.cross && !stages.f2l) return { action: "none", marks: current, pairs: currentPairs };
   const at = Math.max(0, Number(elapsed) || 0);
   const next = current.slice();
+  const nextPairs = currentPairs.slice();
   let action = "none";
   if (next.length === 0 && stages.cross) {
     next.push(at);
@@ -187,8 +208,72 @@ export function applyCubeSplitMarks({ mode, marks = [], elapsed = 0, facelets = 
     next.push(Math.max(Number(next[0]) || 0, at));
     action = action === "cross" ? "both" : "f2l";
   }
-  if (action === "none") return { action, marks: current };
-  return { action, marks: next };
+  if (stages.cross) {
+    const seen = new Set(nextPairs.map((pair) => pair.id));
+    for (const id of stages.pairs) {
+      if (!PAIR_IDS.includes(id) || seen.has(id)) continue;
+      nextPairs.push({ id, at });
+      seen.add(id);
+      if (action === "none") action = "pairs";
+    }
+  }
+  if (action === "none") return { action, marks: current, pairs: currentPairs };
+  return { action, marks: next, pairs: nextPairs };
+}
+
+/** 54-letter coach facelets after one move. Unchanged when the move cannot be applied. */
+export function applyMoveLetters(facelets, move) {
+  const text = String(facelets || "");
+  if (text.length !== 54 || !move) return text;
+  try {
+    const colors = stringToFacelets(text);
+    if (colors.length !== 54 || colors.some((color) => !color)) return text;
+    applyMove(colors, move);
+    const next = faceletsToString(colors);
+    return next.length === 54 ? next : text;
+  } catch {
+    return text;
+  }
+}
+
+/** Live cube facelets, otherwise the scramble applied to a solved cube. */
+export function seedSplitFacelets(facelets, scramble) {
+  const text = String(facelets || "");
+  if (text.length === 54) return text;
+  return faceletsForScramble(scramble);
+}
+
+/**
+ * One observation. `move` advances `facelets`; a facelet packet passes no move
+ * and replaces the shadow with that packet.
+ */
+export function stepCubeSplit({ facelets = "", move = "", marks = [], pairs = [], elapsed = 0, mode = TIMER_MODE_SPLITS } = {}) {
+  const next = move ? applyMoveLetters(facelets, move) : String(facelets || "");
+  const result = applyCubeSplitMarks({ mode, marks, pairs, elapsed, facelets: next });
+  return { ...result, facelets: next };
+}
+
+/**
+ * Replay moves and facelet packets in order.
+ * A move is applied to the shadow cube so F2L is marked on the turn it finishes.
+ * A later solved facelet confirms that state and does not restamp the mark.
+ */
+export function foldCubeSplitEvents(events, { seed = "", mode = TIMER_MODE_SPLITS } = {}) {
+  let facelets = String(seed || "");
+  let marks = [];
+  let pairs = [];
+  for (const event of events || []) {
+    const stepped = event?.facelets
+      ? stepCubeSplit({ facelets: event.facelets, marks, pairs, elapsed: event.t, mode })
+      : event?.move
+        ? stepCubeSplit({ facelets, move: event.move, marks, pairs, elapsed: event.t, mode })
+        : null;
+    if (!stepped) continue;
+    facelets = stepped.facelets;
+    marks = stepped.marks;
+    pairs = stepped.pairs;
+  }
+  return { marks, pairs, facelets };
 }
 
 export function liveSplitDurations(marks = [], elapsed = 0, { running = false, splits = null } = {}) {
@@ -220,10 +305,17 @@ export function splitBests(splitStats) {
   };
 }
 
-export function renderLiveSplits({ marks = [], elapsed = 0, running = false, splits = null, bests = null } = {}) {
+export function renderPairMarks(pairs) {
+  const list = copyPairs(pairs);
+  if (!list.length) return "";
+  const bits = list.map((pair) => `${escapeHtml(pair.id)} ${formatClock(pair.at)}`).join(" · ");
+  return `<p class="timer-pair-marks"><span>Pairs</span> ${bits}</p>`;
+}
+
+export function renderLiveSplits({ marks = [], elapsed = 0, running = false, splits = null, bests = null, pairs = null } = {}) {
   const durations = liveSplitDurations(marks, elapsed, { running, splits });
   const liveIndex = running ? currentSplitIndex(marks) : -1;
-  return SPLIT_STEPS.map((step, i) => {
+  const stages = SPLIT_STEPS.map((step, i) => {
     const ms = durations[step.id];
     const isLive = i === liveIndex;
     const shown = ms != null ? formatClock(ms) : "—";
@@ -233,6 +325,11 @@ export function renderLiveSplits({ marks = [], elapsed = 0, running = false, spl
       .join(" ");
     return `<li class="${cls}"><span>${step.short}</span><strong>${shown}</strong></li>`;
   }).join("");
+  const pairSource = pairs || splits?.pairs;
+  const pairChips = copyPairs(pairSource)
+    .map((pair) => `<li class="split-pair is-done"><span>${escapeHtml(pair.id)}</span><strong>${formatClock(pair.at)}</strong></li>`)
+    .join("");
+  return stages + pairChips;
 }
 
 export function savePracticeTimes(records, store = browserStore()) {
@@ -1006,9 +1103,9 @@ export function renderTimesList(records) {
         ? `<div class="timer-time-splits">${SPLIT_STEPS.map((step) => {
             const bestCls = isSessionBest(row.splits[step.id], stageBests[step.id]) ? " is-best" : "";
             return `<span class="split-${step.id}${bestCls}"><em>${step.short}</em> ${formatClock(row.splits[step.id])}</span>`;
-          }).join("")}</div>`
+          }).join("")}</div>${renderPairMarks(row.splits.pairs)}`
         : "";
-      const reconstruction = renderReconstruction(row.moves);
+      const reconstruction = renderReconstruction(row.moves, row.splits);
       const when = formatSolvedAt(row.at);
       const whenHtml = when
         ? `<time class="timer-time-when" datetime="${escapeHtml(new Date(row.at).toISOString())}">${escapeHtml(when)}</time>`
@@ -1021,14 +1118,14 @@ export function renderTimesList(records) {
           ${row.scramble ? "" : deleteBtn}
         </div>
         ${splits}
-        ${reconstruction}
         ${scramble}`;
       if (!row.scramble) {
-        return `<li data-id="${escapeHtml(row.id)}">${body}</li>`;
+        return `<li data-id="${escapeHtml(row.id)}">${body}${reconstruction}</li>`;
       }
       const label = `Load scramble for ${formatClock(row.ms)}`;
       return `<li class="timer-time-item" data-id="${escapeHtml(row.id)}">
         <div class="timer-time-load" role="button" tabindex="0" data-load-scramble="${escapeHtml(row.id)}" title="Time this scramble again" aria-label="${escapeHtml(label)}">${body}</div>
+        ${reconstruction}
         ${deleteBtn}
       </li>`;
     })
@@ -1221,7 +1318,7 @@ function runningStatus(mode, marks = [], { cubeSplits = false } = {}) {
   const next = SPLIT_STEPS[currentSplitIndex(marks)];
   if (cubeSplits) {
     if (next.id === "cross") return "Timing — Cross marks when the white cross is done · tap if it misses";
-    if (next.id === "f2l") return "Timing — F2L marks when the first two layers are done · tap if it misses";
+    if (next.id === "f2l") return "Timing — each pair marks as it goes in · F2L marks when the first two layers are done";
     return "Timing — the cube stops when solved";
   }
   if (next.id === "cross") return "Timing — space or tap when white cross is done";
@@ -1274,6 +1371,8 @@ export function initPracticeTimer({
     raf: 0,
     inspectTimer: 0,
     marks: [],
+    pairMarks: [],
+    shadowFacelets: "",
     lastTapElapsed: 0,
     lastSplits: null,
     lastMs: 0,
@@ -1343,9 +1442,9 @@ export function initPracticeTimer({
     return text;
   }
 
-  function paintReconstruction(moves) {
+  function paintReconstruction(moves, splits) {
     if (!reconEl) return;
-    const html = renderReconstruction(moves);
+    const html = renderReconstruction(moves, splits);
     reconEl.hidden = !html;
     reconEl.innerHTML = html;
   }
@@ -1361,6 +1460,32 @@ export function initPracticeTimer({
     if (Number.isFinite(cubeT)) row.cubeT = cubeT;
     state.moves.push(row);
     state.cubeSawMove = true;
+    if (state.phase === "running" && cubeMarksSplits()) noteSplitFromMove(move, t);
+  }
+
+  function applySplitStep(stepped, elapsed) {
+    if (stepped.action === "none") return;
+    state.marks = stepped.marks;
+    state.pairMarks = stepped.pairs;
+    setStatus(statusWhileRunning());
+    paintSplits(elapsed);
+  }
+
+  function noteSplitFromMove(move, elapsed) {
+    if (state.shadowFacelets.length !== 54) {
+      state.shadowFacelets = seedSplitFacelets(state.latestFacelets, state.scramble);
+    }
+    if (state.shadowFacelets.length !== 54) return;
+    const stepped = stepCubeSplit({
+      facelets: state.shadowFacelets,
+      move,
+      marks: state.marks,
+      pairs: state.pairMarks,
+      elapsed,
+      mode: state.mode,
+    });
+    state.shadowFacelets = stepped.facelets;
+    applySplitStep(stepped, elapsed);
   }
 
   function setPhase(phase) {
@@ -1405,6 +1530,7 @@ export function initPracticeTimer({
       elapsed: running ? elapsed : elapsed || 0,
       running,
       splits: running || inspecting ? null : state.lastSplits,
+      pairs: running ? state.pairMarks : inspecting ? [] : state.lastSplits?.pairs,
       bests,
     });
   }
@@ -1459,6 +1585,8 @@ export function initPracticeTimer({
     state.scramble = scramble;
     state.cubeArmed = false;
     state.marks = [];
+    state.pairMarks = [];
+    state.shadowFacelets = "";
     state.lastTapElapsed = 0;
     state.lastSplits = null;
     state.lastMs = 0;
@@ -1564,6 +1692,9 @@ export function initPracticeTimer({
     if (state.phase === "running" && state.latestFacelets && !faceletsSolved(state.latestFacelets)) {
       state.cubeWasUnsolved = true;
     }
+    // Hardware facelets are the real cube. Resync the shadow, then mark.
+    // Marks already taken on an earlier move stay at that earlier time.
+    if (state.latestFacelets.length === 54) state.shadowFacelets = state.latestFacelets;
     noteCubeSplits();
     applyCubeDecision(cubeDecision());
   }
@@ -1571,16 +1702,17 @@ export function initPracticeTimer({
   function noteCubeSplits() {
     if (state.phase !== "running" || !cubeMarksSplits()) return;
     const elapsed = Math.max(0, Date.now() - state.startedAt);
-    const result = applyCubeSplitMarks({
-      mode: state.mode,
+    const facelets = state.latestFacelets.length === 54 ? state.latestFacelets : state.shadowFacelets;
+    if (facelets.length !== 54) return;
+    const stepped = stepCubeSplit({
+      facelets,
       marks: state.marks,
+      pairs: state.pairMarks,
       elapsed,
-      facelets: state.latestFacelets,
+      mode: state.mode,
     });
-    if (result.action === "none") return;
-    state.marks = result.marks;
-    setStatus(statusWhileRunning());
-    paintSplits(elapsed);
+    state.shadowFacelets = stepped.facelets;
+    applySplitStep(stepped, elapsed);
   }
 
   function onCubeMove(move, cubeT) {
@@ -1849,6 +1981,8 @@ export function initPracticeTimer({
     setPhase("idle");
     state.startedAt = 0;
     state.marks = [];
+    state.pairMarks = [];
+    state.shadowFacelets = "";
     state.lastTapElapsed = 0;
     state.lastSplits = null;
     state.lastMs = 0;
@@ -1873,6 +2007,8 @@ export function initPracticeTimer({
     setPhase("running");
     state.startedAt = Date.now();
     state.marks = [];
+    state.pairMarks = [];
+    state.shadowFacelets = seedSplitFacelets(state.latestFacelets, state.scramble);
     state.lastTapElapsed = 0;
     state.lastSplits = null;
     state.moves = [];
@@ -1920,6 +2056,8 @@ export function initPracticeTimer({
         state.lastSplits = null;
         state.lastMs = ms;
         state.marks = [];
+        state.pairMarks = [];
+        state.shadowFacelets = "";
         state.lastTapElapsed = 0;
         if (crossCase) {
           addCrossDrillTime(
@@ -1947,6 +2085,8 @@ export function initPracticeTimer({
         state.lastSplits = null;
         state.lastMs = ms;
         state.marks = [];
+        state.pairMarks = [];
+        state.shadowFacelets = "";
         state.lastTapElapsed = 0;
         if (done) {
           addPllTrainerTime(
@@ -1971,9 +2111,12 @@ export function initPracticeTimer({
         state.mode === TIMER_MODE_SPLITS && state.marks.length >= SPLIT_STEPS.length - 1
           ? splitDurationsFromMarks(state.marks, ms)
           : null;
+      if (splits && state.pairMarks.length) splits.pairs = state.pairMarks.map((pair) => ({ id: pair.id, at: pair.at }));
       state.lastSplits = splits;
       state.lastMs = ms;
       state.marks = [];
+      state.pairMarks = [];
+      state.shadowFacelets = "";
       state.lastTapElapsed = 0;
       const moves = normalizeMoves(state.moves);
       state.lastMoves = moves;
@@ -1987,7 +2130,7 @@ export function initPracticeTimer({
       addPracticeTime(record, store);
       onRecordsChanged?.({ reason: "add", record });
       paintClock(ms);
-      paintReconstruction(moves);
+      paintReconstruction(moves, splits);
       renderRecords();
       newScramble();
       const splitBits = splits
@@ -2044,6 +2187,8 @@ export function initPracticeTimer({
     state.lastSplits = null;
     state.lastMs = 0;
     state.marks = [];
+    state.pairMarks = [];
+    state.shadowFacelets = "";
     state.lastMoves = null;
     paintReconstruction(null);
     paintClock(0);

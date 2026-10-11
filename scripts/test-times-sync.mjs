@@ -427,6 +427,69 @@ const moveList = await handleTimesRequest(
 const moveBody = await moveList.json();
 assert(JSON.stringify(moveBody.records[0].moves) === JSON.stringify(moved[0].moves), "D1 returns the same moves_json");
 
+const fillMoves = [
+  { move: "R", t: 0, cubeT: 400 },
+  { move: "U'", t: 320 },
+  { move: "R'", t: 640 },
+];
+const barePlan = planSync({
+  local: [{ id: "cube-1", ms: 20000, at: earlyAt, scramble: "R U", moves: fillMoves }],
+  remote: [{ id: "cube-1", ms: 20000, at: earlyAt, scramble: "R U" }],
+  uploadedIds: ["cube-1"],
+});
+assert(barePlan.upsert.length === 1 && barePlan.upsert[0].moves[1].move === "U'", "a local move log is sent when D1 stored the solve without one");
+const already = planSync({
+  local: [{ id: "cube-1", ms: 20000, at: earlyAt, scramble: "R U", moves: fillMoves }],
+  remote: [{ id: "cube-1", ms: 20000, at: earlyAt, scramble: "R U", moves: fillMoves }],
+  uploadedIds: ["cube-1"],
+});
+assert(already.upsert.length === 0, "a solve that already has moves is not uploaded again");
+const keptLog = reconcileSolves({
+  local: [{ id: "cube-1", ms: 20000, at: earlyAt, scramble: "R U", moves: fillMoves }],
+  remote: [{ id: "cube-1", ms: 20000, at: earlyAt, scramble: "R U" }],
+  uploadedIds: ["cube-1"],
+});
+assert(keptLog[0].moves[0].move === "R", "a pull keeps a local move log the server is missing");
+
+const fillStore = memoryStore();
+addPracticeTime({ id: "cube-1", ms: 20000, at: earlyAt, scramble: "R U" }, fillStore);
+const fillDb = sqliteD1();
+const fillFetch = apiFetch(fillDb, verifyPayload);
+const fillToken = sessionToken("fill-sub", "fill@example.com");
+await syncAccount({ store: fillStore, token: fillToken, fetchImpl: fillFetch });
+const withMoves = memoryStore();
+addPracticeTime({ id: "cube-1", ms: 20000, at: earlyAt, scramble: "R U", moves: fillMoves }, withMoves);
+const filled = await syncAccount({ store: withMoves, token: fillToken, fetchImpl: fillFetch });
+assert(
+  filled.find((row) => row.id === "cube-1").moves[1].move === "U'" && filled.find((row) => row.id === "cube-1").moves[0].cubeT === 400,
+  "signing in uploads moves_json onto a smart-cube solve that was stored without them"
+);
+const pushedStore = memoryStore();
+const live = { id: "live-cube", ms: 15000, at: midAt, scramble: "F", moves: fillMoves };
+addPracticeTime(live, pushedStore);
+await pushAccountChange({
+  store: pushedStore,
+  token: fillToken,
+  event: { reason: "add", record: { id: "live-cube", ms: 15000, at: midAt, scramble: "F" } },
+  fetchImpl: fillFetch,
+});
+assert(
+  loadPracticeTimes(pushedStore).find((row) => row.id === "live-cube").moves[2].move === "R'",
+  "a signed-in add uploads the move log saved with the solve"
+);
+const wiped = await handleTimesRequest(
+  new Request("https://3x3coach.mocholate.workers.dev/api/times", {
+    method: "POST",
+    headers: { authorization: `Bearer ${fillToken}`, "content-type": "application/json" },
+    body: JSON.stringify({ upsert: [{ id: "live-cube", ms: 15000, at: midAt, scramble: "F" }] }),
+  }),
+  { DB: fillDb },
+  { verify: verifyPayload }
+);
+const wipedBody = await wiped.json();
+assert(wipedBody.records.find((row) => row.id === "live-cube").moves[0].move === "R", "a later upload without moves leaves the stored move log");
+assert(wipedBody.records.find((row) => row.id === "cube-1").at === earlyAt, "filling moves does not change the solve time");
+
 const legacy = sqliteD1();
 await legacy.prepare(
   `CREATE TABLE solves (

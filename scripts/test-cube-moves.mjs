@@ -12,6 +12,7 @@ const {
   ganMoveToApp,
   normalizeMoves,
   reconstructionHooks,
+  worstPause,
 } = await import("../js/move-log.js");
 const { faceletsForScramble, renderReconstruction } = await import("../js/cube-reconstruction.js");
 const { applyAlg, faceletsToString, solvedFacelets } = await import("../js/cube.js");
@@ -84,16 +85,60 @@ assert(normalizeMoves(JSON.stringify(stored))[2].t === 4200, "move log JSON roun
 assert(normalizeMoves([]) == null && normalizeMoves("nope") == null, "empty and broken logs stay empty");
 const hooks = reconstructionHooks(stored);
 assert(hooks.notation === "R U' R2" && hooks.pauses.length === 1 && hooks.pauses[0].before === "R2", "hooks expose notation and a long gap");
+assert(hooks.pauses[0].at === 4200 && hooks.pauses[0].after === "U'", "a pause records when the next move happens");
 assert(hooks.cross == null && hooks.f2lPairs == null && hooks.oll == null && hooks.pll == null, "stage analysis is left for a follow-up");
+const twoPauses = [
+  { move: "R", t: 0 },
+  { move: "U'", t: 180 },
+  { move: "R2", t: 4200 },
+  { move: "F", t: 5000 },
+  { move: "U", t: 12000 },
+];
+assert(worstPause(twoPauses).before === "U" && worstPause(twoPauses).ms === 7000, "the worst pause is the longest gap, not the first");
 const html = renderReconstruction(stored);
-assert(html.includes("R") && html.includes("U'") && html.includes("R2") && html.includes("Pause"), "reconstruction lists the moves");
+assert(html.includes("R") && html.includes("U'") && html.includes("R2"), "reconstruction lists the moves");
+assert(
+  html.includes("Worst pause 4.02s at 4.20s, after U' before R2"),
+  "a single long gap is the worst pause, with the time into the solve and the moves around it"
+);
+assert(!html.includes("timer-reconstruction-algs"), "named algs stay hidden until the solve has stage marks");
+assert(html.includes("<details") && !html.includes("<details open") && !html.includes(" open"), "reconstruction starts collapsed");
+assert(html.includes("Reconstruction · 3 moves") && html.includes(">Show<"), "reconstruction summary is the expand control");
+assert(html.indexOf("<summary>") < html.indexOf("timer-reconstruction-moves"), "the move string sits inside the expand panel");
 const rightyHtml = renderReconstruction([
   { move: "R", t: 0 },
   { move: "U", t: 200 },
   { move: "R'", t: 400 },
   { move: "U'", t: 600 },
 ]);
-assert(rightyHtml.includes("righty"), "reconstruction reuses coach alg names");
+assert(!rightyHtml.includes("righty") && !rightyHtml.includes("lefty"), "a righty on its own is not listed");
+const tPerm = "R U R' U' R' F R2 U' R' U' R U R' F'".split(" ");
+const stagedMoves = [
+  { move: "R", t: 0 },
+  { move: "U", t: 200 },
+  { move: "R'", t: 400 },
+  { move: "U'", t: 600 },
+  ...tPerm.map((move, index) => ({ move, t: 13000 + index * 200 })),
+  { move: "L'", t: 17000 },
+  { move: "U'", t: 17200 },
+  { move: "L", t: 17400 },
+  { move: "U", t: 17600 },
+];
+const stagedSplits = { cross: 4000, f2l: 8000, final: 6000 };
+const stagedHtml = renderReconstruction(stagedMoves, stagedSplits);
+assert(stagedHtml.includes("T-perm×1"), "a T-perm after the F2L mark is named");
+assert(!stagedHtml.includes("righty") && !stagedHtml.includes("lefty"), "righty and lefty stay hidden inside the last layer too");
+const earlyPerm = renderReconstruction(
+  tPerm.map((move, index) => ({ move, t: 1000 + index * 100 })),
+  stagedSplits
+);
+assert(!earlyPerm.includes("T-perm"), "a T-perm before F2L is not counted as last layer");
+const worstHtml = renderReconstruction(twoPauses, { cross: 4000, f2l: 5000, final: 4000 });
+assert(
+  worstHtml.includes("Worst pause 7.00s in Final at 12.00s, after F before U"),
+  "the pause line names the longest gap, its stage, and the moves around it"
+);
+assert(!worstHtml.includes("4.02s"), "a shorter earlier gap is not the pause line");
 
 const target = faceletsForScramble("R U");
 assert(cubeTimerDecision({ mode: "pll", move: "R", phase: "idle", armed: true }).action === "ignore", "PLL drill stays on spacebar");
@@ -447,6 +492,7 @@ await (async function verifyConnectedSplitMarks() {
   await stopFromSolvedCube();
   let row = latestSolve();
   assert(row.ms === 30680, "the solve time is kept");
+  assert(row.moves && row.moves[0].move === "R" && row.moves[0].t === 0, "a smart-cube splits solve stores the move log");
   assert(
     row.splits.cross === 4120 && row.splits.f2l === 18340 && row.splits.final === 8220,
     "Cross, F2L, and Final durations are saved without taps"

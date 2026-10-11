@@ -12,7 +12,7 @@
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=rerun1" />
+    <link rel="stylesheet" href="styles.css?v=cube2" />
   </head>
   <body class="timer-page">
     <div class="ambient" aria-hidden="true"></div>
@@ -97,11 +97,34 @@
             <h2 class="cube-connect-title">Smart cube</h2>
             <button type="button" class="btn btn-small" id="cube-connect-btn">Connect</button>
           </div>
-          <p class="cube-connect-status" id="cube-connect-status">Checking Bluetooth…</p>
+          <p class="cube-connect-status" id="cube-connect-status" aria-live="polite">Checking Bluetooth…</p>
+          <form class="cube-connect-mac" id="cube-connect-mac" hidden>
+            <label class="cube-connect-mac-label" for="cube-connect-mac-input">Bluetooth MAC</label>
+            <div class="cube-connect-mac-row">
+              <input
+                id="cube-connect-mac-input"
+                class="cube-connect-mac-input"
+                name="mac"
+                autocomplete="off"
+                autocapitalize="off"
+                spellcheck="false"
+                placeholder="aa:bb:cc:dd:ee:ff"
+                aria-describedby="cube-connect-mac-help"
+              />
+              <button type="submit" class="btn btn-small btn-primary">Use MAC</button>
+              <button type="button" class="btn btn-small btn-ghost" id="cube-connect-mac-cancel">Cancel</button>
+            </div>
+            <p class="cube-connect-mac-help" id="cube-connect-mac-help"></p>
+          </form>
           <p class="cube-connect-meta" id="cube-connect-meta" hidden></p>
           <div class="cube-connect-net" id="cube-connect-net" hidden></div>
           <p class="cube-connect-feed" id="cube-connect-feed" hidden></p>
-          <p class="cube-connect-note">Chrome on a Mac. GAN i4 and GAN12 ui Maglev — names starting with GAN, MG, or AiCube. No CubeStation app.</p>
+          <p class="cube-connect-note">
+            Chrome on a Mac. GAN i4 and GAN12 ui Maglev — names starting with GAN, MG, or AiCube. No CubeStation app.
+            Gen2, Gen3, and Gen4 need the cube's Bluetooth MAC. If Connect cannot read it, enable
+            <span class="cube-connect-code">chrome://flags/#enable-web-bluetooth-new-permissions-backend</span>
+            or enter the address when asked.
+          </p>
         </section>
         <div class="timer-account" id="timer-account">
           <div id="timer-google-slot">
@@ -175,7 +198,7 @@
       <span>Space or tap the clock still works with no cube · a connected GAN cube can start and stop the solve</span>
     </footer>
 
-    <script type="module" src="js/timer-page.js?v=rerun1"></script>
+    <script type="module" src="js/timer-page.js?v=cube2"></script>
     <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "fd680e4c7f304be681f2fca80e8000e2"}'></script><!-- End Cloudflare Web Analytics -->
   </body>
 </html>

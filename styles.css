@@ -1891,11 +1891,20 @@ body.pll-ref-open #panel-pll > .look-switch {
   width: 100%;
 }
 
+.foot-notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1.25rem;
+  margin: 0;
+  flex: 1 1 auto;
+}
+
 .build-stamp {
   flex: 1 0 100%;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  margin: 0;
   font-size: 0.72rem;
-  letter-spacing: 0.02em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-align: center;
 }
 

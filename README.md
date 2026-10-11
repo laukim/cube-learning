@@ -20,6 +20,8 @@ Connect on the timer page, apply the scramble with white on the bottom and blue 
 
 Deploy uses Wrangler static assets (`npx wrangler deploy`); `.assetsignore` excludes `node_modules` (and `.git` / `.wrangler`) so they are not uploaded.
 
+The footer version is a short `v1.02` label. Each deploy rewrites it from the commit count, so a merge to main shows the next number. `python3 -m http.server` and `npm start` leave the placeholder `v0.0.0-dev`.
+
 ## Methods
 
 Same colour orientation for both: white on bottom, yellow on top, blue = F.

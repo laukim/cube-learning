@@ -1317,6 +1317,8 @@ const {
   saveChartWindow,
   saveInspectionSeconds,
   saveTimerMode,
+  SESSION_CUBE_MIN,
+  sessionMainTax,
   sliceChartRecords,
   PERIOD_COLUMNS,
   periodBounds,
@@ -2038,14 +2040,19 @@ assert(
 );
 
 const {
+  consistencyIqr,
   describeBottleneck,
   effortStages,
   goalForecast,
   lastLayerSplit,
+  PAUSE_GAP_MS,
   parseGoalInput,
+  renderCoachingDetail,
+  renderLevelChip,
   subPercents,
   timeHistogram,
 } = await import("../js/coaching-stats.js");
+const { RECOGNITION_PAUSE_MS } = await import("../js/move-log.js");
 
 const subs = subPercents([49000, 44000, 39000, 60000]);
 assert(subs.count === 4 && subs.rows.find((row) => row.sec === 50).pct === 75, "sub-50 is the share of the window under 50 seconds");
@@ -2057,6 +2064,15 @@ assert(hist.bins.find((bin) => bin.label === "<30").count === 0, "an empty histo
 
 const levelHtml = renderStats(computeStats(Array.from({ length: 100 }, (_, i) => ({ id: `lv${i}`, ms: 40000 + (i % 5) * 1000, at: i + 1 }))));
 assert(levelHtml.includes("coach-ao") && levelHtml.includes(">ao100<") && levelHtml.includes("All-time mean"), "level detail names ao100 beside the all-time mean");
+assert(levelHtml.includes("coach-iqr") && levelHtml.includes(">2.00<"), "IQR of the last 100 sits next to ao100");
+assert(consistencyIqr(Array.from({ length: 99 }, () => 10000)) == null, "IQR waits for the same 100 solves as ao100");
+const levelStats = computeStats(Array.from({ length: 100 }, (_, i) => ({ id: `lv${i}`, ms: 40000 + (i % 5) * 1000, at: i + 1 })));
+assert(consistencyIqr(levelStats.last100) === 2000, "IQR is Q3 minus Q1 of the last 100");
+const chip = renderLevelChip(levelStats);
+assert(chip.includes("ao100") && chip.includes("IQR") && chip.includes("2.00"), "the level chip shows IQR beside ao100");
+const shortLevel = renderCoachingDetail({ stats: computeStats([{ id: "short", ms: 10000, at: 1 }]) });
+assert(shortLevel.slice(shortLevel.indexOf("coach-iqr")).includes("<strong>—</strong>"), "IQR is blank until 100 solves");
+assert(PAUSE_GAP_MS === RECOGNITION_PAUSE_MS, "stage pace and the phase strip share the recognition gap");
 assert(levelHtml.includes("sub-50") && levelHtml.includes("coach-hist"), "level detail includes sub-50 and a histogram");
 assert(levelHtml.includes('id="coach-goal-form"'), "a target ao100 can be set from the level detail");
 assert(!levelHtml.includes("<span>Average</span>"), "the solve stats card is labeled all-time mean");
@@ -2142,6 +2158,67 @@ const flat = goalForecast({ ao100: 50000, priorAo100: 50000, span: 20, targetMs:
 assert(flat.reason === "flat" && flat.solves == null, "a flat ao100 does not invent a solve count");
 const shortGoal = goalForecast({ ao100: null, targetMs: 40000, count: 12 });
 assert(shortGoal.reason === "short" && shortGoal.need === 88, "ETA waits until ao100 exists");
+assert(SESSION_CUBE_MIN === 3, "today's tax waits for three smart-cube solves");
+const taxNow = Date.UTC(2026, 9, 11, 4, 0, 0);
+const taxToday = hongKongMidnight(taxNow) + 60 * 60 * 1000;
+const taxYesterday = hongKongMidnight(taxNow) - 60 * 60 * 1000;
+function taxSolve(id, at, overrides = {}) {
+  return {
+    id,
+    ms: 20000,
+    at,
+    scramble: "R U",
+    splits: { cross: 4000, f2l: 12000, final: 4000 },
+    moves: [
+      { move: "R", t: 200 },
+      { move: "U", t: 400 },
+      { move: "R'", t: 5000 },
+      { move: "U'", t: 16000 },
+      { move: "F", t: 18000 },
+    ],
+    ...overrides,
+  };
+}
+assert(sessionMainTax([taxSolve("a", taxToday), taxSolve("b", taxToday + 1)], taxNow) == null, "two cube solves are not enough for a session tax");
+const yesterdayHeavy = taxSolve("old", taxYesterday, {
+  ms: 40000,
+  splits: { cross: 30000, f2l: 5000, final: 5000 },
+  moves: [
+    { move: "R", t: 1000 },
+    { move: "U", t: 28000 },
+    { move: "R'", t: 32000 },
+    { move: "F", t: 38000 },
+  ],
+});
+const todayTax = sessionMainTax(
+  [taxSolve("a", taxToday), taxSolve("b", taxToday + 1), taxSolve("c", taxToday + 2), yesterdayHeavy],
+  taxNow
+);
+assert(
+  todayTax.text === "Today's main tax: pauses in F2L (36.00 across 3 cube solves)",
+  "today's main tax is the largest marked stage cost, and yesterday stays out"
+);
+const bareMoves = [
+  { move: "R", t: 100 },
+  { move: "U", t: 2000 },
+];
+const bareTax = sessionMainTax(
+  [0, 1, 2].map((i) => ({ id: `bare${i}`, ms: 3000, at: taxToday + i, scramble: "R U", moves: bareMoves })),
+  taxNow
+);
+assert(bareTax.kind === "pause" && bareTax.id === "solve" && !bareTax.text.includes("F2L") && !bareTax.text.includes("OLL"), "a cube log without stage marks does not invent a phase");
+assert(
+  sessionMainTax(
+    [taxSolve("a", taxToday), taxSolve("b", taxToday + 1), { id: "hand", ms: 15000, at: taxToday + 3, scramble: "R U" }],
+    taxNow
+  ) == null,
+  "solves without a move log do not count toward the session tax"
+);
+const taxHtml = renderStats(computeStats([taxSolve("a", taxToday), taxSolve("b", taxToday + 1), taxSolve("c", taxToday + 2)], taxNow), null, {
+  session: todayTax,
+});
+assert(taxHtml.includes("Today's main tax: pauses in F2L"), "the session summary line is shown with the level stats");
+assert(!renderStats(computeStats([{ id: "one", ms: 10000, at: 1 }])).includes("main tax"), "the session line stays hidden until a tax exists");
 assert(parseGoalInput("40") === 40000 && parseGoalInput("40s") === 40000 && parseGoalInput("") === null, "a target is seconds, and a blank clears it");
 assert(parseGoalInput("1:00") === undefined && parseGoalInput("3") === undefined, "a target has to be 5 to 600 seconds");
 

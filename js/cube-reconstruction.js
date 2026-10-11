@@ -1,6 +1,14 @@
 import { COLOR_HEX, applyAlg, faceletsToString, solvedFacelets } from "./cube.js?v=cube1";
 import { NOISY_ALG_NAMES, countNamedAlgs, countYTurns, formatAlgCounts } from "./coach-report.js?v=cube2";
-import { formatMoveMeta, moveNotation, normalizeMoves, reconstructionHooks, worstPause } from "./move-log.js?v=p1coach1";
+import {
+  formatMoveMeta,
+  moveNotation,
+  normalizeMoves,
+  pausesBetween,
+  RECOGNITION_PAUSE_MS,
+  reconstructionHooks,
+  worstPause,
+} from "./move-log.js?v=p2coach1";
 
 const LETTER_COLOR = {
   U: "yellow",
@@ -115,6 +123,58 @@ function lastLayerAlgLine(moves, splits) {
   return formatAlgCounts(counts, countYTurns(notation));
 }
 
+function segmentAt(t, segments) {
+  if (!segments?.length) return null;
+  for (const segment of segments) {
+    if (t < segment.start) return null;
+    if (t <= segment.end) return segment;
+  }
+  return null;
+}
+
+function renderPhaseStrip(segments, moves) {
+  if (!segments?.length) return "";
+  const end = segments[segments.length - 1].end;
+  if (!(end > 0)) return "";
+  const bars = [];
+  const labels = [];
+  for (const segment of segments) {
+    const duration = segment.end - segment.start;
+    if (duration <= 0) continue;
+    const grow = Math.max(1, Math.round(duration));
+    const cls = [`is-${segment.id}`, segment.pair ? "is-pair" : "", segment.alt ? "is-alt" : ""]
+      .filter(Boolean)
+      .join(" ");
+    const title = `${segment.label} ${formatGap(duration)}`;
+    bars.push(
+      `<span class="timer-recon-seg ${cls}" style="flex:${grow} 1 0" title="${escapeHtml(title)}"></span>`
+    );
+    labels.push(
+      `<span class="${cls}" style="flex:${grow} 1 0" title="${escapeHtml(title)}">${escapeHtml(segment.label)}</span>`
+    );
+  }
+  if (!bars.length) return "";
+  const pauses = pausesBetween(moves, RECOGNITION_PAUSE_MS).filter((pause) => pause.at > 0 && pause.at <= end + 1);
+  const marks = pauses
+    .map((pause) => {
+      const pct = Math.max(0, Math.min(100, (pause.at / end) * 100));
+      const title = `Pause ${formatGap(pause.ms)} before ${pause.before}`;
+      return `<span class="timer-recon-pause" style="left:${pct.toFixed(2)}%" title="${escapeHtml(title)}"></span>`;
+    })
+    .join("");
+  const phaseBits = segments
+    .filter((segment) => segment.end > segment.start)
+    .map((segment) => `${segment.label} ${formatGap(segment.end - segment.start)}`);
+  const pauseBits = pauses.map((pause) => `${formatGap(pause.ms)} before ${pause.before}`);
+  const aria = pauseBits.length
+    ? `Phases: ${phaseBits.join(", ")}. Pauses: ${pauseBits.join(", ")}.`
+    : `Phases: ${phaseBits.join(", ")}.`;
+  return `<div class="timer-recon-strip">
+    <div class="timer-recon-bar" role="img" aria-label="${escapeHtml(aria)}">${bars.join("")}${marks}</div>
+    <div class="timer-recon-legend" aria-hidden="true">${labels.join("")}</div>
+  </div>`;
+}
+
 function pauseLine(pause, splits) {
   if (!pause) return "";
   const stage = stageAt(pause.at, splits);
@@ -129,15 +189,23 @@ function pauseLine(pause, splits) {
  * `totalMs` adds turns per second to the summary. Without it the summary stays the move count.
  */
 export function renderReconstruction(moves, splits, totalMs = null) {
-  const hooks = reconstructionHooks(moves);
+  const hooks = reconstructionHooks(moves, splits);
   if (!hooks.moves.length) return "";
   const meta = formatMoveMeta(hooks.moves, totalMs);
   const count = hooks.moves.length;
   const countLabel = meta || `${count} move${count === 1 ? "" : "s"}`;
+  const pauseByAt = new Map();
+  for (const pause of pausesBetween(hooks.moves, RECOGNITION_PAUSE_MS)) pauseByAt.set(pause.at, pause);
   const tokens = hooks.moves
     .map((row) => {
-      const at = formatGap(row.t);
-      return `<span class="timer-recon-move" title="${escapeHtml(at)}">${escapeHtml(row.move)}</span>`;
+      const segment = segmentAt(row.t, hooks.segments);
+      const pause = pauseByAt.get(row.t);
+      const cls = ["timer-recon-move", segment ? `is-${segment.id}` : "", pause ? "is-pause" : ""]
+        .filter(Boolean)
+        .join(" ");
+      let title = formatGap(row.t);
+      if (pause) title += ` · pause ${formatGap(pause.ms)}`;
+      return `<span class="${cls}" title="${escapeHtml(title)}">${escapeHtml(row.move)}</span>`;
     })
     .join(" ");
   const named = lastLayerAlgLine(hooks.moves, splits);
@@ -147,18 +215,22 @@ export function renderReconstruction(moves, splits, totalMs = null) {
   const pauseHtml = pauseText
     ? `<p class="timer-reconstruction-pause">${escapeHtml(pauseText)}</p>`
     : "";
-  return `<details class="timer-reconstruction">
-    <summary>
-      <span class="timer-reconstruction-kicker">Reconstruction · ${countLabel}</span>
-      <span class="timer-reconstruction-show">Show</span>
-      <span class="timer-reconstruction-hide">Hide</span>
-    </summary>
-    <div class="timer-reconstruction-panel">
-      <p class="timer-reconstruction-moves">${tokens}</p>
-      ${namedHtml}
-      ${pauseHtml}
-    </div>
-  </details>`;
+  const strip = renderPhaseStrip(hooks.segments, hooks.moves);
+  return `<div class="timer-reconstruction-block">
+    ${strip}
+    <details class="timer-reconstruction">
+      <summary>
+        <span class="timer-reconstruction-kicker">Reconstruction · ${countLabel}</span>
+        <span class="timer-reconstruction-show">Show</span>
+        <span class="timer-reconstruction-hide">Hide</span>
+      </summary>
+      <div class="timer-reconstruction-panel">
+        <p class="timer-reconstruction-moves">${tokens}</p>
+        ${namedHtml}
+        ${pauseHtml}
+      </div>
+    </details>
+  </div>`;
 }
 
 export function reconstructionNotation(moves) {

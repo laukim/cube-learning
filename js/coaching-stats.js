@@ -4,14 +4,14 @@
  * OLL vs PLL is stored only when the replay shows the boundary; otherwise Final stays whole.
  */
 import { applyMove, stringToFacelets } from "./cube.js?v=timer4";
-import { faceletsForScramble } from "./cube-reconstruction.js?v=p1coach1";
-import { normalizeMoves } from "./move-log.js?v=p1coach1";
+import { faceletsForScramble } from "./cube-reconstruction.js?v=p2coach1";
+import { normalizeMoves, RECOGNITION_PAUSE_MS } from "./move-log.js?v=p2coach1";
 import { formatClock, splitStagesFromFacelets } from "./solve-timer.js?v=p1coach1";
 
 export const AO100_GOAL_KEY = "cube-coach-ao100-goal";
 export const LEVEL_WINDOW = 100;
-/** A gap this long inside a stage is recognition, not turning. */
-export const PAUSE_GAP_MS = 500;
+/** A gap this long inside a stage is recognition, not turning. Same threshold as the phase strip. */
+export const PAUSE_GAP_MS = RECOGNITION_PAUSE_MS;
 /**
  * Yellow face already oriented within this long after the F2L mark counts as
  * an OLL skip (or OLL finished on the F2L pause), not a late guess.
@@ -110,6 +110,28 @@ export function subPercents(times) {
       };
     }),
   };
+}
+
+function halfMedian(sorted) {
+  const n = sorted.length;
+  const mid = Math.floor(n / 2);
+  if (n % 2 === 1) return sorted[mid];
+  return (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+/**
+ * Consistency of the last 100 singles: the interquartile range.
+ * Q1 and Q3 are the medians of the lower and upper halves.
+ * Null until 100 solves exist, so the figure appears with ao100.
+ */
+export function consistencyIqr(times) {
+  const window = finiteTimes(times).slice(-LEVEL_WINDOW);
+  if (window.length < LEVEL_WINDOW) return null;
+  const sorted = [...window].sort((a, b) => a - b);
+  const half = sorted.length / 2;
+  const lower = sorted.slice(0, half);
+  const upper = sorted.slice(sorted.length - half);
+  return halfMedian(upper) - halfMedian(lower);
 }
 
 export function timeHistogram(times) {
@@ -428,7 +450,11 @@ export function renderLevelChip(stats) {
   const count = Number(stats?.count) || 0;
   const value = Number.isFinite(ao) ? `ao100 ${formatClock(ao)}` : "ao100 —";
   const need = Number.isFinite(ao) ? "" : `<span class="coach-level-need">${Math.min(count, LEVEL_WINDOW)}/${LEVEL_WINDOW}</span>`;
-  return `<span class="coach-level-kicker">Level</span><strong class="coach-level-value">${escapeHtml(value)}</strong>${need}`;
+  const iqr = consistencyIqr(stats?.last100);
+  const iqrHtml = Number.isFinite(iqr)
+    ? `<span class="coach-level-iqr" title="Interquartile range of the last 100 solves">IQR ${escapeHtml(formatClock(iqr))}</span>`
+    : "";
+  return `<span class="coach-level-kicker">Level</span><strong class="coach-level-value">${escapeHtml(value)}</strong>${iqrHtml}${need}`;
 }
 
 export function renderCoachFocus(line) {
@@ -475,14 +501,17 @@ function renderSubs(subs) {
   return `<p class="coach-subs"><span class="coach-subs-label">${label}</span> ${bits}</p>`;
 }
 
-export function renderCoachingDetail({ stats, goalMs = null, outlook = null } = {}) {
+export function renderCoachingDetail({ stats, goalMs = null, outlook = null, session = null } = {}) {
   const subs = subPercents(stats?.last100);
   const hist = timeHistogram(stats?.last100);
   const goalValue = formatGoalSeconds(goalMs);
   const outlookText = formatGoalOutlook(outlook || { reason: goalMs == null ? "none" : "short", need: LEVEL_WINDOW });
+  const sessionHtml = session?.text ? `<p class="coach-session">${escapeHtml(session.text)}</p>` : "";
   return `<section class="coach-detail" aria-label="Level">
+    ${sessionHtml}
     <div class="coach-detail-levels">
       <p class="coach-ao"><em>ao100</em><strong>${dash(stats?.ao100)}</strong></p>
+      <p class="coach-iqr" title="Interquartile range of the last 100 solves"><em>IQR</em><strong>${dash(consistencyIqr(stats?.last100))}</strong></p>
       <p class="coach-mean"><em>All-time mean</em><strong>${dash(stats?.mean)}</strong></p>
     </div>
     ${renderSubs(subs)}

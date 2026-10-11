@@ -6,8 +6,8 @@
  * yellow is U and blue is F. Moves and facelets are converted into that hold
  * before they are stored or compared with a scramble.
  *
- * TODO(coaching): segment a stored log into Cross, each F2L pair, OLL, and PLL.
- * `reconstructionHooks` is the hand-off; this module only normalizes the log.
+ * `phaseSegments` colors Cross, each detected F2L pair, OLL, and PLL from marks
+ * already stored on the solve. It does not guess a phase the solve never marked.
  * Practice-timer Cross / F2L / pair marks are taken while the solve is running:
  * each move advances a shadow cube, and a facelet packet resyncs it. The first
  * time a stage is complete is kept, so a later solved packet does not restamp it.
@@ -254,6 +254,12 @@ export function formatMoveMeta(moves, totalMs) {
 }
 
 /**
+ * A gap this long is recognition rather than turning.
+ * The phase strip marks these. The written pause line still uses the longer 3s gap.
+ */
+export const RECOGNITION_PAUSE_MS = 500;
+
+/**
  * Gaps long enough to matter for pause coaching.
  * `at` is milliseconds from the start of the solve to the move after the gap.
  */
@@ -312,19 +318,129 @@ export function cubeTimerDecision({
   return { action: "ignore" };
 }
 
+const F2L_PAIR_ORDER = ["FR", "BR", "BL", "FL"];
+
+function markedStages(splits) {
+  if (!splits || typeof splits !== "object") return null;
+  const cross = Number(splits.cross);
+  const f2l = Number(splits.f2l);
+  const final = Number(splits.final);
+  if (![cross, f2l, final].every((n) => Number.isFinite(n) && n >= 0)) return null;
+  return { cross, f2l, final, f2lEnd: cross + f2l };
+}
+
+function pushSegment(segments, segment) {
+  if (segment.end - segment.start > 0) segments.push(segment);
+}
+
+/** Pair marks that finished during F2L, grouped when they land on the same instant. */
+function f2lPairGroups(pairs, start, end) {
+  if (!Array.isArray(pairs)) return [];
+  const rows = [];
+  const seen = new Set();
+  for (const item of pairs) {
+    const id = String(item?.id || "");
+    const at = Number(item?.at);
+    if (!F2L_PAIR_ORDER.includes(id) || seen.has(id)) continue;
+    if (!Number.isFinite(at) || at <= start || at > end + 1) continue;
+    seen.add(id);
+    rows.push({ id, at: Math.min(end, at) });
+  }
+  rows.sort((a, b) => a.at - b.at || F2L_PAIR_ORDER.indexOf(a.id) - F2L_PAIR_ORDER.indexOf(b.id));
+  const groups = [];
+  for (const row of rows) {
+    const last = groups[groups.length - 1];
+    if (last && Math.abs(last.at - row.at) <= 1) last.ids.push(row.id);
+    else groups.push({ at: row.at, ids: [row.id] });
+  }
+  return groups;
+}
+
 /**
- * Shape a stored log for a later coaching pass.
- * cross / f2lPairs / oll / pll stay null until that pass exists.
+ * Phases a reconstruction can color.
+ * Cross, F2L, and Final come from the stored split marks. Pair names come only
+ * from pair marks inside the F2L window. OLL and PLL are included only when
+ * both were stored and they add up to Final. Anything not detected stays null.
  */
-export function reconstructionHooks(moves) {
+export function phaseSegments(splits) {
+  const empty = { segments: null, cross: null, f2lPairs: null, oll: null, pll: null };
+  const marks = markedStages(splits);
+  if (!marks) return empty;
+  const segments = [];
+  pushSegment(segments, { id: "cross", label: "Cross", pair: false, start: 0, end: marks.cross });
+
+  const groups = f2lPairGroups(splits.pairs, marks.cross, marks.f2lEnd);
+  const f2lPairs = [];
+  if (groups.length) {
+    let cursor = marks.cross;
+    let alt = false;
+    for (const group of groups) {
+      const at = Math.max(cursor, Math.min(marks.f2lEnd, group.at));
+      if (at > cursor) {
+        const ids = group.ids.slice();
+        segments.push({
+          id: "f2l",
+          label: ids.join(" "),
+          pair: true,
+          alt,
+          ids,
+          start: cursor,
+          end: at,
+        });
+        f2lPairs.push({ ids, start: cursor, end: at });
+        alt = !alt;
+      }
+      cursor = at;
+    }
+    if (marks.f2lEnd - cursor > 1) {
+      pushSegment(segments, { id: "f2l", label: "F2L", pair: false, start: cursor, end: marks.f2lEnd });
+    }
+  } else {
+    pushSegment(segments, { id: "f2l", label: "F2L", pair: false, start: marks.cross, end: marks.f2lEnd });
+  }
+
+  const oll = Number(splits.oll);
+  const pll = Number(splits.pll);
+  const layer =
+    Number.isFinite(oll) && Number.isFinite(pll) && oll >= 0 && pll > 0 && Math.abs(oll + pll - marks.final) <= 1;
+  if (layer) {
+    const ollEnd = marks.f2lEnd + oll;
+    pushSegment(segments, { id: "oll", label: "OLL", pair: false, start: marks.f2lEnd, end: ollEnd });
+    pushSegment(segments, { id: "pll", label: "PLL", pair: false, start: ollEnd, end: ollEnd + pll });
+  } else {
+    pushSegment(segments, { id: "final", label: "Final", pair: false, start: marks.f2lEnd, end: marks.f2lEnd + marks.final });
+  }
+
+  if (!segments.length) return empty;
+  const cross = segments.find((segment) => segment.id === "cross") || null;
+  const ollSeg = segments.find((segment) => segment.id === "oll") || null;
+  const pllSeg = segments.find((segment) => segment.id === "pll") || null;
+  return {
+    segments,
+    cross: cross ? { start: cross.start, end: cross.end } : null,
+    f2lPairs: f2lPairs.length ? f2lPairs : null,
+    oll: ollSeg ? { start: ollSeg.start, end: ollSeg.end } : null,
+    pll: pllSeg ? { start: pllSeg.start, end: pllSeg.end } : null,
+  };
+}
+
+/**
+ * Shape a stored log for coaching.
+ * Pass the solve's splits to fill cross, f2lPairs, oll, and pll.
+ * Those stay null when that phase was not detected — pair names are not guessed,
+ * and OLL/PLL are not inferred from a Final that was never split.
+ */
+export function reconstructionHooks(moves, splits = null) {
   const list = normalizeMoves(moves) || [];
+  const phases = phaseSegments(splits);
   return {
     moves: list,
     notation: list.map((row) => row.move).join(" "),
     pauses: pausesBetween(list),
-    cross: null,
-    f2lPairs: null,
-    oll: null,
-    pll: null,
+    cross: phases.cross,
+    f2lPairs: phases.f2lPairs,
+    oll: phases.oll,
+    pll: phases.pll,
+    segments: phases.segments,
   };
 }

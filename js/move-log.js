@@ -235,6 +235,25 @@ export function moveNotation(moves) {
 }
 
 /**
+ * Move count and turns per second for one smart-cube solve.
+ * TPS uses the solve's clock, pauses included. Null without a real log and time.
+ */
+export function solveMoveStats(moves, totalMs) {
+  const list = normalizeMoves(moves);
+  const ms = Number(totalMs);
+  if (!list || !Number.isFinite(ms) || ms <= 0) return null;
+  return { moves: list.length, tps: list.length / (ms / 1000) };
+}
+
+/** "54 moves · 1.82 tps", or "" when the solve has no cube log. */
+export function formatMoveMeta(moves, totalMs) {
+  const stats = solveMoveStats(moves, totalMs);
+  if (!stats) return "";
+  const noun = stats.moves === 1 ? "move" : "moves";
+  return `${stats.moves} ${noun} · ${stats.tps.toFixed(2)} tps`;
+}
+
+/**
  * Gaps long enough to matter for pause coaching.
  * `at` is milliseconds from the start of the solve to the move after the gap.
  */

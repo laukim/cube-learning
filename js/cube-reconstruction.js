@@ -1,6 +1,6 @@
 import { COLOR_HEX, applyAlg, faceletsToString, solvedFacelets } from "./cube.js?v=cube1";
 import { NOISY_ALG_NAMES, countNamedAlgs, countYTurns, formatAlgCounts } from "./coach-report.js?v=cube2";
-import { moveNotation, normalizeMoves, reconstructionHooks, worstPause } from "./move-log.js?v=cube2";
+import { formatMoveMeta, moveNotation, normalizeMoves, reconstructionHooks, worstPause } from "./move-log.js?v=p1coach1";
 
 const LETTER_COLOR = {
   U: "yellow",
@@ -88,6 +88,12 @@ function stageAt(at, splits) {
   const f2lEnd = crossEnd + f2l;
   if (at <= crossEnd) return "Cross";
   if (at <= f2lEnd) return "F2L";
+  const oll = Number(splits.oll);
+  const pll = Number(splits.pll);
+  if (Number.isFinite(oll) && Number.isFinite(pll) && oll >= 0 && pll > 0 && Math.abs(oll + pll - (Number(splits.final) || oll + pll)) <= 1) {
+    if (at <= f2lEnd + oll) return "OLL";
+    return "PLL";
+  }
   return "Final";
 }
 
@@ -120,10 +126,14 @@ function pauseLine(pause, splits) {
  * Move list for a solve that was recorded from the cube.
  * The pause line is the longest gap of at least 3s.
  * Named algs are longer last-layer matches after the F2L mark. Short triggers stay hidden.
+ * `totalMs` adds turns per second to the summary. Without it the summary stays the move count.
  */
-export function renderReconstruction(moves, splits) {
+export function renderReconstruction(moves, splits, totalMs = null) {
   const hooks = reconstructionHooks(moves);
   if (!hooks.moves.length) return "";
+  const meta = formatMoveMeta(hooks.moves, totalMs);
+  const count = hooks.moves.length;
+  const countLabel = meta || `${count} move${count === 1 ? "" : "s"}`;
   const tokens = hooks.moves
     .map((row) => {
       const at = formatGap(row.t);
@@ -137,8 +147,6 @@ export function renderReconstruction(moves, splits) {
   const pauseHtml = pauseText
     ? `<p class="timer-reconstruction-pause">${escapeHtml(pauseText)}</p>`
     : "";
-  const count = hooks.moves.length;
-  const countLabel = `${count} move${count === 1 ? "" : "s"}`;
   return `<details class="timer-reconstruction">
     <summary>
       <span class="timer-reconstruction-kicker">Reconstruction · ${countLabel}</span>

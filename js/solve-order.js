@@ -47,15 +47,32 @@ function normalizePairs(raw) {
   return out;
 }
 
+/** OLL and PLL are kept only when both were detected and they add up to Final. */
+function normalizeLastLayer(raw, final) {
+  const oll = Number(raw?.oll);
+  const pll = Number(raw?.pll);
+  if (!Number.isFinite(oll) || !Number.isFinite(pll) || oll < 0 || pll <= 0) return null;
+  const ollMs = Math.round(oll);
+  const pllMs = Math.round(pll);
+  if (Math.abs(ollMs + pllMs - final) > 1) return null;
+  return { oll: ollMs, pll: pllMs };
+}
+
 export function normalizeSplits(raw) {
   if (!raw || typeof raw !== "object") return null;
   const cross = Number(raw.cross);
   const f2l = Number(raw.f2l);
   const final = Number(raw.final);
   if (![cross, f2l, final].every((n) => Number.isFinite(n) && n >= 0)) return null;
+  const out = { cross, f2l, final };
+  const layer = normalizeLastLayer(raw, final);
+  if (layer) {
+    out.oll = layer.oll;
+    out.pll = layer.pll;
+  }
   const pairs = normalizePairs(raw.pairs);
-  if (!pairs.length) return { cross, f2l, final };
-  return { cross, f2l, final, pairs };
+  if (pairs.length) out.pairs = pairs;
+  return out;
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

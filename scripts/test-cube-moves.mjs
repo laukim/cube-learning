@@ -17,6 +17,7 @@ const {
   worstPause,
 } = await import("../js/move-log.js");
 const { faceletsForScramble, renderReconstruction } = await import("../js/cube-reconstruction.js");
+const { postSolveSummary, previewSolveRecord, renderPostSolveCard } = await import("../js/post-solve.js");
 const { applyAlg, faceletsToString, solvedFacelets, stringToFacelets } = await import("../js/cube.js");
 const {
   CHROME_BLUETOOTH_MAC_FLAG,
@@ -183,6 +184,53 @@ const layerHooks = reconstructionHooks(twoPauses, { cross: 4000, f2l: 5000, fina
 assert(layerHooks.oll.end - layerHooks.oll.start === 1000 && layerHooks.pll.end - layerHooks.pll.start === 3000, "hooks use the stored OLL and PLL durations");
 assert(layerHooks.f2lPairs == null, "F2L pair names stay null when the solve has no pair marks");
 
+const summaryMoves = [
+  { move: "R", t: 0 },
+  { move: "U", t: 500 },
+  { move: "R'", t: 1000 },
+  { move: "U", t: 1500 },
+  { move: "R", t: 3000 },
+  { move: "U", t: 4000 },
+];
+const finalSummary = postSolveSummary({
+  moves: summaryMoves,
+  splits: { cross: 1000, f2l: 2000, final: 1000, pairs: [{ id: "FR", at: 2000 }] },
+  totalMs: 4000,
+});
+assert(finalSummary.steps === 6 && finalSummary.tps === 1.5, "overall steps and TPS use the whole solve");
+assert(
+  finalSummary.stages.map((stage) => stage.letter).join(" ") === "C F Final",
+  "without an OLL/PLL split the table is Cross, F2L, and Final"
+);
+assert(
+  finalSummary.stages[0].steps === 3 && finalSummary.stages[0].tps === 3,
+  "Cross keeps the moves up to its mark, including the opening turn"
+);
+assert(finalSummary.stages[1].steps === 2 && finalSummary.stages[2].steps === 1, "F2L and Final count their own moves");
+assert(finalSummary.pairs.length === 1 && finalSummary.pairs[0].label === "FR" && finalSummary.pairs[0].ms === 1000, "an F2L pair time is the gap after Cross");
+const layerSummary = postSolveSummary({
+  moves: summaryMoves,
+  splits: { cross: 1000, f2l: 2000, final: 1000, oll: 400, pll: 600 },
+  totalMs: 4000,
+});
+assert(
+  layerSummary.stages.map((stage) => stage.letter).join(" ") === "C F O P",
+  "OLL and PLL replace Final when both were stored"
+);
+assert(!layerSummary.pairs, "pair rows stay off when the solve has no pair marks");
+const preview = previewSolveRecord();
+const previewSummary = postSolveSummary(preview);
+const previewCard = renderPostSolveCard(previewSummary, { pb: true, canReplay: true });
+assert(previewCard.includes("post-solve-ring"), "the card draws a stage share ring");
+assert(previewCard.includes(">C<") && previewCard.includes(">O<") && previewCard.includes(">P<"), "the card table uses C / F / O / P");
+assert(previewCard.includes("F2L pairs") && previewCard.includes(">FR<"), "F2L expands to the pair marks");
+assert(previewCard.includes("post-solve-pb") && previewCard.includes(">PB<"), "a personal best gets a PB badge");
+assert(previewCard.includes("data-post-solve-replay"), "replay is offered when the live cube can play the log");
+assert(!previewCard.includes("Fluency") && !previewCard.includes("fluency"), "the card does not invent a fluency score");
+assert(previewSummary.stages.reduce((sum, stage) => sum + stage.steps, 0) === previewSummary.steps, "stage steps add up to the solve");
+const plainCard = renderPostSolveCard(finalSummary, { pb: false, canReplay: false });
+assert(plainCard.includes(">Final<") && !plainCard.includes("post-solve-pb") && !plainCard.includes("data-post-solve-replay"), "Final replaces OLL/PLL and a non-best has no badge or replay");
+
 const target = faceletsForScramble("R U");
 assert(
   cubeTimerDecision({ mode: "pll", phase: "idle", armed: true, move: "U" }).action === "start",
@@ -201,6 +249,37 @@ assert(
   "the first turn after the scramble starts the timer"
 );
 assert(cubeTimerDecision({ mode: "single", phase: "inspecting", move: "U" }).action === "start", "the first turn ends inspection");
+assert(
+  cubeTimerDecision({ mode: "single", phase: "idle", awaitingScramble: true, move: "R" }).action === "deal",
+  "after a single solve, any turn deals the next scramble"
+);
+assert(
+  cubeTimerDecision({ mode: "splits", phase: "idle", awaitingScramble: true, move: "U" }).action === "deal",
+  "after a splits solve, any turn deals the next scramble"
+);
+assert(
+  cubeTimerDecision({
+    mode: "single",
+    phase: "idle",
+    awaitingScramble: true,
+    facelets: target,
+    target,
+    inspectionSeconds: 15,
+  }).action === "ignore",
+  "the previous scramble cannot arm while the next one is still waiting on a turn"
+);
+assert(
+  cubeTimerDecision({ mode: "single", phase: "idle", armed: true, awaitingScramble: true, move: "R" }).action === "start",
+  "an armed clock still starts on the first turn"
+);
+assert(
+  cubeTimerDecision({ mode: "pll", phase: "idle", awaitingScramble: true, move: "R" }).action === "ignore",
+  "a PLL setup turn does not deal a new case"
+);
+assert(
+  cubeTimerDecision({ mode: "cross", phase: "idle", awaitingScramble: true, move: "R" }).action === "ignore",
+  "a cross turn does not deal a new scramble"
+);
 assert(cubeTimerDecision({ mode: "single", phase: "running", move: "F" }).action === "log", "turns during the solve are logged");
 assert(
   cubeTimerDecision({ mode: "single", phase: "running", solved: true, sawMove: true }).action === "stop",
@@ -553,6 +632,9 @@ for (const id of [
   "practice-status",
   "practice-splits",
   "practice-scramble",
+  "practice-reconstruction",
+  "post-solve",
+  "timer-inspect",
   "pll-trainer-case",
   "timer-times",
   "timer-stats",
@@ -610,6 +692,18 @@ function armScramble() {
   assert(statusEl.textContent.includes("Scramble matched"), "matching the scramble arms the cube timer");
 }
 
+function dealFromSolvedCube() {
+  const previous = timer.getScramble();
+  assert(
+    nodes["practice-scramble"].textContent.includes("Turn the cube"),
+    "after the solve the next scramble waits for a turn"
+  );
+  timer.onCubeMove("U");
+  assert(timer.getPhase() === "idle", "the turn that loads the next scramble does not start the clock");
+  assert(timer.getScramble() !== previous, "that turn deals a new scramble");
+  assert(statusEl.textContent.includes("Apply it"), "Kim applies the scramble before inspection or the arm");
+}
+
 async function stopFromSolvedCube() {
   timer.onCubeFacelets(SOLVED);
   await new Promise((resolve) => setTimeout(resolve, 150));
@@ -644,7 +738,16 @@ await (async function verifyConnectedSplitMarks() {
     "Cross, F2L, and Final durations are saved without taps"
   );
   assert(statusEl.textContent.includes("Cross 4.12") && statusEl.textContent.includes("F2L 18.34") && statusEl.textContent.includes("Final 8.22"), "the stopped solve reads the three stages back");
+  assert(statusEl.textContent.includes("Turn the cube for the next scramble"), "the solved cube tells Kim a turn loads the next scramble");
+  const card = nodes["post-solve"];
+  assert(card && card.hidden === false && card.innerHTML.includes("post-solve-card"), "a smart-cube solve shows one post-solve card");
+  assert(card.innerHTML.includes("TPS") && card.innerHTML.includes("step"), "the card shows steps and TPS");
+  assert(card.innerHTML.includes("Final") && card.innerHTML.includes("post-solve-ring"), "Final fills the ring when OLL and PLL were not split");
+  assert(card.innerHTML.includes("post-solve-pb"), "the first stored solve is a personal best");
+  assert(!card.innerHTML.includes("Fluency"), "the card skips fluency");
+  assert(splitsEl.hidden === true, "the old stage chips stay hidden behind the card");
 
+  dealFromSolvedCube();
   armScramble();
   const tapStart = (now = 2_000_000_000_000);
   timer.onCubeMove("U");
@@ -662,6 +765,7 @@ await (async function verifyConnectedSplitMarks() {
     "a manual Cross tap and an auto F2L mark save together"
   );
 
+  dealFromSolvedCube();
   armScramble();
   const overrideStart = (now = 3_000_000_000_000);
   timer.onCubeMove("F");
@@ -713,6 +817,53 @@ await (async function verifyConnectedSplitMarks() {
   await stopFromSolvedCube();
   row = latestSolve();
   assert(row.ms === 30000 && !row.splits, "single mode saves the solve without Cross or F2L splits");
+  assert(
+    nodes["post-solve"].innerHTML.includes("TPS") && !nodes["post-solve"].innerHTML.includes("post-solve-table"),
+    "a single solve card has steps and TPS without a stage table"
+  );
+
+  const held = timer.getScramble();
+  timer.onCubeMove("F");
+  assert(timer.getPhase() === "idle", "the post-solve turn does not start a single solve");
+  assert(timer.getScramble() !== held, "the post-solve turn deals the next single scramble");
+  assert(
+    statusEl.textContent.includes("timer arms when the cube matches"),
+    "with inspection off, matching the new scramble only arms"
+  );
+  armScramble();
+  assert(timer.getPhase() === "idle", "matching the dealt scramble arms and waits");
+  const armedStart = (now = 5_500_000_000_000);
+  timer.onCubeMove("R");
+  assert(timer.getPhase() === "running", "the first turn after the arm starts the clock");
+  now = armedStart + 400;
+  clock.click();
+  assert(timer.getPhase() === "idle", "stopping returns to the solved state");
+
+  nodes["timer-inspect"].value = "15";
+  const beforeInspect = timer.getScramble();
+  timer.onCubeMove("U");
+  assert(timer.getScramble() !== beforeInspect, "a turn still deals when inspection is on");
+  assert(
+    statusEl.textContent.includes("inspection starts when the cube matches"),
+    "inspection is the step after the new scramble matches"
+  );
+  timer.onCubeFacelets(faceletsForScramble(timer.getScramble()));
+  assert(timer.getPhase() === "inspecting", "matching the dealt scramble starts inspection");
+  assert(statusEl.textContent.toLowerCase().includes("inspection"), "inspection is running after the match");
+  timer.onCubeMove("R");
+  assert(timer.getPhase() === "running", "the first turn ends that inspection");
+  now += 300;
+  clock.click();
+  assert(timer.getPhase() === "idle", "the inspected solve can still be stopped");
+  nodes["timer-inspect"].value = "0";
+
+  const beforeSpace = timer.getScramble();
+  clock.click();
+  assert(timer.getPhase() === "running", "space or tap still starts the next solve");
+  assert(timer.getScramble() !== beforeSpace, "space loads the waiting scramble before it starts");
+  now += 250;
+  clock.click();
+  assert(timer.getPhase() === "idle", "space or tap still stops that solve");
 
   const practiceCount = loadPracticeTimes(timerStore).length;
   modeButtons.find((btn) => btn.dataset.timerMode === TIMER_MODE_PLL).click();
@@ -752,6 +903,10 @@ await (async function verifyConnectedSplitMarks() {
     statusEl.textContent.includes("Next case is ready") && statusEl.textContent.includes("set it up from solved to arm"),
     "the next PLL case asks to be set up"
   );
+  const pllAfterStop = nodes["pll-trainer-case"].innerHTML;
+  timer.onCubeMove("L");
+  assert(timer.getPhase() === "idle" && nodes["pll-trainer-case"].innerHTML === pllAfterStop, "a turn after PLL does not deal a new case");
+  assert(!statusEl.textContent.includes("Turn the cube for the next scramble"), "PLL keeps its setup rule instead of the scramble deal");
   const pllAfterCube = pllRows.length;
   clock.click();
   assert(timer.getPhase() === "running", "space or tap still starts a PLL case");
@@ -790,6 +945,10 @@ await (async function verifyConnectedSplitMarks() {
   assert(loadPracticeTimes(timerStore).length === practiceCount, "a cross time stays out of solve records");
   assert(loadPllTrainerTimes(timerStore).length === pllAfterCube + 1, "a cross time does not write a PLL case");
   assert(statusEl.textContent.includes("Optimal"), "stopping a cross still shows the optimal length");
+  const crossAfterStop = timer.getScramble();
+  timer.onCubeMove("R");
+  assert(timer.getPhase() === "idle" && timer.getScramble() === crossAfterStop, "a turn after the cross does not load a new scramble");
+  assert(!statusEl.textContent.includes("Turn the cube for the next scramble"), "Cross drill keeps Repeat or Next");
   const crossAfterCube = crossRows.length;
   clock.click();
   assert(timer.getPhase() === "running", "space or tap still starts a cross");

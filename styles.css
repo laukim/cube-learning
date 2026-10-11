@@ -2546,10 +2546,298 @@ body.timer-page .topbar {
   opacity: 0.72;
 }
 
+.practice-scramble.is-held {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--muted);
+}
+
 .practice-status {
   margin: 0;
   color: var(--muted);
   font-size: 0.95rem;
+}
+
+.post-solve {
+  width: min(100%, 34rem);
+  text-align: left;
+}
+
+.post-solve[hidden] {
+  display: none;
+}
+
+.post-solve-card {
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: rgba(8, 14, 12, 0.65);
+  padding: 0.35rem 1rem 1rem;
+}
+
+.post-solve-card.is-pb {
+  border-color: color-mix(in srgb, var(--warn) 55%, var(--line));
+}
+
+.post-solve-time {
+  appearance: none;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.7rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.85rem 0.2rem 0.15rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.post-solve-time:focus-visible {
+  outline: none;
+}
+
+.post-solve-time:focus-visible .post-solve-time-value {
+  color: var(--accent);
+}
+
+.post-solve-time-value {
+  font-family: var(--font-display);
+  font-size: clamp(2.8rem, 7vw, 4.6rem);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.post-solve-centi {
+  font-size: 0.48em;
+  margin-left: 0.08em;
+  opacity: 0.72;
+}
+
+.post-solve-pb {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.18rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--warn) 70%, transparent);
+  background: color-mix(in srgb, var(--warn) 14%, transparent);
+  color: var(--warn);
+  font-family: var(--font-body);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  line-height: 1;
+}
+
+.post-solve-meta {
+  display: flex;
+  justify-content: center;
+  gap: 1.1rem;
+  margin: 0.35rem 0 0.85rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.post-solve-meta span {
+  color: var(--ink);
+}
+
+.post-solve-share {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  gap: 0.85rem 1rem;
+  align-items: center;
+}
+
+.post-solve-ring {
+  width: 7.5rem;
+  height: 7.5rem;
+  justify-self: center;
+}
+
+.post-solve-arc.is-cross {
+  stroke: var(--timer-cross);
+}
+
+.post-solve-arc.is-f2l {
+  stroke: var(--timer-f2l);
+}
+
+.post-solve-arc.is-oll {
+  stroke: var(--yellow);
+}
+
+.post-solve-arc.is-pll {
+  stroke: var(--timer-ao100);
+}
+
+.post-solve-arc.is-final {
+  stroke: var(--timer-final);
+}
+
+.post-solve-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.28rem;
+  font-size: 0.82rem;
+}
+
+.post-solve-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.post-solve-swatch {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 99px;
+  background: currentColor;
+  flex: 0 0 auto;
+}
+
+.post-solve-legend .is-cross {
+  color: var(--timer-cross);
+}
+
+.post-solve-legend .is-f2l {
+  color: var(--timer-f2l);
+}
+
+.post-solve-legend .is-oll {
+  color: var(--yellow);
+}
+
+.post-solve-legend .is-pll {
+  color: var(--timer-ao100);
+}
+
+.post-solve-legend .is-final {
+  color: var(--timer-final);
+}
+
+.post-solve-pct {
+  margin-left: auto;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.78rem;
+}
+
+.post-solve-table-wrap {
+  margin-top: 0.85rem;
+  overflow-x: auto;
+}
+
+.post-solve-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.86rem;
+}
+
+.post-solve-table th,
+.post-solve-table td {
+  padding: 0.32rem 0.35rem;
+  text-align: right;
+  border-bottom: 1px solid var(--line);
+}
+
+.post-solve-table th[scope="row"] {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+}
+
+.post-solve-table thead th {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.post-solve-pairs {
+  margin-top: 0.75rem;
+}
+
+.post-solve-pairs summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.post-solve-pairs summary:focus-visible {
+  outline: 2px solid rgba(109, 255, 176, 0.45);
+  outline-offset: 2px;
+}
+
+.post-solve-pairs ul {
+  list-style: none;
+  margin: 0.45rem 0 0;
+  padding: 0;
+}
+
+.post-solve-pairs li {
+  display: grid;
+  grid-template-columns: 4.5rem 4.5rem 1fr;
+  gap: 0.5rem;
+  padding: 0.28rem 0;
+  border-top: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.86rem;
+}
+
+.post-solve-pair-name {
+  font-weight: 700;
+  color: var(--timer-f2l);
+}
+
+.post-solve-pair-steps {
+  color: var(--muted);
+  text-align: right;
+}
+
+.post-solve-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.85rem;
+}
+
+@media (max-width: 520px) {
+  .post-solve-card {
+    padding: 0.2rem 0.75rem 0.85rem;
+  }
+
+  .post-solve-share {
+    grid-template-columns: 6.4rem minmax(0, 1fr);
+    gap: 0.65rem;
+  }
+
+  .post-solve-ring {
+    width: 6.4rem;
+    height: 6.4rem;
+  }
+
+  .post-solve-table {
+    font-size: 0.78rem;
+  }
+
+  .post-solve-pairs li {
+    grid-template-columns: 3.4rem 3.6rem 1fr;
+    gap: 0.35rem;
+  }
 }
 
 .coach-level {

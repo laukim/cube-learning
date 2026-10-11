@@ -1,5 +1,5 @@
-import { initPracticeTimer } from "./practice-timer.js?v=pllcube1";
-import { initSmartCube } from "./smart-cube.js?v=cube3d2";
+import { initPracticeTimer } from "./practice-timer.js?v=postsolve1";
+import { initSmartCube } from "./smart-cube.js?v=postsolve1";
 import { initTimesSync } from "./times-sync.js?v=pllcube1";
 
 let sync;

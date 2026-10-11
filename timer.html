@@ -13,7 +13,7 @@
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=pllpage1" />
+    <link rel="stylesheet" href="styles.css?v=postsolve1" />
   </head>
   <body class="timer-page">
     <div class="ambient" aria-hidden="true"></div>
@@ -88,6 +88,7 @@
         <button type="button" class="practice-clock" id="practice-clock" data-phase="idle" aria-label="Start timer">
           <span class="practice-clock-value" id="practice-clock-value">0.00</span>
         </button>
+        <div class="post-solve" id="post-solve" hidden></div>
         <ol class="practice-splits" id="practice-splits" hidden></ol>
         <div class="coach-focus" id="coach-focus" hidden></div>
         <p class="coach-session" id="coach-session" hidden></p>
@@ -215,13 +216,13 @@
     <footer class="foot">
       <p class="foot-notes">
         <span id="timer-foot-note">Works offline · times stay on this device</span>
-        <span>Space or tap the clock still works with no cube · a connected GAN cube arms, starts, and stops Single, PLL cases, and Cross drill, and marks Cross, each F2L pair, and F2L in splits mode</span>
+        <span>Space or tap the clock still works with no cube · a connected GAN cube arms, starts, and stops Single, PLL cases, and Cross drill, and marks Cross, each F2L pair, and F2L in splits mode · after Single or Cross · F2L · Final, a turn on the solved cube loads the next scramble</span>
       </p>
       <span class="build-stamp" data-build-stamp>v0.0.0-dev</span>
     </footer>
 
     <script src="vendor/cubejs.js?v=cube3d2"></script>
-    <script type="module" src="js/timer-page.js?v=pllcube1"></script>
+    <script type="module" src="js/timer-page.js?v=postsolve1"></script>
     <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "fd680e4c7f304be681f2fca80e8000e2"}'></script><!-- End Cloudflare Web Analytics -->
   </body>
 </html>

@@ -20,6 +20,8 @@ export function createCubeMirror(cubeEl, { reducedMotion = false, duration = 170
   let queue = [];
   let busy = false;
   let epoch = 0;
+  let replayToken = 0;
+  let replayTimer = 0;
   let tiltX = HOME_X;
   let tiltY = HOME_Y;
   let unbindOrbit = () => {};
@@ -54,14 +56,51 @@ export function createCubeMirror(cubeEl, { reducedMotion = false, duration = 170
     applyTilt();
   }
 
+  function cancelReplay() {
+    replayToken += 1;
+    if (replayTimer) {
+      clearTimeout(replayTimer);
+      replayTimer = 0;
+    }
+  }
+
   function setFacelets(letters) {
     const text = String(letters || "");
     if (text.length !== 54 || /[^URFDLB]/.test(text)) return;
+    cancelReplay();
     if (text === lettersOf(colors)) return;
     epoch += 1;
     queue = [];
     busy = false;
     show(stringToFacelets(text));
+  }
+
+  /**
+   * Play a stored solve from the scramble state, one turn at a time.
+   * A later setFacelets (the live cube) cancels it.
+   */
+  function replay(startLetters, moves, { gap = 280, onDone } = {}) {
+    const list = (Array.isArray(moves) ? moves : [])
+      .map((row) => (typeof row === "string" ? row : row?.move))
+      .map((move) => String(move || "").trim())
+      .filter(Boolean);
+    setFacelets(startLetters);
+    if (lettersOf(colors) !== String(startLetters || "")) {
+      onDone?.();
+      return;
+    }
+    const token = replayToken;
+    const step = () => {
+      if (token !== replayToken) return;
+      if (!list.length) {
+        replayTimer = 0;
+        onDone?.();
+        return;
+      }
+      turn(list.shift());
+      replayTimer = setTimeout(step, gap);
+    };
+    replayTimer = setTimeout(step, gap);
   }
 
   function finishTurn(snapshot, myEpoch) {
@@ -112,6 +151,7 @@ export function createCubeMirror(cubeEl, { reducedMotion = false, duration = 170
   }
 
   function reset() {
+    cancelReplay();
     epoch += 1;
     queue = [];
     busy = false;
@@ -187,6 +227,8 @@ export function createCubeMirror(cubeEl, { reducedMotion = false, duration = 170
   return {
     setFacelets,
     turn,
+    replay,
+    cancelReplay,
     reset,
     fit,
     bindOrbit,

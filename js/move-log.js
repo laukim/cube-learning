@@ -321,6 +321,11 @@ const CUBE_TIMER_MODES = new Set(["single", "splits", "pll", "cross"]);
  * Cross drill arms on the cross scramble. `solved` is that mode's goal:
  * a solved cube, or a finished white cross for Cross drill.
  * This does not mark PLL or Cross drill solves as Cross / F2L splits.
+ *
+ * After a Single or splits solve, `awaitingScramble` means the next scramble
+ * is not loaded yet. Any move deals it. Matching that scramble still inspects
+ * or arms. PLL and Cross drill do not use this: a setup turn must not replace
+ * the dealt case, and the clock still waits until the cube matches.
  */
 export function cubeTimerDecision({
   phase = "idle",
@@ -334,14 +339,18 @@ export function cubeTimerDecision({
   sawMove = false,
   wasUnsolved = false,
   hold = false,
+  awaitingScramble = false,
 } = {}) {
   if (!CUBE_TIMER_MODES.has(mode)) return { action: "ignore" };
+  const dealsNext = awaitingScramble && (mode === "single" || mode === "splits");
   if (move) {
     if (phase === "running") return { action: "log" };
     if (phase === "inspecting" || (phase === "idle" && armed)) return { action: "start" };
+    if (phase === "idle" && dealsNext) return { action: "deal" };
     return { action: "ignore" };
   }
   if (phase === "running" && solved && (sawMove || wasUnsolved)) return { action: "stop" };
+  if (phase === "idle" && dealsNext) return { action: "ignore" };
   if (phase === "idle" && facelets && target && facelets === target) {
     if (hold) return { action: "ignore" };
     if (armed) return { action: "ready" };

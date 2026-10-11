@@ -101,29 +101,53 @@ function preferLocalTimestamp(local, remote) {
  * What to send so a first sign-in uploads local solves, and a later sync does
  * not upload a solve this device already saved and another device deleted.
  */
+function hasMoves(row) {
+  return Array.isArray(row?.moves) && row.moves.length > 0;
+}
+
 export function planSync({ local = [], remote = [], uploadedIds = [], deletedIds = [] } = {}) {
-  const remoteIds = new Set((remote || []).map((row) => String(row.id)));
+  const remoteById = new Map();
+  for (const row of remote || []) {
+    if (row?.id) remoteById.set(String(row.id), row);
+  }
   const uploaded = new Set((uploadedIds || []).map(String));
   const deleted = new Set((deletedIds || []).map(String));
   const upsert = [];
   for (const row of local || []) {
     const id = String(row?.id || "");
-    if (!id || deleted.has(id) || remoteIds.has(id) || uploaded.has(id)) continue;
-    upsert.push(row);
+    if (!id || deleted.has(id)) continue;
+    const remoteRow = remoteById.get(id);
+    if (!remoteRow) {
+      if (!uploaded.has(id)) upsert.push(row);
+      continue;
+    }
+    // A solve can land in D1 before its move log (or from a copy that dropped it).
+    // Send it again so moves_json is filled. A row that already has moves stays put.
+    if (hasMoves(row) && !hasMoves(remoteRow)) upsert.push(row);
   }
-  const deleteIds = [...deleted].filter((id) => remoteIds.has(id));
+  const deleteIds = [...deleted].filter((id) => remoteById.has(id));
   return { upsert, deleteIds };
 }
 
 /** Remote list plus local solves that still need a successful upload, in time order. */
+function keepLocalMoves(local, remote) {
+  if (!hasMoves(local) || hasMoves(remote)) return remote;
+  return { ...remote, moves: local.moves };
+}
+
 export function reconcileSolves({ local = [], remote = [], uploadedIds = [], deletedIds = [] } = {}) {
   const deleted = new Set((deletedIds || []).map(String));
   const uploaded = new Set((uploadedIds || []).map(String));
+  const localById = new Map();
+  for (const row of local || []) {
+    if (row?.id) localById.set(String(row.id), row);
+  }
   const remoteKept = (remote || []).filter((row) => row?.id && !deleted.has(String(row.id)));
   const remoteIds = new Set(remoteKept.map((row) => String(row.id)));
+  const remoteMerged = remoteKept.map((row) => keepLocalMoves(localById.get(String(row.id)), row));
   const pending = (local || []).filter((row) => {
     const id = String(row?.id || "");
     return id && !remoteIds.has(id) && !deleted.has(id) && !uploaded.has(id);
   });
-  return mergeSolves(pending, remoteKept);
+  return mergeSolves(pending, remoteMerged);
 }

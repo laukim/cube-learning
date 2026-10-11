@@ -87,9 +87,14 @@ export async function listSolves(db, sub) {
 }
 
 export async function upsertSolves(db, sub, records) {
+  // First insert wins for the time and scramble. A later upload can still fill
+  // moves_json (and splits) when the stored row is missing them, and a copy
+  // without moves must not wipe a log that is already there.
   const sql = `INSERT INTO solves (user_sub, id, ms, solved_at, scramble, splits_json, moves_json)
     VALUES (?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT (user_sub, id) DO NOTHING`;
+    ON CONFLICT (user_sub, id) DO UPDATE SET
+      moves_json = COALESCE(excluded.moves_json, solves.moves_json),
+      splits_json = COALESCE(excluded.splits_json, solves.splits_json)`;
   const statements = records.map((row) =>
     db
       .prepare(sql)

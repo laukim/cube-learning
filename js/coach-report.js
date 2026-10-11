@@ -26,6 +26,9 @@ const PREP = COACH_ALGS.map((a) => ({
   atoms: toAtomics(a.alg),
 })).sort((a, b) => b.atoms.length - a.atoms.length);
 
+/** Sexy-move triggers (righty, lefty). Too short to show as a named alg on a reconstruction. */
+export const NOISY_ALG_NAMES = new Set(PREP.filter((alg) => alg.atoms.length <= 4).map((alg) => alg.name));
+
 function atomsMatchAt(hay, i, needle) {
   if (i + needle.length > hay.length) return false;
   for (let k = 0; k < needle.length; k++) {

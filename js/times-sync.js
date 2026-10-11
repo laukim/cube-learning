@@ -1,6 +1,6 @@
 import { GOOGLE_CLIENT_ID } from "./google-client.js?v=sync1";
 import { loadPracticeTimes, savePracticeTimes } from "./practice-timer.js?v=history1";
-import { planSync, reconcileSolves } from "./solve-order.js?v=sync2";
+import { planSync, reconcileSolves } from "./solve-order.js?v=sync3";
 import {
   decodeJwtPayload,
   forgetDeletion,
@@ -70,13 +70,24 @@ export async function pushAccountChange({ store, token, event, fetchImpl = fetch
   let body = null;
   if (event?.reason === "clear") body = { clear: true };
   else if (event?.reason === "delete") body = { deleteIds: [event.id] };
-  else if (event?.reason === "add" && event.record) body = { upsert: [event.record] };
+  else if (event?.reason === "add" && event.record) body = { upsert: [uploadRecord(store, event.record)] };
   if (!body) return { pushed: false, records: loadPracticeTimes(store) };
 
   const posted = await requestTimes(fetchImpl, token, body);
   const sub = decodeJwtPayload(token)?.sub || readSyncState(store).sub;
   const records = saveRemote(store, sub, posted.records);
   return { pushed: true, records };
+}
+
+/** Prefer the move log already on the record, then the one saved on this device. */
+function uploadRecord(store, record) {
+  if (!record || typeof record !== "object") return record;
+  const id = String(record.id || "");
+  const saved = id ? loadPracticeTimes(store).find((row) => row.id === id) : null;
+  const moves = Array.isArray(record.moves) && record.moves.length ? record.moves : saved?.moves;
+  const next = { ...record };
+  if (Array.isArray(moves) && moves.length) next.moves = moves;
+  return next;
 }
 
 function saveRemote(store, sub, records) {

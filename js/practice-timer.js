@@ -27,9 +27,9 @@ import {
   savePllSelection,
   toggleSelectedId,
 } from "./pll-case-trainer.js?v=pllreveal2";
-import { faceletsForScramble, renderReconstruction } from "./cube-reconstruction.js?v=cube2";
-import { cubeTimerDecision, faceletsSolved, normalizeMoves } from "./move-log.js?v=cube1";
-import { formatSolvedAt, normalizeSplits, solveTimestamp, sortSolves } from "./solve-order.js?v=sync2";
+import { faceletsForScramble, renderReconstruction } from "./cube-reconstruction.js?v=cube3";
+import { cubeTimerDecision, faceletsSolved, normalizeMoves } from "./move-log.js?v=cube2";
+import { formatSolvedAt, normalizeSplits, solveTimestamp, sortSolves } from "./solve-order.js?v=sync3";
 import { formatClock, splitStagesFromFacelets } from "./solve-timer.js?v=splitsauto2";
 
 export const PRACTICE_TIMES_KEY = "cube-coach-practice-times";
@@ -1105,7 +1105,7 @@ export function renderTimesList(records) {
             return `<span class="split-${step.id}${bestCls}"><em>${step.short}</em> ${formatClock(row.splits[step.id])}</span>`;
           }).join("")}</div>${renderPairMarks(row.splits.pairs)}`
         : "";
-      const reconstruction = renderReconstruction(row.moves);
+      const reconstruction = renderReconstruction(row.moves, row.splits);
       const when = formatSolvedAt(row.at);
       const whenHtml = when
         ? `<time class="timer-time-when" datetime="${escapeHtml(new Date(row.at).toISOString())}">${escapeHtml(when)}</time>`
@@ -1442,9 +1442,9 @@ export function initPracticeTimer({
     return text;
   }
 
-  function paintReconstruction(moves) {
+  function paintReconstruction(moves, splits) {
     if (!reconEl) return;
-    const html = renderReconstruction(moves);
+    const html = renderReconstruction(moves, splits);
     reconEl.hidden = !html;
     reconEl.innerHTML = html;
   }
@@ -2130,7 +2130,7 @@ export function initPracticeTimer({
       addPracticeTime(record, store);
       onRecordsChanged?.({ reason: "add", record });
       paintClock(ms);
-      paintReconstruction(moves);
+      paintReconstruction(moves, splits);
       renderRecords();
       newScramble();
       const splitBits = splits

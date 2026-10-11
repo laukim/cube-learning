@@ -234,16 +234,28 @@ export function moveNotation(moves) {
   return list.map((row) => row.move).join(" ");
 }
 
-/** Gaps long enough to matter later for pause coaching. */
+/**
+ * Gaps long enough to matter for pause coaching.
+ * `at` is milliseconds from the start of the solve to the move after the gap.
+ */
 export function pausesBetween(moves, thresholdMs = 3000) {
   const list = normalizeMoves(moves) || [];
   const pauses = [];
   for (let i = 1; i < list.length; i++) {
     const gap = list[i].t - list[i - 1].t;
     if (gap < thresholdMs) continue;
-    pauses.push({ after: list[i - 1].move, before: list[i].move, ms: gap });
+    pauses.push({ after: list[i - 1].move, before: list[i].move, ms: gap, at: list[i].t });
   }
   return pauses;
+}
+
+/** Longest gap at or above the threshold. Equal lengths keep the earlier gap. */
+export function worstPause(moves, thresholdMs = 3000) {
+  let worst = null;
+  for (const pause of pausesBetween(moves, thresholdMs)) {
+    if (!worst || pause.ms > worst.ms) worst = pause;
+  }
+  return worst;
 }
 
 /**

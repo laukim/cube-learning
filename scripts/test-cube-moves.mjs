@@ -86,7 +86,7 @@ assert(normalizeMoves([]) == null && normalizeMoves("nope") == null, "empty and 
 const hooks = reconstructionHooks(stored);
 assert(hooks.notation === "R U' R2" && hooks.pauses.length === 1 && hooks.pauses[0].before === "R2", "hooks expose notation and a long gap");
 assert(hooks.pauses[0].at === 4200 && hooks.pauses[0].after === "U'", "a pause records when the next move happens");
-assert(hooks.cross == null && hooks.f2lPairs == null && hooks.oll == null && hooks.pll == null, "stage analysis is left for a follow-up");
+assert(hooks.cross == null && hooks.f2lPairs == null && hooks.oll == null && hooks.pll == null && hooks.segments == null, "stage fields stay empty until the solve has marks");
 const twoPauses = [
   { move: "R", t: 0 },
   { move: "U'", t: 180 },
@@ -101,6 +101,7 @@ assert(
   html.includes("Worst pause 4.02s at 4.20s, after U' before R2"),
   "a single long gap is the worst pause, with the time into the solve and the moves around it"
 );
+assert(!html.includes("timer-recon-strip"), "a log without stage marks has no phase strip");
 assert(!html.includes("timer-reconstruction-algs"), "named algs stay hidden until the solve has stage marks");
 assert(html.includes("<details") && !html.includes("<details open") && !html.includes(" open"), "reconstruction starts collapsed");
 assert(html.includes("Reconstruction · 3 moves") && html.includes(">Show<") && !html.includes("tps"), "reconstruction summary is the expand control");
@@ -140,9 +141,38 @@ assert(
   worstHtml.includes("Worst pause 7.00s in Final at 12.00s, after F before U"),
   "the pause line names the longest gap, its stage, and the moves around it"
 );
-assert(!worstHtml.includes("4.02s"), "a shorter earlier gap is not the pause line");
+const pauseParagraph = worstHtml.slice(worstHtml.indexOf("timer-reconstruction-pause"));
+assert(!pauseParagraph.includes("4.02s"), "a shorter earlier gap is not the pause line");
+assert(worstHtml.includes("Pause 4.02s before R2"), "the shorter recognition gap is still a mark on the strip");
 const ollPause = renderReconstruction(twoPauses, { cross: 4000, f2l: 5000, final: 4000, oll: 1000, pll: 3000 });
 assert(ollPause.includes("Worst pause 7.00s in PLL"), "a pause after OLL is named PLL");
+assert(stagedHtml.includes("timer-recon-strip") && stagedHtml.includes(">Cross<") && stagedHtml.includes(">F2L<") && stagedHtml.includes(">Final<"), "stage marks color Cross, F2L, and Final");
+assert(!stagedHtml.includes(">OLL<") && !stagedHtml.includes(">PLL<"), "OLL and PLL stay off the strip until they were detected");
+assert(stagedHtml.includes("<details") && !stagedHtml.includes("<details open"), "the full move list stays collapsed under the strip");
+assert(stagedHtml.indexOf("timer-recon-strip") < stagedHtml.indexOf("timer-reconstruction-moves"), "the move string stays inside the expand panel");
+assert(worstHtml.includes("timer-recon-pause"), "recognition gaps are marked on the phase strip");
+assert(ollPause.includes(">OLL<") && ollPause.includes(">PLL<") && !ollPause.includes(">Final<"), "a detected last layer colors OLL and PLL instead of Final");
+const pairSplits = {
+  cross: 4000,
+  f2l: 8000,
+  final: 4000,
+  pairs: [
+    { id: "BR", at: 4000 },
+    { id: "FR", at: 7000 },
+    { id: "FL", at: 12000 },
+    { id: "BL", at: 12000 },
+  ],
+};
+const pairHtml = renderReconstruction(twoPauses, pairSplits);
+assert(pairHtml.includes(">FR<") && pairHtml.includes(">BL FL<"), "F2L pair marks name the slots, and slots that finish together share a segment");
+assert(!pairHtml.includes(">OLL<"), "pair marks do not invent an OLL phase");
+const pairHooks = reconstructionHooks(twoPauses, pairSplits);
+assert(pairHooks.cross.end === 4000 && pairHooks.f2lPairs.length === 2, "hooks expose the cross mark and the pairs that finished during F2L");
+assert(pairHooks.f2lPairs[0].ids.join(" ") === "FR" && pairHooks.f2lPairs[1].ids.join(" ") === "BL FL", "a pair already in at the cross is not an F2L segment");
+assert(pairHooks.oll == null && pairHooks.pll == null, "hooks leave OLL and PLL null when Final was not split");
+const layerHooks = reconstructionHooks(twoPauses, { cross: 4000, f2l: 5000, final: 4000, oll: 1000, pll: 3000 });
+assert(layerHooks.oll.end - layerHooks.oll.start === 1000 && layerHooks.pll.end - layerHooks.pll.start === 3000, "hooks use the stored OLL and PLL durations");
+assert(layerHooks.f2lPairs == null, "F2L pair names stay null when the solve has no pair marks");
 
 const target = faceletsForScramble("R U");
 assert(cubeTimerDecision({ mode: "pll", move: "R", phase: "idle", armed: true }).action === "ignore", "PLL drill stays on spacebar");

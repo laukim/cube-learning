@@ -27,9 +27,10 @@ import {
   savePllSelection,
   toggleSelectedId,
 } from "./pll-case-trainer.js?v=pllreveal2";
-import { faceletsForScramble, renderReconstruction } from "./cube-reconstruction.js?v=p1coach1";
+import { faceletsForScramble, renderReconstruction } from "./cube-reconstruction.js?v=p2coach1";
 import {
   describeBottleneck,
+  effortStages,
   formatGoalSeconds,
   GOAL_SLOPE_SPAN,
   goalForecast,
@@ -43,8 +44,8 @@ import {
   renderLevelChip,
   saveAo100Goal,
   splitsForDisplay,
-} from "./coaching-stats.js?v=p1coach1";
-import { cubeTimerDecision, faceletsSolved, formatMoveMeta, normalizeMoves } from "./move-log.js?v=p1coach1";
+} from "./coaching-stats.js?v=p2coach1";
+import { cubeTimerDecision, faceletsSolved, formatMoveMeta, normalizeMoves } from "./move-log.js?v=p2coach1";
 import { formatSolvedAt, normalizeSplits, solveTimestamp, sortSolves } from "./solve-order.js?v=p1coach1";
 import { formatClock, splitStagesFromFacelets } from "./solve-timer.js?v=p1coach1";
 
@@ -725,6 +726,69 @@ function solveInPeriod(record, bounds) {
   return at >= bounds[0] && at < bounds[1];
 }
 
+/** Today's tax needs a few cube solves before one pause becomes the story. */
+export const SESSION_CUBE_MIN = 3;
+
+const TAX_RANK = { cross: 0, f2l: 1, oll: 2, pll: 3, final: 4, solve: 5 };
+
+function addTax(buckets, stage, kind, ms) {
+  const amount = Math.round(Number(ms) || 0);
+  if (amount <= 0) return;
+  const key = `${kind}:${stage.id}`;
+  const prev = buckets.get(key);
+  if (prev) prev.ms += amount;
+  else {
+    buckets.set(key, {
+      id: stage.id,
+      short: stage.short,
+      kind,
+      ms: amount,
+      rank: TAX_RANK[stage.id] ?? 9,
+    });
+  }
+}
+
+/**
+ * The largest pause or turning bucket among today's smart-cube solves.
+ * Stages come from marks already on the solve. A log with no stage marks
+ * counts as pause or turning, without a phase name.
+ * Null until SESSION_CUBE_MIN cube solves exist today (Asia/Hong_Kong).
+ */
+export function sessionMainTax(records, now = Date.now()) {
+  const today = periodBounds(now).today;
+  const cube = [];
+  for (const row of sortSolves(records)) {
+    if (!solveInPeriod(row, today)) continue;
+    if (!normalizeMoves(row?.moves)) continue;
+    cube.push(row);
+  }
+  if (cube.length < SESSION_CUBE_MIN) return null;
+  const buckets = new Map();
+  for (const row of cube) {
+    for (const stage of effortStages(row)) {
+      addTax(buckets, stage, "pause", stage.pause);
+      addTax(buckets, stage, "turning", stage.turning);
+    }
+  }
+  if (!buckets.size) return null;
+  const best = [...buckets.values()].sort((a, b) => {
+    if (b.ms !== a.ms) return b.ms - a.ms;
+    if (a.kind !== b.kind) return a.kind === "pause" ? -1 : 1;
+    return a.rank - b.rank;
+  })[0];
+  if (!(best.ms > 0)) return null;
+  const noun = best.kind === "pause" ? "pauses" : "turning";
+  const where = best.id === "solve" ? noun : `${noun} in ${best.short}`;
+  const solves = `${cube.length} cube solve${cube.length === 1 ? "" : "s"}`;
+  return {
+    id: best.id,
+    kind: best.kind,
+    ms: best.ms,
+    count: cube.length,
+    text: `Today's main tax: ${where} (${formatClock(best.ms)} across ${solves})`,
+  };
+}
+
 /**
  * Mean stage time in each Hong Kong period.
  * Uses the same per-stage split filter as the ao table: a finite split counts,
@@ -1210,7 +1274,7 @@ export function renderTimesList(records) {
   return `${hint}<ol class="timer-times-list">${items}</ol>`;
 }
 
-export function renderStats(stats, previous = null, { splitShift = false, stages = true, goalMs = null, outlook = null } = {}) {
+export function renderStats(stats, previous = null, { splitShift = false, stages = true, goalMs = null, outlook = null, session = null } = {}) {
   const crossNow = stageMean(stats.splits, "cross");
   const f2lNow = stageMean(stats.splits, "f2l");
   const finalNow = stageMean(stats.splits, "final");
@@ -1245,7 +1309,7 @@ export function renderStats(stats, previous = null, { splitShift = false, stages
       </div>`
     )
     .join("");
-  const level = stages ? renderCoachingDetail({ stats, goalMs, outlook }) : "";
+  const level = stages ? renderCoachingDetail({ stats, goalMs, outlook, session }) : "";
   return `${level}${cards}${renderAverageTable(stats, previous, { splits: stages })}`;
 }
 
@@ -1414,6 +1478,7 @@ export function initPracticeTimer({
   const clockBtn = document.getElementById("practice-clock");
   const clockValue = document.getElementById("practice-clock-value");
   const levelEl = document.getElementById("coach-level");
+  const sessionEl = document.getElementById("coach-session");
   const focusEl = document.getElementById("coach-focus");
   const scrambleEl = document.getElementById("practice-scramble");
   const scrambleLoad = document.getElementById("practice-scramble-load");
@@ -1540,6 +1605,12 @@ export function initPracticeTimer({
       const show = solveMode && idle;
       levelEl.hidden = !show;
       levelEl.innerHTML = show ? renderLevelChip(stats) : "";
+    }
+    const tax = solveMode ? sessionMainTax(records) : null;
+    if (sessionEl) {
+      const show = Boolean(solveMode && idle && tax);
+      sessionEl.hidden = !show;
+      sessionEl.textContent = show ? tax.text : "";
     }
     if (focusEl) {
       const latest = state.lastMs > 0 ? records.at(-1) : null;
@@ -2067,6 +2138,7 @@ export function initPracticeTimer({
         stages: !pll && !cross,
         goalMs,
         outlook: pll || cross ? null : ao100Outlook(records, goalMs),
+        session: pll || cross ? null : sessionMainTax(records),
       });
     }
     paintCoach();

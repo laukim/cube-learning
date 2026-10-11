@@ -199,6 +199,35 @@ export function faceletsSolved(facelets) {
 }
 
 /**
+ * White cross in coach letters (white on D, side colours matching the centres).
+ * Corners and the last layer are ignored, so a finished cross can still be unsolved.
+ */
+const WHITE_CROSS_LETTERS = [
+  [28, "D", 25, "F"],
+  [32, "D", 16, "R"],
+  [34, "D", 52, "B"],
+  [30, "D", 43, "L"],
+];
+
+export function whiteCrossFaceletsDone(facelets) {
+  const text = String(facelets || "");
+  if (text.length !== 54) return false;
+  return WHITE_CROSS_LETTERS.every(
+    ([down, downLetter, side, sideLetter]) => text[down] === downLetter && text[side] === sideLetter
+  );
+}
+
+/**
+ * Goal that stops a cube-driven clock.
+ * Single, splits, and PLL stop on a solved cube. Cross drill stops when the
+ * white cross is done, even if the rest of the cube is still scrambled.
+ */
+export function cubeTimerGoalReached(mode, facelets) {
+  if (mode === "cross") return whiteCrossFaceletsDone(facelets);
+  return faceletsSolved(facelets);
+}
+
+/**
  * Timestamped turns for one solve. `t` is milliseconds from the start on the
  * computer clock. `cubeT` is the cube's own clock when the packet had one.
  * Empty / junk input becomes null so older rows stay valid.
@@ -283,10 +312,15 @@ export function worstPause(moves, thresholdMs = 3000) {
   return worst;
 }
 
+const CUBE_TIMER_MODES = new Set(["single", "splits", "pll", "cross"]);
+
 /**
  * What the practice timer should do with one cube update.
  * Spacebar handling stays in the timer; this only describes the cube path.
- * PLL and cross drill stay on spacebar — a full solve is the single / splits clock.
+ * Single and splits arm on the full scramble. PLL arms on the case setup.
+ * Cross drill arms on the cross scramble. `solved` is that mode's goal:
+ * a solved cube, or a finished white cross for Cross drill.
+ * This does not mark PLL or Cross drill solves as Cross / F2L splits.
  */
 export function cubeTimerDecision({
   phase = "idle",
@@ -301,7 +335,7 @@ export function cubeTimerDecision({
   wasUnsolved = false,
   hold = false,
 } = {}) {
-  if (mode !== "single" && mode !== "splits") return { action: "ignore" };
+  if (!CUBE_TIMER_MODES.has(mode)) return { action: "ignore" };
   if (move) {
     if (phase === "running") return { action: "log" };
     if (phase === "inspecting" || (phase === "idle" && armed)) return { action: "start" };

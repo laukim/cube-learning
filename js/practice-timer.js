@@ -12,6 +12,7 @@ import { applyMove, faceletsToString, randomScrambleMoves, stringToFacelets } fr
 import {
   addPllTrainerTime,
   caseMark,
+  caseSetupMoves,
   clearPllTrainerTimes,
   deletePllTrainerTime,
   listPllTrainerCases,
@@ -45,7 +46,7 @@ import {
   saveAo100Goal,
   splitsForDisplay,
 } from "./coaching-stats.js?v=p2coach1";
-import { cubeTimerDecision, faceletsSolved, formatMoveMeta, normalizeMoves } from "./move-log.js?v=p2coach1";
+import { cubeTimerDecision, cubeTimerGoalReached, formatMoveMeta, normalizeMoves } from "./move-log.js?v=pllcube1";
 import { formatSolvedAt, normalizeSplits, solveTimestamp, sortSolves } from "./solve-order.js?v=p1coach1";
 import { formatClock, splitStagesFromFacelets } from "./solve-timer.js?v=p1coach1";
 
@@ -1563,7 +1564,7 @@ export function initPracticeTimer({
   }
 
   function cubeDrivesTimer() {
-    return state.cubeConnected && !pllOn() && !crossOn();
+    return state.cubeConnected;
   }
 
   function cubeMarksSplits() {
@@ -1572,21 +1573,40 @@ export function initPracticeTimer({
 
   function statusWhileRunning() {
     const running = runningStatus(state.mode, state.marks, { cubeSplits: cubeMarksSplits() });
-    if (cubeDrivesTimer() && !cubeMarksSplits()) return `${running} · the cube stops it when solved`;
-    return running;
+    if (!cubeDrivesTimer() || cubeMarksSplits()) return running;
+    if (crossOn()) return `${running} · the cube stops it when the white cross is done`;
+    return `${running} · the cube stops it when solved`;
+  }
+
+  function cubeIdleStatus() {
+    if (pllOn()) {
+      return state.cubeArmed
+        ? "Case set up — turn the cube to start. Space still works."
+        : "Cube connected · set up this case from solved to arm. Space or tap still starts.";
+    }
+    if (crossOn()) {
+      return state.cubeArmed
+        ? "Cross set up — turn the cube to start. Space still works."
+        : "Cube connected · apply the cross scramble to arm. Space or tap still starts.";
+    }
+    const auto = state.mode === TIMER_MODE_SPLITS ? " Cross and F2L mark themselves." : "";
+    return state.cubeArmed
+      ? `Scramble matched — turn the cube to start. Space still works.${auto}`
+      : `Cube connected · apply the scramble to arm. Space or tap still starts.${auto}`;
   }
 
   function statusForIdle() {
     let text = idleStatus(state.mode);
     if (pllOn() && !state.pllCase) text = "Select at least one PLL case";
-    else if (cubeDrivesTimer()) {
-      const auto = state.mode === TIMER_MODE_SPLITS ? " Cross and F2L mark themselves." : "";
-      text = state.cubeArmed
-        ? `Scramble matched — turn the cube to start. Space still works.${auto}`
-        : `Cube connected · apply the scramble to arm. Space or tap still starts.${auto}`;
-    }
+    else if (cubeDrivesTimer()) text = cubeIdleStatus();
     if (state.rerun && !pllOn() && !crossOn()) return `Rerun · ${text}`;
     return text;
+  }
+
+  function cubeInspectStatus() {
+    if (pllOn()) return "Case set up — inspection running. The first turn starts the timer.";
+    if (crossOn()) return "Cross set up — inspection running. The first turn starts the timer.";
+    return "Scramble matched — inspection running. The first turn starts the timer.";
   }
 
   function paintReconstruction(moves, splits, totalMs = null) {
@@ -1800,17 +1820,31 @@ export function initPracticeTimer({
     }
   }
 
+  function cubeGoalReached(facelets = state.latestFacelets) {
+    return cubeTimerGoalReached(state.mode, facelets);
+  }
+
+  /** Facelets that arm the clock. PLL uses the case setup; every other mode uses its scramble. */
+  function cubeTarget() {
+    if (pllOn()) {
+      const alg = state.pllCase?.alg || "";
+      if (!alg) return "";
+      return faceletsForScramble(caseSetupMoves(alg));
+    }
+    if (!String(state.scramble || "").trim()) return "";
+    return faceletsForScramble(state.scramble);
+  }
+
   function cubeDecision(extra = {}) {
     const inspectionSeconds = Number(inspectEl?.value) || 0;
-    const target = pllOn() || crossOn() ? "" : faceletsForScramble(state.scramble);
     return cubeTimerDecision({
       phase: state.phase,
       mode: state.mode,
       armed: state.cubeArmed,
       inspectionSeconds,
       facelets: state.latestFacelets,
-      target,
-      solved: faceletsSolved(state.latestFacelets),
+      target: cubeTarget(),
+      solved: cubeGoalReached(),
       sawMove: state.cubeSawMove,
       wasUnsolved: state.cubeWasUnsolved,
       hold: state.cubeHold,
@@ -1831,9 +1865,7 @@ export function initPracticeTimer({
     if (decision.action === "inspect") {
       state.cubeArmed = true;
       startInspection();
-      if (state.phase === "inspecting") {
-        setStatus("Scramble matched — inspection running. The first turn starts the timer.");
-      }
+      if (state.phase === "inspecting") setStatus(cubeInspectStatus());
       return;
     }
     if (decision.action === "arm") {
@@ -1870,7 +1902,7 @@ export function initPracticeTimer({
   function onCubeFacelets(facelets) {
     state.latestFacelets = String(facelets || "");
     if (!state.cubeConnected) return;
-    if (state.phase === "running" && state.latestFacelets && !faceletsSolved(state.latestFacelets)) {
+    if (state.phase === "running" && state.latestFacelets && !cubeGoalReached(state.latestFacelets)) {
       state.cubeWasUnsolved = true;
     }
     // Hardware facelets are the real cube. Resync the shadow, then mark.
@@ -1946,14 +1978,28 @@ export function initPracticeTimer({
     if (scrambleEl) scrambleEl.textContent = state.scramble || "—";
     state.lastSplits = null;
     state.lastMs = 0;
+    state.cubeArmed = false;
     paintClock(0);
     paintCross();
     updateBestHighlight();
     if (announce) setStatus(announce);
+    if (crossOn() && state.phase === "idle") reconsiderCube();
+  }
+
+  function crossDealStatus({ same = false } = {}) {
+    const which = same ? "Same case." : "New cross.";
+    if (!state.cubeConnected) return `${which} Space or tap to start.`;
+    return `${which} Apply the scramble to arm. Space or tap still starts.`;
+  }
+
+  function finishCrossDeal({ same = false } = {}) {
+    if (state.phase !== "idle" || state.cubeArmed) return;
+    setStatus(crossDealStatus({ same }));
   }
 
   function dealNextCross() {
-    showCrossCase(randomCrossCase(), { reveal: false, announce: "New cross. Space or tap to start." });
+    showCrossCase(randomCrossCase(), { reveal: false });
+    finishCrossDeal({ same: false });
   }
 
   function repeatCross() {
@@ -1961,7 +2007,8 @@ export function initPracticeTimer({
       dealNextCross();
       return;
     }
-    showCrossCase(state.crossCase, { reveal: false, announce: "Same case. Space or tap to start." });
+    showCrossCase(state.crossCase, { reveal: false });
+    finishCrossDeal({ same: true });
   }
 
   function syncPllChrome() {
@@ -2040,7 +2087,9 @@ export function initPracticeTimer({
     state.pllCase = pickTrainerCase(listPllTrainerCases(), state.pllSelected, {
       previousId: state.pllCase?.id || "",
     });
+    state.cubeArmed = false;
     paintPllCase();
+    if (pllOn() && state.phase === "idle") reconsiderCube();
   }
 
   function setPllSelection(ids) {
@@ -2200,7 +2249,7 @@ export function initPracticeTimer({
     state.moves = [];
     state.cubeSawMove = false;
     state.cubeHold = false;
-    state.cubeWasUnsolved = Boolean(state.latestFacelets) && !faceletsSolved(state.latestFacelets);
+    state.cubeWasUnsolved = Boolean(state.latestFacelets) && !cubeGoalReached(state.latestFacelets);
     state.cubeArmed = false;
     clockBtn.classList.remove("is-best");
     paintReconstruction(null);
@@ -2290,7 +2339,10 @@ export function initPracticeTimer({
         paintClock(ms);
         renderRecords();
         dealPllCase();
-        setStatus(done ? `${caseMark(done)} ${formatClock(ms)}. Next case is ready.` : statusForIdle());
+        const ready = state.cubeConnected
+          ? "Next case is ready — set it up from solved to arm."
+          : "Next case is ready.";
+        setStatus(done ? `${caseMark(done)} ${formatClock(ms)}. ${ready}` : statusForIdle());
         return;
       }
       let splits =
@@ -2532,7 +2584,17 @@ export function initPracticeTimer({
     if (e.target.closest("#pll-trainer-next")) {
       if (state.phase !== "idle") return;
       dealPllCase();
-      setStatus(state.pllCase ? `Next case · ${caseMark(state.pllCase)}` : statusForIdle());
+      if (state.cubeArmed) return;
+      if (!state.pllCase) {
+        setStatus(statusForIdle());
+        return;
+      }
+      const name = caseMark(state.pllCase);
+      setStatus(
+        state.cubeConnected
+          ? `Next case · ${name}. Set it up from solved to arm. Space or tap still starts.`
+          : `Next case · ${name}`
+      );
       return;
     }
     const pictureBtn = e.target.closest("#pll-trainer-diagram");

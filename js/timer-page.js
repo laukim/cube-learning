@@ -1,6 +1,6 @@
-import { initPracticeTimer } from "./practice-timer.js?v=p2coach1";
+import { initPracticeTimer } from "./practice-timer.js?v=pllcube1";
 import { initSmartCube } from "./smart-cube.js?v=cube3d2";
-import { initTimesSync } from "./times-sync.js?v=cube3";
+import { initTimesSync } from "./times-sync.js?v=pllcube1";
 
 let sync;
 const timer = initPracticeTimer({

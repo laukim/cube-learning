@@ -7,15 +7,17 @@ const {
   appMoveToGan,
   cubeEventMove,
   cubeTimerDecision,
+  cubeTimerGoalReached,
   faceletsSolved,
   ganFaceletsToApp,
   ganMoveToApp,
   normalizeMoves,
   reconstructionHooks,
+  whiteCrossFaceletsDone,
   worstPause,
 } = await import("../js/move-log.js");
 const { faceletsForScramble, renderReconstruction } = await import("../js/cube-reconstruction.js");
-const { applyAlg, faceletsToString, solvedFacelets } = await import("../js/cube.js");
+const { applyAlg, faceletsToString, solvedFacelets, stringToFacelets } = await import("../js/cube.js");
 const {
   CHROME_BLUETOOTH_MAC_FLAG,
   MAC_CONNECT_GUIDANCE,
@@ -28,11 +30,18 @@ const {
   promptForCubeMac,
   shouldApplyAdapterIdleStatus,
 } = await import("../js/bluetooth-support.js");
+const { whiteCrossDone } = await import("../js/cross-trainer.js");
+const { randomCrossCase } = await import("../js/cross-solver.js");
+const { caseSetupMoves, listPllTrainerCases, loadPllTrainerTimes } = await import("../js/pll-case-trainer.js");
+const { loadCrossDrillTimes } = await import("../js/cross-drill.js");
 const {
   PRACTICE_MODE_KEY,
+  TIMER_MODE_CROSS,
+  TIMER_MODE_PLL,
   TIMER_MODE_SINGLE,
   TIMER_MODE_SPLITS,
   addPracticeTime,
+  applyCubeSplitMarks,
   initPracticeTimer,
   loadPracticeTimes,
   memoryStore,
@@ -175,7 +184,10 @@ assert(layerHooks.oll.end - layerHooks.oll.start === 1000 && layerHooks.pll.end 
 assert(layerHooks.f2lPairs == null, "F2L pair names stay null when the solve has no pair marks");
 
 const target = faceletsForScramble("R U");
-assert(cubeTimerDecision({ mode: "pll", move: "R", phase: "idle", armed: true }).action === "ignore", "PLL drill stays on spacebar");
+assert(
+  cubeTimerDecision({ mode: "pll", phase: "idle", armed: true, move: "U" }).action === "start",
+  "the first turn starts a PLL case"
+);
 assert(
   cubeTimerDecision({ mode: "single", phase: "idle", facelets: target, target, inspectionSeconds: 0 }).action === "arm",
   "matching the scramble arms the clock when inspection is off"
@@ -210,6 +222,105 @@ assert(
 assert(
   cubeTimerDecision({ mode: "single", phase: "idle", facelets: SOLVED, target, hold: true }).action === "release",
   "leaving the scramble clears the inspection hold"
+);
+
+assert(
+  cubeTimerDecision({ mode: "pll", phase: "idle", facelets: target, target, inspectionSeconds: 0 }).action === "arm",
+  "PLL arms when the cube matches the case setup"
+);
+assert(
+  cubeTimerDecision({ mode: "pll", phase: "idle", facelets: target, target, inspectionSeconds: 15 }).action === "inspect",
+  "PLL setup match starts inspection"
+);
+assert(cubeTimerDecision({ mode: "pll", phase: "running", move: "R" }).action === "log", "PLL turns are logged and do not stop the case");
+assert(
+  cubeTimerDecision({ mode: "pll", phase: "running", solved: true, sawMove: true }).action === "stop",
+  "a solved cube stops a PLL case"
+);
+assert(
+  cubeTimerDecision({ mode: "pll", phase: "running", solved: true, sawMove: false, wasUnsolved: false }).action === "ignore",
+  "an already-solved cube does not instantly stop a PLL spacebar start"
+);
+assert(
+  cubeTimerDecision({ mode: "pll", phase: "idle", move: "R", armed: false }).action === "ignore",
+  "setting up a PLL does not start the clock"
+);
+assert(
+  cubeTimerDecision({ mode: "pll", phase: "idle", armed: true, facelets: SOLVED, target }).action === "disarm",
+  "leaving the PLL setup drops the ready state"
+);
+assert(
+  cubeTimerDecision({ mode: "cross", phase: "idle", facelets: target, target, inspectionSeconds: 0 }).action === "arm",
+  "Cross drill arms when the cube matches the cross scramble"
+);
+assert(
+  cubeTimerDecision({ mode: "cross", phase: "idle", facelets: target, target, inspectionSeconds: 15 }).action === "inspect",
+  "a matched cross scramble starts inspection"
+);
+assert(
+  cubeTimerDecision({ mode: "cross", phase: "idle", armed: true, move: "R" }).action === "start",
+  "the first turn starts a cross"
+);
+assert(cubeTimerDecision({ mode: "cross", phase: "running", move: "U" }).action === "log", "cross turns do not invent a split mark");
+assert(
+  cubeTimerDecision({ mode: "cross", phase: "running", solved: true, wasUnsolved: true }).action === "stop",
+  "a finished white cross stops the cross drill"
+);
+assert(
+  cubeTimerDecision({ mode: "cross", phase: "running", solved: false, wasUnsolved: true }).action === "ignore",
+  "an unfinished cross keeps the clock running"
+);
+assert(
+  cubeTimerDecision({ mode: "cross", phase: "running", solved: true, sawMove: false, wasUnsolved: false }).action === "ignore",
+  "a cross that is already done does not instantly stop a spacebar start"
+);
+assert(
+  cubeTimerDecision({ mode: "oll", phase: "idle", armed: true, move: "R" }).action === "ignore",
+  "unknown modes stay off the cube clock"
+);
+
+const pllU = faceletsForScramble("U");
+assert(cubeTimerGoalReached("pll", SOLVED) && !cubeTimerGoalReached("pll", pllU), "PLL stops on a solved cube, not a U turn");
+assert(
+  cubeTimerGoalReached("single", SOLVED) && !cubeTimerGoalReached("single", pllU),
+  "single still stops only on a solved cube"
+);
+assert(
+  cubeTimerGoalReached("cross", pllU) && !faceletsSolved(pllU),
+  "Cross drill stops on a white cross even when the cube is not solved"
+);
+assert(!cubeTimerGoalReached("cross", faceletsForScramble("R")), "a broken cross does not stop the drill");
+assert(whiteCrossFaceletsDone(pllU) === whiteCrossDone(stringToFacelets(pllU)), "letter cross check matches the trainer");
+for (const alg of ["", "U2", "F2", "R U R' U'", "D"]) {
+  const letters = faceletsForScramble(alg);
+  assert(
+    whiteCrossFaceletsDone(letters) === whiteCrossDone(stringToFacelets(letters)),
+    `cross check agrees on ${alg || "solved"}`
+  );
+}
+const drilled = randomCrossCase(() => 0.3);
+assert(!cubeTimerGoalReached("cross", faceletsForScramble(drilled.scramble)), "the cross scramble is not already done");
+assert(
+  faceletsSolved(faceletsForScramble(`${drilled.scramble} ${drilled.solution}`)),
+  "the cross solution restores the cube it was scrambled from"
+);
+for (const pllCase of listPllTrainerCases()) {
+  const setup = caseSetupMoves(pllCase.alg);
+  const setupFacelets = faceletsForScramble(setup);
+  assert(setupFacelets.length === 54 && !faceletsSolved(setupFacelets), `${pllCase.id} setup is a real case`);
+  assert(faceletsForScramble(`${setup} ${pllCase.alg}`) === SOLVED, `${pllCase.id} alg solves the setup`);
+  assert(
+    cubeTimerDecision({ mode: "pll", phase: "idle", facelets: setupFacelets, target: setupFacelets }).action === "arm",
+    `${pllCase.id} setup arms the PLL clock`
+  );
+}
+assert(
+  applyCubeSplitMarks({ mode: "pll", facelets: SOLVED, elapsed: 1000 }).action === "none",
+  "PLL does not record Cross or F2L marks"
+);
+assert(
+  applyCubeSplitMarks({ mode: "cross", facelets: SOLVED, elapsed: 1000 }).action === "none",
+  "Cross drill does not record solve splits"
 );
 
 assert(bluetoothBlocker(undefined).includes("Chrome"), "missing Web Bluetooth explains itself");
@@ -442,6 +553,7 @@ for (const id of [
   "practice-status",
   "practice-splits",
   "practice-scramble",
+  "pll-trainer-case",
   "timer-times",
   "timer-stats",
   "timer-split-stats",
@@ -601,6 +713,96 @@ await (async function verifyConnectedSplitMarks() {
   await stopFromSolvedCube();
   row = latestSolve();
   assert(row.ms === 30000 && !row.splits, "single mode saves the solve without Cross or F2L splits");
+
+  const practiceCount = loadPracticeTimes(timerStore).length;
+  modeButtons.find((btn) => btn.dataset.timerMode === TIMER_MODE_PLL).click();
+  assert(timer.getMode() === TIMER_MODE_PLL, "PLL mode is available with a cube connected");
+  assert(statusEl.textContent.includes("set up this case from solved to arm"), "PLL tells Kim to set the case up");
+  const pllHtml = nodes["pll-trainer-case"].innerHTML;
+  const pllSetup = pllHtml.match(/pll-trainer-setup-kicker[\s\S]*?<code class="alg">([^<]*)<\/code>/)?.[1] || "";
+  assert(pllSetup && !faceletsSolved(faceletsForScramble(pllSetup)), "the dealt PLL case shows an unsolved setup");
+  const pllTarget = faceletsForScramble(pllSetup);
+  timer.onCubeMove("R");
+  assert(timer.getPhase() === "idle", "PLL setup turns do not start the clock");
+  timer.onCubeFacelets(SOLVED);
+  assert(timer.getPhase() === "idle" && statusEl.textContent.includes("set up this case"), "a solved cube is not a PLL case");
+  timer.onCubeFacelets(pllTarget);
+  assert(statusEl.textContent.includes("Case set up"), "matching the PLL setup arms the clock");
+  timer.onCubeFacelets(SOLVED);
+  assert(statusEl.textContent.includes("set up this case"), "leaving the PLL setup disarms");
+  timer.onCubeFacelets(pllTarget);
+  const pllStart = (now = 6_000_000_000_000);
+  timer.onCubeMove("U");
+  assert(timer.getPhase() === "running", "the first turn starts the PLL case");
+  assert(
+    statusEl.textContent.includes("Timing this case") && statusEl.textContent.includes("the cube stops it when solved"),
+    "PLL running copy says the cube stops on solved"
+  );
+  timer.onCubeFacelets(faceletsForScramble("R U"));
+  assert(timer.getPhase() === "running", "an unsolved PLL keeps running");
+  now = pllStart + 1500;
+  timer.onCubeFacelets(SOLVED);
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  assert(timer.getPhase() === "idle", "a solved cube stops the PLL case");
+  const pllRows = loadPllTrainerTimes(timerStore);
+  assert(pllRows.length === 1 && pllRows[0].ms === 1500 && pllRows[0].caseId, "the PLL case time is saved");
+  assert(!pllRows[0].splits, "a PLL time has no Cross or F2L splits");
+  assert(loadPracticeTimes(timerStore).length === practiceCount, "a PLL time stays out of solve records");
+  assert(
+    statusEl.textContent.includes("Next case is ready") && statusEl.textContent.includes("set it up from solved to arm"),
+    "the next PLL case asks to be set up"
+  );
+  const pllAfterCube = pllRows.length;
+  clock.click();
+  assert(timer.getPhase() === "running", "space or tap still starts a PLL case");
+  now += 800;
+  clock.click();
+  assert(timer.getPhase() === "idle", "space or tap still stops a PLL case");
+  assert(loadPllTrainerTimes(timerStore).length === pllAfterCube + 1, "a tap backup still records the PLL case");
+
+  modeButtons.find((btn) => btn.dataset.timerMode === TIMER_MODE_CROSS).click();
+  assert(timer.getMode() === TIMER_MODE_CROSS, "Cross drill is available with a cube connected");
+  assert(statusEl.textContent.includes("apply the cross scramble to arm"), "Cross drill tells Kim to apply the scramble");
+  const crossScramble = timer.getScramble();
+  const crossTarget = faceletsForScramble(crossScramble);
+  assert(crossScramble && !cubeTimerGoalReached("cross", crossTarget), "the dealt cross is not already done");
+  timer.onCubeMove("R");
+  assert(timer.getPhase() === "idle", "applying the cross scramble does not start the clock");
+  timer.onCubeFacelets(crossTarget);
+  assert(statusEl.textContent.includes("Cross set up"), "matching the cross scramble arms the clock");
+  const crossStart = (now = 7_000_000_000_000);
+  timer.onCubeMove("F");
+  assert(timer.getPhase() === "running", "the first turn starts the cross");
+  assert(
+    statusEl.textContent.includes("Timing the cross") && statusEl.textContent.includes("white cross is done"),
+    "Cross running copy stops on the white cross"
+  );
+  timer.onCubeFacelets(faceletsForScramble("F2"));
+  assert(timer.getPhase() === "running", "an unfinished cross keeps running");
+  now = crossStart + 2200;
+  timer.onCubeFacelets(faceletsForScramble("U"));
+  assert(!faceletsSolved(faceletsForScramble("U")), "the stopping cross state is not a solved cube");
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  assert(timer.getPhase() === "idle", "a finished white cross stops the drill");
+  const crossRows = loadCrossDrillTimes(timerStore);
+  assert(crossRows.length === 1 && crossRows[0].ms === 2200 && crossRows[0].length > 0, "the cross time keeps its optimal length");
+  assert(!crossRows[0].splits, "a cross time has no solve splits");
+  assert(loadPracticeTimes(timerStore).length === practiceCount, "a cross time stays out of solve records");
+  assert(loadPllTrainerTimes(timerStore).length === pllAfterCube + 1, "a cross time does not write a PLL case");
+  assert(statusEl.textContent.includes("Optimal"), "stopping a cross still shows the optimal length");
+  const crossAfterCube = crossRows.length;
+  clock.click();
+  assert(timer.getPhase() === "running", "space or tap still starts a cross");
+  now += 900;
+  clock.click();
+  assert(timer.getPhase() === "idle", "space or tap still stops a cross");
+  assert(loadCrossDrillTimes(timerStore).length === crossAfterCube + 1, "a tap backup still records the cross");
+
+  timer.setCubeConnected(false);
+  assert(statusEl.textContent.includes("Space or tap"), "disconnecting the cube returns Cross drill to space or tap");
+  timer.onCubeFacelets(crossTarget);
+  timer.onCubeMove("R");
+  assert(timer.getPhase() === "idle", "cross facelets do nothing while the cube is disconnected");
 })();
 
 Date.now = realNow;

@@ -812,19 +812,17 @@ assert(
 );
 
 const htmlSrc = readFileSync(join(root, "index.html"), "utf8");
-assert(htmlSrc.includes('id="f2l-group-filter"'), "F2L panel has a Random group filter");
-assert(htmlSrc.includes("Disconnected"), "Disconnected is used as a group name");
-assert(
-  htmlSrc.includes("with no repeats until every selected case has been shown"),
-  "F2L panel copy says Random does not repeat until every selected case is shown"
-);
-const erNoVer = htmlSrc.match(/src="vendor\/erno\.js\?v=([^"]+)"/)?.[1];
-const mainVer = htmlSrc.match(/src="js\/main\.js\?v=([^"]+)"/)?.[1];
-assert(erNoVer && erNoVer === mainVer, "phone must cache-bust vendored ERNO snap + main entry together");
-assert(
-  mainSrc.includes(`from "./erno-view.js?v=${erNoVer}"`),
-  "erno-view import is versioned so Safari does not keep a stale flick wrapper"
-);
+const timerPageSrc = readFileSync(join(root, "timer.html"), "utf8");
+assert(htmlSrc === timerPageSrc, "home and /timer.html are the same timer page");
+assert(htmlSrc.includes('class="timer-page"'), "home is the smart-cube timer");
+assert(htmlSrc.includes('id="practice-clock"'), "home has the timer clock");
+assert(htmlSrc.includes('id="cube-connect"'), "home keeps GAN connect");
+assert(htmlSrc.includes('data-timer-mode="splits"'), "home keeps Cross · F2L · Final");
+assert(!htmlSrc.includes('id="move-pad"'), "the on-screen move pad is not a page");
+assert(!htmlSrc.includes(">Coach<"), "nav does not offer the on-screen coach");
+assert(!htmlSrc.includes("js/main.js"), "home does not boot the on-screen coach");
+const erNoVer = mainSrc.match(/from "\.\/erno-view\.js\?v=([^"]+)"/)?.[1];
+assert(erNoVer, "erno-view import stays versioned");
 assert(
   ernoSrc.includes(`from "./erno-ux.js?v=${erNoVer}"`),
   "erno-ux import is versioned with the flick contract"
@@ -873,13 +871,6 @@ assert(
   assert(rouxTimer.steps === ROUX_STEPS, "roux timer steps");
   assert(rouxTimer.splitGroups.length === 4, "roux split groups");
 
-  assert(htmlSrc.includes('data-method="roux"'), "roux method switch in html");
-  assert(htmlSrc.includes('data-mode="cmll"'), "cmll tab in html");
-  assert(htmlSrc.includes('data-move="M"'), "M move on pad");
-  assert(htmlSrc.includes('data-oll-look="corners"'), "OLL look 2 switch in html");
-  assert(htmlSrc.includes('id="btn-scramble-card"'), "real-cube scramble tap in html");
-  assert(htmlSrc.includes('id="f2l-setup-block"') && htmlSrc.includes('id="f2l-setup-alg"'), "F2L case card shows a real-cube setup scramble");
-  assert(htmlSrc.includes('id="btn-f2l-copy-setup"'), "F2L setup scramble can be copied");
   assert(
     mainSrc.includes("syncScrambleCardVisibility") &&
       mainSrc.includes('solveTimer.phase === "running"'),
@@ -1222,7 +1213,7 @@ for (const c of [aa, ab]) {
 }
 assert(mainSrc.includes("Aa, Ab, F, Ga, Gb, Gc, Gd, Ja, Jb, Ra, Rb, T, Ua, Ub, V, Y, E, Z, H, Na, Nb"), "2-look copy lists Cases I know in probability order");
 assert(mainSrc.includes("Aa, Ab, F, Ga, Gb, Gc, Gd, Ja, Jb, Ra, Rb, T, Ua, Ub, V, Y, E, Z, H, Na, and Nb"), "cases I know copy lists cases in probability order");
-assert(htmlSrc.includes("Twenty-one full PLL cases"), "known PLL lead counts twenty-one cases");
+assert(!htmlSrc.includes("Twenty-one full PLL cases"), "the on-screen PLL library is not on the home page");
 const nb = PLL_KNOWN_CASES.find((c) => c.id === "nb");
 const vPerm = PLL_KNOWN_CASES.find((c) => c.id === "v");
 const ga = PLL_KNOWN_CASES.find((c) => c.id === "ga");
@@ -1259,12 +1250,10 @@ for (const c of [ga, gb, gc, gd]) {
   assert(sameDirectedCycle(c.corners.swaps[0], cycles.corners), `${c.short} corner swap matches the held cube`);
 }
 assert(mainSrc.includes("Ja"), "Ja is named in the PLL copy");
-assert(htmlSrc.includes('id="pll-known-list"'), "known PLL is a list of cases");
-assert(htmlSrc.includes('data-pll-sort="probability"'), "Cases I know can sort by probability");
-assert(htmlSrc.includes('data-pll-sort="weakest"'), "Cases I know can sort weakest first");
+assert(mainSrc.includes('id="pll-known-list"') || mainSrc.includes("pll-known-list"), "known PLL still renders a list of cases");
 assert(mainSrc.includes("knownPllCasesSorted"), "Cases I know renders the selected sort");
 assert(mainSrc.includes("bylayer-pll-known-sort"), "chosen PLL sort is remembered");
-assert(!htmlSrc.includes("btn-pll-known-apply"), "known PLL does not apply onto the cube");
+assert(!htmlSrc.includes("pll-known-list"), "the on-screen PLL list is not on the home page");
 assert(mainSrc.includes("pll-ref-open"), "known PLL hides the cube and fills the page");
 assert(!mainSrc.includes("knownPllSetupAlg"), "known PLL does not scramble the cube");
 setPllLook("known");

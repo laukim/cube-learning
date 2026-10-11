@@ -1,4 +1,5 @@
-import { STEPS } from "./solver.js";
+import { stringToFacelets } from "./cube.js";
+import { analyze, STEPS } from "./solver.js";
 import { countNamedAlgs, countYTurns, formatAlgCounts } from "./coach-report.js";
 import { analyzeF2lFlow, formatF2lFlow } from "./f2l-trainer.js?v=f2l18r";
 import {
@@ -150,6 +151,34 @@ export function elapsedMs(t, now) {
 export function currentSplitMs(t, now) {
   if (t.phase !== "running") return 0;
   return Math.max(0, now - t.stepStartMs);
+}
+
+/**
+ * White cross and F2L for one cube state.
+ * Same predicates Guide uses: analyze() stepsDone[0] and [1].
+ * `facelets` is a 54-letter URFDLB string (smart-cube / coach notation) or a colour array.
+ */
+export function splitStagesFromFacelets(facelets) {
+  const colors = faceletColors(facelets);
+  if (!colors) return { cross: false, f2l: false, solved: false };
+  const result = analyze(colors);
+  return {
+    cross: Boolean(result.stepsDone?.[0]),
+    f2l: Boolean(result.stepsDone?.[1]),
+    solved: Boolean(result.solved),
+  };
+}
+
+function faceletColors(facelets) {
+  if (Array.isArray(facelets)) {
+    if (facelets.length !== 54 || facelets.some((color) => !color)) return null;
+    return facelets;
+  }
+  const text = String(facelets || "");
+  if (text.length !== 54) return null;
+  const colors = stringToFacelets(text);
+  if (colors.length !== 54 || colors.some((color) => !color)) return null;
+  return colors;
 }
 
 export function noteProgress(t, { now, moveCount, stepsDone, solved, steps = STEPS }) {

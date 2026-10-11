@@ -14,7 +14,7 @@ Open `http://127.0.0.1:5173/`.
 
 The timer can pair a GAN smart cube from **Chrome on a Mac** (Web Bluetooth, HTTPS). GAN i4 Maglev and GAN12 ui Maglev use the Gen4 protocol; the picker looks for names starting with `GAN`, `MG`, or `AiCube`. No CubeStation app.
 
-Connect on the timer page, apply the scramble with white on the bottom and blue in front, and the clock arms when the cube matches. The first turn starts it (after inspection, if inspection is on). Solved stops it and saves a timestamped move list. Space or tap still times a solve when no cube is connected.
+Connect on the timer page, apply the scramble with white on the bottom and blue in front, and the clock arms when the cube matches. The first turn starts it (after inspection, if inspection is on). Solved stops it and saves a timestamped move list. In Cross · F2L · Final, the cube marks Cross when the white cross is done and F2L when the first two layers are done. Space or tap still times a solve when no cube is connected, and still records a stage if the cube misses it.
 
 ## Cloudflare
 

@@ -14,6 +14,7 @@ const {
   reconstructionHooks,
 } = await import("../js/move-log.js");
 const { faceletsForScramble, renderReconstruction } = await import("../js/cube-reconstruction.js");
+const { applyAlg, faceletsToString, solvedFacelets } = await import("../js/cube.js");
 const {
   CHROME_BLUETOOTH_MAC_FLAG,
   MAC_CONNECT_GUIDANCE,
@@ -26,7 +27,16 @@ const {
   promptForCubeMac,
   shouldApplyAdapterIdleStatus,
 } = await import("../js/bluetooth-support.js");
-const { addPracticeTime, loadPracticeTimes, memoryStore, renderTimesList } = await import("../js/practice-timer.js");
+const {
+  PRACTICE_MODE_KEY,
+  TIMER_MODE_SINGLE,
+  TIMER_MODE_SPLITS,
+  addPracticeTime,
+  initPracticeTimer,
+  loadPracticeTimes,
+  memoryStore,
+  renderTimesList,
+} = await import("../js/practice-timer.js");
 
 function assert(cond, msg) {
   if (!cond) throw new Error(msg);
@@ -276,5 +286,243 @@ assert(loaded[0].moves[1].move === "U'" && loaded[0].moves[1].t === 180, "local 
 assert(renderTimesList(loaded).includes("timer-reconstruction"), "the times list shows the reconstruction");
 addPracticeTime({ id: "plain", ms: 8000, at: 1_700_000_011_000, scramble: "F" }, store);
 assert(!loadPracticeTimes(store).find((row) => row.id === "plain").moves, "spacebar solves stay without a move log");
+
+function lettersAfter(alg) {
+  const facelets = solvedFacelets();
+  if (alg) applyAlg(facelets, alg);
+  return faceletsToString(facelets);
+}
+
+function element(id) {
+  const listeners = {};
+  const classes = new Set();
+  const node = {
+    id,
+    hidden: false,
+    textContent: "",
+    innerHTML: "",
+    value: "",
+    disabled: false,
+    dataset: {},
+    classList: {
+      add(name) {
+        classes.add(name);
+      },
+      remove(name) {
+        classes.delete(name);
+      },
+      toggle(name, force) {
+        const on = force === undefined ? !classes.has(name) : Boolean(force);
+        if (on) classes.add(name);
+        else classes.delete(name);
+        return on;
+      },
+      contains(name) {
+        return classes.has(name);
+      },
+    },
+    setAttribute() {},
+    getAttribute() {
+      return null;
+    },
+    addEventListener(type, fn) {
+      listeners[type] = listeners[type] || [];
+      listeners[type].push(fn);
+    },
+    click() {
+      for (const fn of listeners.click || []) fn({ target: node, preventDefault() {}, stopPropagation() {} });
+    },
+    blur() {},
+    focus() {},
+    querySelector() {
+      return null;
+    },
+    querySelectorAll() {
+      return [];
+    },
+    closest() {
+      return null;
+    },
+  };
+  return node;
+}
+
+const nodes = {};
+function byId(id) {
+  nodes[id] = element(id);
+  return nodes[id];
+}
+const modeButtons = ["single", "cross", "splits", "pll"].map((mode) => {
+  const btn = element(`mode-${mode}`);
+  btn.dataset.timerMode = mode;
+  return btn;
+});
+for (const id of [
+  "practice-clock",
+  "practice-clock-value",
+  "practice-status",
+  "practice-splits",
+  "practice-scramble",
+  "timer-times",
+  "timer-stats",
+  "timer-split-stats",
+  "timer-chart",
+  "timer-clear",
+]) {
+  byId(id);
+}
+globalThis.document = {
+  body: element("body"),
+  activeElement: null,
+  getElementById(id) {
+    return nodes[id] || null;
+  },
+  querySelector() {
+    return null;
+  },
+  querySelectorAll(selector) {
+    return selector === "[data-timer-mode]" ? modeButtons : [];
+  },
+  addEventListener() {},
+};
+globalThis.window = {
+  setTimeout,
+  clearTimeout,
+  setInterval,
+  clearInterval,
+  confirm: () => false,
+  innerHeight: 800,
+};
+globalThis.requestAnimationFrame = () => 0;
+globalThis.cancelAnimationFrame = () => {};
+globalThis.requestIdleCallback = () => 0;
+
+let now = 1_000_000_000_000;
+const realNow = Date.now;
+Date.now = () => now;
+
+const timerStore = memoryStore({ [PRACTICE_MODE_KEY]: TIMER_MODE_SPLITS });
+const timer = initPracticeTimer({ store: timerStore, isActive: () => true });
+const clock = nodes["practice-clock"];
+const statusEl = nodes["practice-status"];
+const splitsEl = nodes["practice-splits"];
+
+function latestSolve() {
+  const rows = loadPracticeTimes(timerStore);
+  return rows[rows.length - 1];
+}
+
+function armScramble() {
+  const target = faceletsForScramble(timer.getScramble());
+  assert(target && !faceletsSolved(target), "the scramble is a real unsolved cube");
+  timer.onCubeFacelets(target);
+  assert(statusEl.textContent.includes("Scramble matched"), "matching the scramble arms the cube timer");
+}
+
+async function stopFromSolvedCube() {
+  timer.onCubeFacelets(SOLVED);
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  assert(timer.getPhase() === "idle", "a solved cube stops the running timer");
+}
+
+await (async function verifyConnectedSplitMarks() {
+  assert(timer.getMode() === TIMER_MODE_SPLITS, "the practice timer opens in splits mode");
+  timer.setCubeConnected(true);
+  assert(statusEl.textContent.includes("Cross and F2L mark themselves"), "splits mode tells Kim the cube will mark stages");
+
+  armScramble();
+  const autoStart = now;
+  timer.onCubeMove("R");
+  assert(timer.getPhase() === "running", "the first turn starts a splits solve");
+  assert(statusEl.textContent.includes("Cross marks when the white cross is done"), "Cross does not ask for a tap");
+  now = autoStart + 4120;
+  timer.onCubeFacelets(lettersAfter("R U R' U'"));
+  assert(statusEl.textContent.includes("F2L marks when the first two layers are done"), "white cross records the Cross mark");
+  assert(splitsEl.innerHTML.includes("is-done") && splitsEl.innerHTML.includes("4.12"), "the live Cross split shows the auto mark");
+  now = autoStart + 22460;
+  timer.onCubeFacelets(lettersAfter("U"));
+  assert(statusEl.textContent.includes("the cube stops when solved"), "F2L records the F2L mark");
+  assert(splitsEl.innerHTML.includes("18.34"), "the live F2L split is the gap after Cross");
+  now = autoStart + 30680;
+  await stopFromSolvedCube();
+  let row = latestSolve();
+  assert(row.ms === 30680, "the solve time is kept");
+  assert(
+    row.splits.cross === 4120 && row.splits.f2l === 18340 && row.splits.final === 8220,
+    "Cross, F2L, and Final durations are saved without taps"
+  );
+  assert(statusEl.textContent.includes("Cross 4.12") && statusEl.textContent.includes("F2L 18.34") && statusEl.textContent.includes("Final 8.22"), "the stopped solve reads the three stages back");
+
+  armScramble();
+  const tapStart = (now = 2_000_000_000_000);
+  timer.onCubeMove("U");
+  now = tapStart + 5000;
+  clock.click();
+  assert(statusEl.textContent.includes("F2L marks when the first two layers are done"), "a tap still records Cross when auto detection has not");
+  now = tapStart + 20000;
+  timer.onCubeFacelets(lettersAfter("U"));
+  assert(statusEl.textContent.includes("the cube stops when solved"), "F2L still auto-marks after a manual Cross tap");
+  now = tapStart + 28000;
+  await stopFromSolvedCube();
+  row = latestSolve();
+  assert(
+    row.splits.cross === 5000 && row.splits.f2l === 15000 && row.splits.final === 8000,
+    "a manual Cross tap and an auto F2L mark save together"
+  );
+
+  armScramble();
+  const overrideStart = (now = 3_000_000_000_000);
+  timer.onCubeMove("F");
+  now = overrideStart + 4000;
+  timer.onCubeFacelets(lettersAfter("R U R' U'"));
+  now = overrideStart + 22000;
+  clock.click();
+  now = overrideStart + 30000;
+  clock.click();
+  assert(timer.getPhase() === "idle", "a tap still stops after both stages are marked");
+  row = latestSolve();
+  assert(
+    row.splits.cross === 4000 && row.splits.f2l === 18000 && row.splits.final === 8000,
+    "a tap can mark F2L early and then stop"
+  );
+
+  timer.setCubeConnected(false);
+  now = 4_000_000_000_000;
+  clock.click();
+  assert(timer.getPhase() === "running", "space or tap still starts with no cube");
+  assert(statusEl.textContent.includes("space or tap when white cross is done"), "without a cube, Cross still needs a tap");
+  now += 2000;
+  timer.onCubeFacelets(lettersAfter("R U R' U'"));
+  assert(statusEl.textContent.includes("space or tap when white cross is done"), "facelets do nothing while the cube is disconnected");
+  now += 2000;
+  clock.click();
+  now += 18000;
+  clock.click();
+  now += 8000;
+  clock.click();
+  assert(timer.getPhase() === "idle", "taps still stop a splits solve with no cube");
+  row = latestSolve();
+  assert(
+    row.splits.cross === 4000 && row.splits.f2l === 18000 && row.splits.final === 8000,
+    "disconnected splits stay on taps"
+  );
+
+  timer.setCubeConnected(true);
+  modeButtons.find((btn) => btn.dataset.timerMode === TIMER_MODE_SINGLE).click();
+  assert(timer.getMode() === TIMER_MODE_SINGLE, "single mode is still available");
+  armScramble();
+  const singleStart = (now = 5_000_000_000_000);
+  timer.onCubeMove("R");
+  assert(statusEl.textContent.includes("the cube stops it when solved"), "single mode still stops from the cube");
+  assert(!statusEl.textContent.includes("Cross marks"), "single mode does not announce stage marks");
+  now = singleStart + 4000;
+  timer.onCubeFacelets(lettersAfter("R U R' U'"));
+  now = singleStart + 30000;
+  await stopFromSolvedCube();
+  row = latestSolve();
+  assert(row.ms === 30000 && !row.splits, "single mode saves the solve without Cross or F2L splits");
+})();
+
+Date.now = realNow;
 
 console.log("cube moves ok");

@@ -302,6 +302,30 @@ export function generatePracticeScramble(moves = 20) {
   return randomScrambleMoves(moves);
 }
 
+const SCRAMBLE_TOKEN = /^[URFDLB](?:2'?|')?$/;
+
+/**
+ * A face-turn scramble, or "" when the text is not one.
+ * Accepts the generator's notation plus a pasted line (case, primes, "Scramble:" label).
+ */
+export function normalizeScramble(text) {
+  let raw = String(text ?? "")
+    .replace(/[′’‘`]/g, "'")
+    .replace(/[,;]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+  raw = raw.replace(/^scramble\s*:\s*/i, "").trim();
+  if (!raw) return "";
+  const moves = [];
+  for (const token of raw.split(" ")) {
+    const move = token.toUpperCase();
+    if (!SCRAMBLE_TOKEN.test(move)) return "";
+    moves.push(move.endsWith("2'") ? `${move.slice(0, -2)}2` : move);
+  }
+  if (moves.length > 80) return "";
+  return moves.join(" ");
+}
+
 export function mean(values) {
   if (!values.length) return null;
   return values.reduce((sum, n) => sum + n, 0) / values.length;
@@ -964,19 +988,29 @@ export function renderTimesList(records) {
         ? `<time class="timer-time-when" datetime="${escapeHtml(new Date(row.at).toISOString())}">${escapeHtml(when)}</time>`
         : "";
       const bestCls = isSessionBest(row.ms, best) ? " is-best" : "";
-      return `<li data-id="${escapeHtml(row.id)}">
-        <div class="timer-time-row">
+      const deleteBtn = `<button type="button" class="timer-time-delete" data-delete="${escapeHtml(row.id)}" aria-label="Delete ${formatClock(row.ms)}">×</button>`;
+      const body = `<div class="timer-time-row">
           <span class="timer-time-index">#${ordered.length - i}</span>
           <span class="timer-time-ms${bestCls}">${formatClock(row.ms)}${whenHtml}</span>
-          <button type="button" class="timer-time-delete" data-delete="${escapeHtml(row.id)}" aria-label="Delete ${formatClock(row.ms)}">×</button>
+          ${row.scramble ? "" : deleteBtn}
         </div>
         ${splits}
         ${reconstruction}
-        ${scramble}
+        ${scramble}`;
+      if (!row.scramble) {
+        return `<li data-id="${escapeHtml(row.id)}">${body}</li>`;
+      }
+      const label = `Load scramble for ${formatClock(row.ms)}`;
+      return `<li class="timer-time-item" data-id="${escapeHtml(row.id)}">
+        <div class="timer-time-load" role="button" tabindex="0" data-load-scramble="${escapeHtml(row.id)}" title="Time this scramble again" aria-label="${escapeHtml(label)}">${body}</div>
+        ${deleteBtn}
       </li>`;
     })
     .join("");
-  return `<ol class="timer-times-list">${items}</ol>`;
+  const hint = ordered.some((row) => row.scramble)
+    ? `<p class="timer-times-hint">Tap a time to run that scramble</p>`
+    : "";
+  return `${hint}<ol class="timer-times-list">${items}</ol>`;
 }
 
 export function renderStats(stats, previous = null, { splitShift = false, stages = true } = {}) {
@@ -1140,7 +1174,9 @@ export function renderSplitStats(splitStats) {
 }
 
 function isTypingTarget(el) {
-  return Boolean(el?.closest?.("input, select, textarea, [contenteditable=true], dialog, button, a"));
+  return Boolean(
+    el?.closest?.("input, select, textarea, [contenteditable=true], dialog, button, a, [data-load-scramble]")
+  );
 }
 
 function idleStatus(mode) {
@@ -1170,6 +1206,8 @@ export function initPracticeTimer({
   const clockBtn = document.getElementById("practice-clock");
   const clockValue = document.getElementById("practice-clock-value");
   const scrambleEl = document.getElementById("practice-scramble");
+  const scrambleLoad = document.getElementById("practice-scramble-load");
+  const scrambleInput = document.getElementById("practice-scramble-input");
   const statusEl = document.getElementById("practice-status");
   const reconEl = document.getElementById("practice-reconstruction");
   const timesEl = document.getElementById("timer-times");
@@ -1224,6 +1262,7 @@ export function initPracticeTimer({
     latestFacelets: "",
     cubeStopTimer: 0,
     cubeHold: false,
+    rerun: false,
   };
 
   function pllOn() {
@@ -1251,13 +1290,15 @@ export function initPracticeTimer({
   }
 
   function statusForIdle() {
-    if (pllOn() && !state.pllCase) return "Select at least one PLL case";
-    if (cubeDrivesTimer()) {
-      return state.cubeArmed
+    let text = idleStatus(state.mode);
+    if (pllOn() && !state.pllCase) text = "Select at least one PLL case";
+    else if (cubeDrivesTimer()) {
+      text = state.cubeArmed
         ? "Scramble matched — turn the cube to start. Space still works."
         : "Cube connected · apply the scramble to arm. Space or tap still starts.";
     }
-    return idleStatus(state.mode);
+    if (state.rerun && !pllOn() && !crossOn()) return `Rerun · ${text}`;
+    return text;
   }
 
   function paintReconstruction(moves) {
@@ -1291,6 +1332,7 @@ export function initPracticeTimer({
     );
     syncModeButtons();
     syncPllLocks();
+    syncScrambleLock();
     if (crossOn()) paintCross();
   }
 
@@ -1342,12 +1384,69 @@ export function initPracticeTimer({
     paintSplits(ms);
   }
 
+  function syncScrambleLock() {
+    const locked = state.phase !== "idle" || pllOn() || crossOn();
+    if (scrambleInput) scrambleInput.disabled = locked;
+    const loadBtn = scrambleLoad?.querySelector("button");
+    if (loadBtn) loadBtn.disabled = locked;
+  }
+
   function newScramble({ announce = false } = {}) {
+    state.rerun = false;
     state.scramble = generatePracticeScramble();
     if (scrambleEl) scrambleEl.textContent = state.scramble;
     state.cubeArmed = false;
+    syncPllChrome();
     if (announce) setStatus("New scramble");
     reconsiderCube();
+  }
+
+  /** Load a chosen scramble as the next attempt. The finished time is a new solve. */
+  function loadChosenScramble(raw) {
+    if (pllOn() || crossOn()) return false;
+    if (state.phase !== "idle") {
+      setStatus("Finish or cancel this solve before loading a scramble");
+      return false;
+    }
+    const scramble = normalizeScramble(raw);
+    if (!scramble) {
+      setStatus("That isn’t a scramble. Use moves like R U R' U'.");
+      return false;
+    }
+    state.rerun = true;
+    state.scramble = scramble;
+    state.cubeArmed = false;
+    state.marks = [];
+    state.lastTapElapsed = 0;
+    state.lastSplits = null;
+    state.lastMs = 0;
+    state.lastMoves = null;
+    state.moves = [];
+    if (scrambleEl) scrambleEl.textContent = state.scramble;
+    if (scrambleInput) scrambleInput.value = "";
+    paintReconstruction(null);
+    paintClock(0);
+    updateBestHighlight();
+    syncPllChrome();
+    setStatus(loadedScrambleStatus());
+    reconsiderCube();
+    return true;
+  }
+
+  function loadedScrambleStatus() {
+    if (cubeDrivesTimer()) return statusForIdle();
+    const seconds = Number(inspectEl?.value) || 0;
+    if (seconds) return `Scramble loaded. Space or tap for ${seconds}s inspection.`;
+    return "Scramble loaded. Space or tap to start.";
+  }
+
+  function showTimerStage() {
+    const stage = document.querySelector(".timer-stage");
+    if (!stage || typeof stage.getBoundingClientRect !== "function") return;
+    const rect = stage.getBoundingClientRect();
+    if (rect.top < 0 || rect.bottom > window.innerHeight) {
+      stage.scrollIntoView({ block: "start", behavior: "smooth" });
+    }
   }
 
   function cubeDecision(extra = {}) {
@@ -1497,21 +1596,32 @@ export function initPracticeTimer({
   function syncPllChrome() {
     const on = pllOn();
     const cross = crossOn();
+    const rerun = Boolean(state.rerun) && !on && !cross;
     if (scrambleEl) {
       scrambleEl.hidden = on;
       scrambleEl.classList.toggle("is-static", cross);
-      scrambleEl.title = cross ? "Apply this to a solved cube. White on bottom." : "Tap for a new scramble";
+      scrambleEl.classList.toggle("is-rerun", rerun);
+      scrambleEl.title = cross
+        ? "Apply this to a solved cube. White on bottom."
+        : rerun
+          ? "Rerun of a past scramble. Tap for a new one."
+          : "Tap for a new scramble";
       scrambleEl.setAttribute(
         "aria-label",
         cross
           ? "Cross scramble. Apply it to a solved cube with white on the bottom."
-          : "Current scramble. Tap for a new scramble."
+          : rerun
+            ? "Rerun scramble. Tap for a new scramble."
+            : "Current scramble. Tap for a new scramble."
       );
     }
     if (scrambleKicker) {
       scrambleKicker.hidden = on;
-      scrambleKicker.textContent = cross ? "Cross scramble" : "Scramble";
+      scrambleKicker.classList.toggle("is-rerun", rerun);
+      scrambleKicker.textContent = cross ? "Cross scramble" : rerun ? "Rerun" : "Scramble";
     }
+    if (scrambleLoad) scrambleLoad.hidden = on || cross;
+    syncScrambleLock();
     if (pllCaseEl) pllCaseEl.hidden = !on;
     if (pllPickEl) pllPickEl.hidden = !on;
     if (pllSummaryEl) pllSummaryEl.hidden = !on;
@@ -1813,6 +1923,7 @@ export function initPracticeTimer({
       state.moves = [];
       state.cubeSawMove = false;
       state.cubeArmed = false;
+      const wasRerun = state.rerun;
       const record = { ms, at: Date.now(), scramble: state.scramble };
       if (splits) record.splits = splits;
       if (moves) record.moves = moves;
@@ -1826,10 +1937,11 @@ export function initPracticeTimer({
         ? SPLIT_STEPS.map((step) => `${step.short} ${formatClock(splits[step.id])}`).join(" · ")
         : "";
       const moveBits = moves ? ` ${moves.length} cube move${moves.length === 1 ? "" : "s"} saved.` : "";
+      const ready = wasRerun ? "Rerun saved. New scramble ready." : "Scramble ready for the next solve.";
       setStatus(
         splitBits
-          ? `Stopped at ${formatClock(ms)} · ${splitBits}.${moveBits} Scramble ready.`
-          : `Stopped at ${formatClock(ms)}.${moveBits} Scramble ready for the next solve.`
+          ? `Stopped at ${formatClock(ms)} · ${splitBits}.${moveBits} ${wasRerun ? "Rerun saved. New scramble ready." : "Scramble ready."}`
+          : `Stopped at ${formatClock(ms)}.${moveBits} ${ready}`
       );
     } else {
       state.lastSplits = null;
@@ -1905,6 +2017,10 @@ export function initPracticeTimer({
     if (state.phase !== "idle" || crossOn()) return;
     newScramble({ announce: true });
   });
+  scrambleLoad?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (!loadChosenScramble(scrambleInput?.value || "")) scrambleInput?.focus();
+  });
   inspectEl?.addEventListener("change", () => {
     saveInspectionSeconds(inspectEl.value, store, sessionInspectKey());
   });
@@ -1951,7 +2067,31 @@ export function initPracticeTimer({
     paintSplits(0);
     setStatus(pll ? "PLL times cleared" : cross ? "Cross times cleared" : "All times cleared");
   });
+  function loadScrambleFromRow(target) {
+    const load = target?.closest?.("[data-load-scramble]");
+    if (!load || !timesEl.contains(load)) return false;
+    const row = loadPracticeTimes(store).find((item) => item.id === load.dataset.loadScramble);
+    const loaded = loadChosenScramble(row?.scramble || "");
+    if (loaded || state.phase !== "idle") showTimerStage();
+    if (document.activeElement === load) load.blur();
+    return true;
+  }
+
+  timesEl?.addEventListener("keydown", (e) => {
+    if (e.code !== "Enter" && e.code !== "Space") return;
+    if (!e.target.closest?.("[data-load-scramble]")) return;
+    e.preventDefault();
+    e.stopPropagation();
+  });
+  timesEl?.addEventListener("keyup", (e) => {
+    if (e.repeat || (e.code !== "Enter" && e.code !== "Space")) return;
+    if (!e.target.closest?.("[data-load-scramble]")) return;
+    e.preventDefault();
+    e.stopPropagation();
+    loadScrambleFromRow(e.target);
+  });
   timesEl?.addEventListener("click", (e) => {
+    if (loadScrambleFromRow(e.target)) return;
     const btn = e.target.closest("[data-delete]");
     if (!btn) return;
     const id = btn.dataset.delete;

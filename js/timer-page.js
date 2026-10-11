@@ -1,4 +1,4 @@
-import { initPracticeTimer } from "./practice-timer.js?v=periods1";
+import { initPracticeTimer } from "./practice-timer.js?v=rerun1";
 import { initSmartCube } from "./smart-cube.js?v=cube1";
 import { initTimesSync } from "./times-sync.js?v=cube1";
 

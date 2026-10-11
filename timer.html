@@ -12,7 +12,7 @@
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=periods1" />
+    <link rel="stylesheet" href="styles.css?v=rerun1" />
   </head>
   <body class="timer-page">
     <div class="ambient" aria-hidden="true"></div>
@@ -34,6 +34,20 @@
         <button type="button" class="practice-scramble" id="practice-scramble" title="Tap for a new scramble" aria-label="Current scramble. Tap for a new scramble.">
           —
         </button>
+        <form class="practice-scramble-load" id="practice-scramble-load">
+          <input
+            id="practice-scramble-input"
+            class="practice-scramble-input"
+            type="text"
+            inputmode="text"
+            autocomplete="off"
+            autocapitalize="characters"
+            spellcheck="false"
+            placeholder="Paste a scramble"
+            aria-label="Scramble to load"
+          />
+          <button type="submit" class="btn btn-ghost btn-small">Load</button>
+        </form>
         <div class="timer-mode" role="group" aria-label="Timer mode">
           <button type="button" class="timer-mode-btn is-active" data-timer-mode="single" aria-pressed="true">
             Single
@@ -161,7 +175,7 @@
       <span>Space or tap the clock still works with no cube · a connected GAN cube can start and stop the solve</span>
     </footer>
 
-    <script type="module" src="js/timer-page.js?v=periods1"></script>
+    <script type="module" src="js/timer-page.js?v=rerun1"></script>
     <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "fd680e4c7f304be681f2fca80e8000e2"}'></script><!-- End Cloudflare Web Analytics -->
   </body>
 </html>

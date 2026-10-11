@@ -5,7 +5,7 @@ import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 globalThis.Cube = require("cubejs");
 
-const { applyAlg, applyMove, scrambleCube, isSolved, solvedFacelets, sticker, getFace } = await import("../js/cube.js");
+const { applyAlg, applyMove, faceletsToString, scrambleCube, isSolved, solvedFacelets, sticker, getFace } = await import("../js/cube.js");
 const { analyze, RIGHTY } = await import("../js/solver.js");
 const {
   armTimer,
@@ -18,6 +18,7 @@ const {
   findPauses,
   noteProgress,
   renderAnalysisHtml,
+  splitStagesFromFacelets,
   startTimer,
 } = await import("../js/solve-timer.js");
 const { analyzeF2lFlow, formatF2lFlow, f2lRandomPoolSize, getF2lGroupFilter, getF2lGroups, popBaselineIds, poppedSolvedSlots, scrambleF2L, getF2lDrillInfo, resetF2lDrill, setF2lGroupFilter, shouldFlashPop, slotSolved, solvedSlotIds, stableSolvedSlotIds, toggleF2lGroupFilter, whiteCrossIntact, SLOTS } = await import("../js/f2l-trainer.js");
@@ -1273,6 +1274,7 @@ assert(getPllLook() === "two", "2-look look switches back");
 
 const {
   addPracticeTime,
+  applyCubeSplitMarks,
   applySplitTap,
   AVERAGE_WINDOWS,
   averageOf,
@@ -1439,6 +1441,48 @@ tap = applySplitTap({ mode: TIMER_MODE_SPLITS, marks: tap.marks, elapsed: 30680,
 assert(tap.action === "stop", "third tap stops for final");
 tap = applySplitTap({ mode: TIMER_MODE_SINGLE, marks: [], elapsed: 9000, lastTapElapsed: 0 });
 assert(tap.action === "stop", "single mode still stops on first tap");
+
+function lettersAfter(alg) {
+  const facelets = solvedFacelets();
+  if (alg) applyAlg(facelets, alg);
+  return faceletsToString(facelets);
+}
+const solvedLetters = lettersAfter("");
+const crossOnlyLetters = lettersAfter("R U R' U'");
+const f2lLetters = lettersAfter("U");
+const scrambledLetters = lettersAfter("F2");
+const solvedStages = splitStagesFromFacelets(solvedLetters);
+assert(solvedStages.cross && solvedStages.f2l && solvedStages.solved, "a solved cube has cross, F2L, and the solve");
+const crossOnlyStages = splitStagesFromFacelets(crossOnlyLetters);
+assert(crossOnlyStages.cross && !crossOnlyStages.f2l && !crossOnlyStages.solved, "cross can be done with F2L still open");
+const f2lStages = splitStagesFromFacelets(f2lLetters);
+assert(f2lStages.cross && f2lStages.f2l && !f2lStages.solved, "first two layers can be done before the solve");
+assert(!splitStagesFromFacelets(scrambledLetters).cross, "a broken cross is not marked");
+assert(!splitStagesFromFacelets("nope").cross && !splitStagesFromFacelets("").f2l, "junk facelets are not a stage");
+
+let auto = applyCubeSplitMarks({ mode: TIMER_MODE_SPLITS, marks: [], elapsed: 1000, facelets: scrambledLetters });
+assert(auto.action === "none" && auto.marks.length === 0, "a scramble does not mark a stage");
+auto = applyCubeSplitMarks({ mode: TIMER_MODE_SPLITS, marks: [], elapsed: 4120, facelets: crossOnlyLetters });
+assert(auto.action === "cross" && auto.marks[0] === 4120, "white cross marks itself");
+auto = applyCubeSplitMarks({ mode: TIMER_MODE_SPLITS, marks: auto.marks, elapsed: 5000, facelets: crossOnlyLetters });
+assert(auto.action === "none" && auto.marks.length === 1, "cross stays marked once");
+auto = applyCubeSplitMarks({ mode: TIMER_MODE_SPLITS, marks: auto.marks, elapsed: 6000, facelets: scrambledLetters });
+assert(auto.action === "none" && auto.marks[0] === 4120, "breaking the cross does not move the mark");
+auto = applyCubeSplitMarks({ mode: TIMER_MODE_SPLITS, marks: auto.marks, elapsed: 22460, facelets: f2lLetters });
+assert(auto.action === "f2l" && auto.marks[1] === 22460, "F2L marks itself");
+const autoSplits = splitDurationsFromMarks(auto.marks, 30680);
+assert(autoSplits.cross === 4120 && autoSplits.f2l === 18340 && autoSplits.final === 8220, "auto marks become Cross, F2L, and Final");
+const missedCross = applyCubeSplitMarks({ mode: TIMER_MODE_SPLITS, marks: [], elapsed: 22460, facelets: f2lLetters });
+assert(missedCross.action === "both" && missedCross.marks[0] === 22460 && missedCross.marks[1] === 22460, "seeing F2L first still records both stages");
+const tappedCross = applyCubeSplitMarks({
+  mode: TIMER_MODE_SPLITS,
+  marks: [3000],
+  elapsed: 22460,
+  facelets: f2lLetters,
+});
+assert(tappedCross.action === "f2l" && tappedCross.marks[0] === 3000 && tappedCross.marks[1] === 22460, "a manual cross tap stays and F2L still auto-marks");
+const singleAuto = applyCubeSplitMarks({ mode: TIMER_MODE_SINGLE, marks: [], elapsed: 4120, facelets: crossOnlyLetters });
+assert(singleAuto.action === "none" && singleAuto.marks.length === 0, "single mode does not auto-mark stages");
 
 const liveHtml = renderLiveSplits({ marks: [4120], elapsed: 9000, running: true });
 assert(liveHtml.includes("is-live") && liveHtml.includes("F2L"), "live split highlights F2L");

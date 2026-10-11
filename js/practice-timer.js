@@ -30,7 +30,7 @@ import {
 import { faceletsForScramble, renderReconstruction } from "./cube-reconstruction.js?v=cube1";
 import { cubeTimerDecision, faceletsSolved, normalizeMoves } from "./move-log.js?v=cube1";
 import { formatSolvedAt, normalizeSplits, solveTimestamp, sortSolves } from "./solve-order.js?v=sync1";
-import { formatClock } from "./solve-timer.js?v=splits5";
+import { formatClock, splitStagesFromFacelets } from "./solve-timer.js?v=splitsauto1";
 
 export const PRACTICE_TIMES_KEY = "cube-coach-practice-times";
 export const PRACTICE_INSPECT_KEY = "cube-coach-practice-inspect";
@@ -163,6 +163,32 @@ export function applySplitTap({ mode, marks = [], elapsed = 0, lastTapElapsed = 
     return { action: "split", marks: [...marks, elapsed] };
   }
   return { action: "stop", marks };
+}
+
+/**
+ * Append Cross / F2L marks from a live cube state.
+ * First time a stage is complete only — a later break does not move the mark.
+ * Marks already recorded (including a manual tap) stay put.
+ * A 54-letter facelet string is what the connected cube sends.
+ */
+export function applyCubeSplitMarks({ mode, marks = [], elapsed = 0, facelets = "" } = {}) {
+  const current = Array.isArray(marks) ? marks.slice(0, SPLIT_STEPS.length - 1) : [];
+  if (mode !== TIMER_MODE_SPLITS) return { action: "none", marks: current };
+  const stages = splitStagesFromFacelets(facelets);
+  if (!stages.cross && !stages.f2l) return { action: "none", marks: current };
+  const at = Math.max(0, Number(elapsed) || 0);
+  const next = current.slice();
+  let action = "none";
+  if (next.length === 0 && stages.cross) {
+    next.push(at);
+    action = "cross";
+  }
+  if (next.length === 1 && stages.f2l) {
+    next.push(Math.max(Number(next[0]) || 0, at));
+    action = action === "cross" ? "both" : "f2l";
+  }
+  if (action === "none") return { action, marks: current };
+  return { action, marks: next };
 }
 
 export function liveSplitDurations(marks = [], elapsed = 0, { running = false, splits = null } = {}) {
@@ -1188,11 +1214,16 @@ function idleStatus(mode) {
   return "Space or tap to start · next scramble appears when you stop";
 }
 
-function runningStatus(mode, marks = []) {
+function runningStatus(mode, marks = [], { cubeSplits = false } = {}) {
   if (mode === TIMER_MODE_PLL) return "Timing this case — space or tap to stop";
   if (mode === TIMER_MODE_CROSS) return "Timing the cross — space or tap to stop";
   if (mode !== TIMER_MODE_SPLITS) return "Timing — space or tap to stop";
   const next = SPLIT_STEPS[currentSplitIndex(marks)];
+  if (cubeSplits) {
+    if (next.id === "cross") return "Timing — Cross marks when the white cross is done · tap if it misses";
+    if (next.id === "f2l") return "Timing — F2L marks when the first two layers are done · tap if it misses";
+    return "Timing — the cube stops when solved";
+  }
   if (next.id === "cross") return "Timing — space or tap when white cross is done";
   if (next.id === "f2l") return "Timing — space or tap when F2L is done";
   return "Timing — space or tap when solved";
@@ -1289,13 +1320,24 @@ export function initPracticeTimer({
     return state.cubeConnected && !pllOn() && !crossOn();
   }
 
+  function cubeMarksSplits() {
+    return cubeDrivesTimer() && state.mode === TIMER_MODE_SPLITS;
+  }
+
+  function statusWhileRunning() {
+    const running = runningStatus(state.mode, state.marks, { cubeSplits: cubeMarksSplits() });
+    if (cubeDrivesTimer() && !cubeMarksSplits()) return `${running} · the cube stops it when solved`;
+    return running;
+  }
+
   function statusForIdle() {
     let text = idleStatus(state.mode);
     if (pllOn() && !state.pllCase) text = "Select at least one PLL case";
     else if (cubeDrivesTimer()) {
+      const auto = state.mode === TIMER_MODE_SPLITS ? " Cross and F2L mark themselves." : "";
       text = state.cubeArmed
-        ? "Scramble matched — turn the cube to start. Space still works."
-        : "Cube connected · apply the scramble to arm. Space or tap still starts.";
+        ? `Scramble matched — turn the cube to start. Space still works.${auto}`
+        : `Cube connected · apply the scramble to arm. Space or tap still starts.${auto}`;
     }
     if (state.rerun && !pllOn() && !crossOn()) return `Rerun · ${text}`;
     return text;
@@ -1522,7 +1564,23 @@ export function initPracticeTimer({
     if (state.phase === "running" && state.latestFacelets && !faceletsSolved(state.latestFacelets)) {
       state.cubeWasUnsolved = true;
     }
+    noteCubeSplits();
     applyCubeDecision(cubeDecision());
+  }
+
+  function noteCubeSplits() {
+    if (state.phase !== "running" || !cubeMarksSplits()) return;
+    const elapsed = Math.max(0, Date.now() - state.startedAt);
+    const result = applyCubeSplitMarks({
+      mode: state.mode,
+      marks: state.marks,
+      elapsed,
+      facelets: state.latestFacelets,
+    });
+    if (result.action === "none") return;
+    state.marks = result.marks;
+    setStatus(statusWhileRunning());
+    paintSplits(elapsed);
   }
 
   function onCubeMove(move, cubeT) {
@@ -1824,8 +1882,7 @@ export function initPracticeTimer({
     state.cubeArmed = false;
     clockBtn.classList.remove("is-best");
     paintReconstruction(null);
-    const running = runningStatus(state.mode, state.marks);
-    setStatus(cubeDrivesTimer() ? `${running} · the cube stops it when solved` : running);
+    setStatus(statusWhileRunning());
     tickRunning();
   }
 
@@ -1970,7 +2027,7 @@ export function initPracticeTimer({
       state.lastTapElapsed = elapsed;
       if (result.action === "split") {
         state.marks = result.marks;
-        setStatus(runningStatus(state.mode, state.marks));
+        setStatus(statusWhileRunning());
         paintSplits(elapsed);
         return;
       }

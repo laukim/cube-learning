@@ -250,7 +250,7 @@ const garbage = await handleTimesRequest(
 );
 assert(garbage.status === 401, "unverified token is rejected");
 const notApi = await worker.fetch(new Request("https://3x3coach.mocholate.workers.dev/timer.html"), { DB: db });
-assert(notApi.status === 404, "the worker leaves non-api paths to static assets");
+assert(notApi.status === 404, "page routes without an assets binding stay 404");
 
 const { publicKey, privateKey } = await crypto.subtle.generateKey(
   { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" },

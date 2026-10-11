@@ -1891,6 +1891,14 @@ body.pll-ref-open #panel-pll > .look-switch {
   width: 100%;
 }
 
+.build-stamp {
+  flex: 1 0 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+
 kbd {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.78rem;
@@ -2181,6 +2189,18 @@ kbd {
   }
 
   .foot {
+    display: none;
+  }
+
+  body:not(.timer-page) .foot {
+    display: flex;
+    justify-content: center;
+    gap: 0;
+    padding-top: 0.15rem;
+    padding-bottom: max(0.35rem, env(safe-area-inset-bottom));
+  }
+
+  body:not(.timer-page) .foot > :not(.build-stamp) {
     display: none;
   }
 }

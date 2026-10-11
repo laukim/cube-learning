@@ -3,10 +3,10 @@ import { applyBuildStamp, versionEtag } from "./build-stamp.js";
 import { allocateBuild, footerVersion } from "./release-version.js";
 import { handleTimesRequest } from "./times-api.js";
 
-// `/` is the timer home. html_handling also serves timer.html at /timer and
-// redirects /timer.html and /timer/ there. Those paths have to run the worker
-// or the footer stays the unstamped v0.0.0-dev file.
-export const PAGE_PATHS = new Set(["/", "/index.html", "/timer", "/timer.html"]);
+// `/` is the timer home. html_handling serves timer.html at /timer and pll.html
+// at /pll, and redirects the .html and trailing-slash URLs there. Those paths
+// have to run the worker or the footer stays the unstamped v0.0.0-dev file.
+export const PAGE_PATHS = new Set(["/", "/index.html", "/timer", "/timer.html", "/pll", "/pll.html"]);
 
 export default {
   async fetch(request, env) {

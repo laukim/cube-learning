@@ -2,7 +2,7 @@
 
 Smart-cube timer for 3×3. Open the site and you are on the timer: GAN connect, Cross · F2L · Final splits, a live 3D cube, and coaching stats.
 
-`/` is home. `/timer` and `/timer.html` are the same page.
+`/` is home. `/timer` and `/timer.html` are the same page. `/pll` is the PLL algorithm reference (2-look and Cases I know) — diagrams and algs, not another timer mode.
 
 ## Run
 
@@ -22,4 +22,4 @@ Apply the scramble with white on the bottom and blue in front, and the clock arm
 
 Deploy uses Wrangler static assets (`npx wrangler deploy`); `.assetsignore` excludes `node_modules` (and `.git` / `.wrangler`) so they are not uploaded.
 
-The footer version is a short `v1.02` label on the timer. Each deploy rewrites it from the commit count, so a merge to main shows the next number. `python3 -m http.server` and `npm start` leave the placeholder `v0.0.0-dev`.
+The footer version is a short `v1.02` label on the timer and the PLL page. Each deploy rewrites it from the commit count, so a merge to main shows the next number. `python3 -m http.server` and `npm start` leave the placeholder `v0.0.0-dev`. Open `/pll.html` on that static server; a deploy serves the same page at `/pll`.

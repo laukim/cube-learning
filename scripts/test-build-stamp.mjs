@@ -73,7 +73,7 @@ function stampText(html) {
   return match ? match[1] : "";
 }
 
-for (const file of ["timer.html", "index.html"]) {
+for (const file of ["timer.html", "index.html", "pll.html"]) {
   const html = readFileSync(file, "utf8");
   assert(html.includes('data-build-stamp'), `${file} has a build stamp`);
   assert(stampText(html) === "v0.0.0-dev", `${file} placeholder is the dev version, was ${stampText(html)}`);
@@ -151,6 +151,8 @@ const pages = {
   "/index.html": readFileSync("index.html", "utf8"),
   "/timer": readFileSync("timer.html", "utf8"),
   "/timer.html": readFileSync("timer.html", "utf8"),
+  "/pll": readFileSync("pll.html", "utf8"),
+  "/pll.html": readFileSync("pll.html", "utf8"),
 };
 
 function wranglerRunWorkerFirst() {
@@ -164,6 +166,8 @@ for (const path of PAGE_PATHS) {
   assert(workerFirst.includes(path), `run_worker_first is missing ${path}, so assets would skip the footer stamp`);
 }
 assert(PAGE_PATHS.has("/timer"), "the extensionless timer URL is a stamped page");
+assert(PAGE_PATHS.has("/pll"), "the extensionless PLL URL is a stamped page");
+assert(PAGE_PATHS.has("/pll.html"), "the PLL html URL is a stamped page");
 
 const sharedDb = memoryDb();
 const envA = { ASSETS: assetsOf(pages), CF_VERSION_METADATA: versionA, DB: sharedDb };
@@ -189,6 +193,8 @@ assert(homeHtml.includes("a connected GAN cube"), "home keeps the cube tip");
 assert(homeHtml.includes('class="timer-page"'), "home is the timer");
 assert(!homeHtml.includes(">Coach<"), "home does not link to the on-screen coach");
 assert(!homeHtml.includes("Pieces"), "home does not describe on-screen turns");
+assert(homeHtml.includes('href="/pll"'), "home links to the PLL alg page");
+assert(homeHtml.includes(">PLL algs<"), "home names the PLL alg page");
 
 const timerAlias = await worker.fetch(new Request("https://3x3coach.example/timer"), envA);
 assert(timerAlias.status === 200, "/timer is served");
@@ -217,6 +223,8 @@ function htmlHandlingAssets(files) {
     "/index.html": "/",
     "/timer.html": "/timer",
     "/timer/": "/timer",
+    "/pll.html": "/pll",
+    "/pll/": "/pll",
   };
   return {
     async fetch(request) {
@@ -236,6 +244,7 @@ const handledEnv = {
   ASSETS: htmlHandlingAssets({
     "/": pages["/"],
     "/timer": pages["/timer"],
+    "/pll": pages["/pll"],
   }),
   CF_VERSION_METADATA: versionA,
   DB: memoryDb(),
@@ -261,6 +270,20 @@ assert(handledIndex.headers.get("location") === "/", "/index.html redirects to /
 const handledLegacy = await worker.fetch(new Request("https://3x3coach.example/timer.html"), handledEnv);
 assert(handledLegacy.status === 307, "/timer.html still redirects to the canonical timer URL");
 assert(handledLegacy.headers.get("location") === "/timer", "/timer.html redirects to /timer");
+const handledPllFile = await worker.fetch(new Request("https://3x3coach.example/pll.html"), handledEnv);
+assert(handledPllFile.status === 307, "/pll.html redirects to the canonical PLL URL");
+assert(handledPllFile.headers.get("location") === "/pll", "/pll.html redirects to /pll");
+const handledPll = await worker.fetch(new Request("https://3x3coach.example/pll"), handledEnv);
+assert(handledPll.status === 200, "canonical /pll is stamped when assets redirect the .html URL");
+const handledPllHtml = await handledPll.text();
+const handledPllStamp = stampText(handledPllHtml);
+assert(handledPllStamp === handledStamp, `canonical /pll shares the home version, was ${handledPllStamp}`);
+assert(handledPllStamp !== "v0.0.0-dev", "canonical /pll is not the dev placeholder");
+assert(handledPllHtml.includes('data-pll-look="two"'), "/pll is the 2-look reference");
+assert(handledPllHtml.includes('data-pll-look="known"'), "/pll includes Cases I know");
+assert(!handledPllHtml.includes('id="move-pad"'), "/pll does not bring back the move pad");
+const pllDirect = await worker.fetch(new Request("https://3x3coach.example/pll"), envA);
+assert(stampText(await pllDirect.text()) === timerStamp, "/pll shares this deploy's version without html_handling");
 
 const next = await worker.fetch(new Request("https://3x3coach.example/timer.html"), {
   ASSETS: assetsOf(pages),

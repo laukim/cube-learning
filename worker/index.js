@@ -1,4 +1,6 @@
+import { APP_BUILD, APP_MAJOR } from "./app-version.js";
 import { applyBuildStamp, versionEtag } from "./build-stamp.js";
+import { allocateBuild, footerVersion } from "./release-version.js";
 import { handleTimesRequest } from "./times-api.js";
 
 const PAGE_PATHS = new Set(["/", "/index.html", "/timer.html"]);
@@ -30,7 +32,7 @@ async function serveStampedPage(request, env) {
   if (!type.includes("text/html")) return asset;
 
   const raw = await asset.text();
-  const stamped = applyBuildStamp(raw, env.CF_VERSION_METADATA);
+  const stamped = applyBuildStamp(raw, await footerStamp(env));
   const headers = new Headers(asset.headers);
   headers.delete("content-length");
   headers.delete("content-encoding");
@@ -38,6 +40,20 @@ async function serveStampedPage(request, env) {
   if (!headers.has("cache-control")) headers.set("cache-control", "public, max-age=0, must-revalidate");
   if (stamped.found && etag) headers.set("etag", etag);
   return new Response(stamped.html, { status: 200, headers });
+}
+
+async function footerStamp(env) {
+  const meta = env?.CF_VERSION_METADATA;
+  const id = typeof meta?.id === "string" ? meta.id.trim() : "";
+  let build = APP_BUILD;
+  if (id && !(Number(build) > 0) && env?.DB && typeof env.DB.prepare === "function") {
+    try {
+      build = await allocateBuild(env.DB, id);
+    } catch {
+      console.error("release version allocation failed");
+    }
+  }
+  return footerVersion({ meta, version: APP_MAJOR, build });
 }
 
 function cacheHeaders(etag) {

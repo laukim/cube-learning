@@ -12,7 +12,7 @@
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=cube2" />
+    <link rel="stylesheet" href="styles.css?v=cube3d2" />
   </head>
   <body class="timer-page">
     <div class="ambient" aria-hidden="true"></div>
@@ -89,6 +89,22 @@
         <ol class="practice-splits" id="practice-splits" hidden></ol>
         <p class="practice-status" id="practice-status">Space or tap to start · next scramble appears when you stop</p>
         <div class="practice-reconstruction" id="practice-reconstruction" hidden></div>
+        <div class="cube-mirror-slot" id="cube-connect-3d" hidden>
+          <p class="cube-mirror-kicker">Live cube</p>
+          <div
+            class="cube-mirror-scene"
+            id="cube-connect-scene"
+            tabindex="0"
+            aria-label="Live 3D cube. Drag to look around. Arrow keys turn the view."
+          >
+            <div class="cube-mirror" id="cube-connect-cube" role="img" aria-label="Live 3D smart cube"></div>
+          </div>
+          <p class="cube-mirror-hint" id="cube-connect-hint">Reading the cube…</p>
+          <details class="cube-connect-flat" id="cube-connect-flat" hidden>
+            <summary>Flat view</summary>
+            <div class="cube-connect-net" id="cube-connect-net"></div>
+          </details>
+        </div>
       </section>
 
       <section class="timer-side" aria-label="Solve times and progress">
@@ -117,7 +133,6 @@
             <p class="cube-connect-mac-help" id="cube-connect-mac-help"></p>
           </form>
           <p class="cube-connect-meta" id="cube-connect-meta" hidden></p>
-          <div class="cube-connect-net" id="cube-connect-net" hidden></div>
           <p class="cube-connect-feed" id="cube-connect-feed" hidden></p>
           <p class="cube-connect-note">
             Chrome on a Mac. GAN i4 and GAN12 ui Maglev — names starting with GAN, MG, or AiCube. No CubeStation app.
@@ -198,7 +213,8 @@
       <span>Space or tap the clock still works with no cube · a connected GAN cube starts and stops the solve, and marks Cross and F2L in splits mode</span>
     </footer>
 
-    <script type="module" src="js/timer-page.js?v=cube2splits1"></script>
+    <script src="vendor/cubejs.js?v=cube3d2"></script>
+    <script type="module" src="js/timer-page.js?v=cube3d2"></script>
     <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "fd680e4c7f304be681f2fca80e8000e2"}'></script><!-- End Cloudflare Web Analytics -->
   </body>
 </html>

@@ -10,6 +10,7 @@ import {
   promptForCubeMac,
   shouldApplyAdapterIdleStatus,
 } from "./bluetooth-support.js?v=cube2";
+import { createCubeMirror } from "./cube-mirror.js?v=cube3d1";
 import { renderCubeNet } from "./cube-reconstruction.js?v=cube1";
 import { ganFaceletsToApp, ganMoveToApp } from "./move-log.js?v=cube1";
 
@@ -40,6 +41,11 @@ export function initSmartCube({ timer } = {}) {
   const root = document.getElementById("cube-connect");
   const statusEl = document.getElementById("cube-connect-status");
   const metaEl = document.getElementById("cube-connect-meta");
+  const slotEl = document.getElementById("cube-connect-3d");
+  const cubeEl = document.getElementById("cube-connect-cube");
+  const sceneEl = document.getElementById("cube-connect-scene");
+  const hintEl = document.getElementById("cube-connect-hint");
+  const flatEl = document.getElementById("cube-connect-flat");
   const netEl = document.getElementById("cube-connect-net");
   const feedEl = document.getElementById("cube-connect-feed");
   const button = document.getElementById("cube-connect-btn");
@@ -50,9 +56,15 @@ export function initSmartCube({ timer } = {}) {
   if (!root || !statusEl || !button) return { disconnect() {} };
   if (macHelp) macHelp.textContent = MAC_FORM_HELP;
 
+  const reducedMotion =
+    typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const mirror = cubeEl ? createCubeMirror(cubeEl, { reducedMotion }) : null;
+  mirror?.bindOrbit(sceneEl);
+
   let session = null;
   let battery = null;
   let facelets = "";
+  let mirroredFacelets = "";
   let feed = [];
   let busy = false;
   let adapterNote = "";
@@ -79,10 +91,25 @@ export function initSmartCube({ timer } = {}) {
         metaEl.textContent = bits.join(" · ");
       }
     }
+    const showCube = connected;
+    if (slotEl) slotEl.hidden = !showCube;
+    if (hintEl) {
+      hintEl.textContent = facelets ? "Drag to look around" : "Reading the cube…";
+    }
+    if (flatEl) flatEl.hidden = !facelets;
     if (netEl) {
       const net = facelets ? renderCubeNet(facelets) : "";
-      netEl.hidden = !net;
       netEl.innerHTML = net;
+    }
+    if (mirror) {
+      if (!connected) {
+        mirror.reset();
+        mirroredFacelets = "";
+      } else if (facelets && facelets !== mirroredFacelets) {
+        mirror.setFacelets(facelets);
+        mirroredFacelets = facelets;
+        requestAnimationFrame(() => mirror.fit());
+      }
     }
     if (feedEl) {
       feedEl.hidden = !connected;
@@ -96,6 +123,7 @@ export function initSmartCube({ timer } = {}) {
     session = null;
     battery = null;
     facelets = "";
+    mirroredFacelets = "";
     feed = [];
     if (macForm) macForm.hidden = true;
     timer?.setCubeConnected?.(false);
@@ -121,6 +149,7 @@ export function initSmartCube({ timer } = {}) {
       const move = ganMoveToApp(event);
       const cubeT = Number(event.cubeTimestamp);
       rememberMove(move);
+      mirror?.turn(move);
       timer?.onCubeMove?.(move, Number.isFinite(cubeT) ? cubeT : undefined);
       return;
     }
@@ -238,6 +267,31 @@ export function initSmartCube({ timer } = {}) {
     setStatus(blocked || "Not connected. Chrome on a Mac can pair a GAN cube — no CubeStation app.");
   });
   paint();
+
+  // Lets the timer show the live cube without a GAN cube attached.
+  if (new URLSearchParams(location.search).get("cubePreview") === "1") {
+    session = { name: "GAN i4", protocol: "GAN Gen4" };
+    battery = 82;
+    facelets = "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB";
+    mirroredFacelets = "";
+    feed = [];
+    paint();
+    setStatus("Preview — the cube by the timer tracks turns the same way a connected GAN cube does.");
+    const moves = ["R", "U", "R'", "U'", "F2", "D", "L'"];
+    let index = 0;
+    const step = () => {
+      if (!session || index >= moves.length) return;
+      const move = moves[index++];
+      feed = [...feed, move].slice(-FEED_LIMIT);
+      if (feedEl) {
+        feedEl.hidden = false;
+        feedEl.textContent = feed.join(" ");
+      }
+      mirror?.turn(move);
+      window.setTimeout(step, 480);
+    };
+    window.setTimeout(step, 700);
+  }
 
   return { disconnect };
 }

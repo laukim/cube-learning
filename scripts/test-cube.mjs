@@ -1669,18 +1669,18 @@ const finalCard = splitShiftHtml.match(/<div class="timer-stat timer-stat-final"
 assert(crossCard?.[0].includes("+0.50") && crossCard[0].includes("is-slower"), "latest split moves Cross avg slower");
 assert(f2lCard?.[0].includes("-1.00") && f2lCard[0].includes("is-faster"), "latest split moves F2L avg faster");
 assert(finalCard?.[0].includes("Final avg") && finalCard[0].includes("-0.50") && finalCard[0].includes("is-faster"), "latest split moves Final avg faster");
-const avgCard = splitShiftHtml.match(/<span>Average<\/span>\s*<strong>[\s\S]*?<\/strong>/);
-assert(avgCard?.[0].includes("-1.00") && avgCard[0].includes("is-faster"), "latest solve moves session Average faster");
+const avgCard = splitShiftHtml.match(/<span>All-time mean<\/span>\s*<strong>[\s\S]*?<\/strong>/);
+assert(avgCard?.[0].includes("-1.00") && avgCard[0].includes("is-faster"), "latest solve moves the all-time mean faster");
 assert(!splitShiftHtml.includes("vs last"), "average shift is not labeled versus last");
 const singleShiftHtml = renderStats(computeStats(splitRows), computeStats([splitRows[0]]));
 const singleCross = singleShiftHtml.match(/<div class="timer-stat timer-stat-cross">[\s\S]*?<\/div>/);
 const singleF2l = singleShiftHtml.match(/<div class="timer-stat timer-stat-f2l">[\s\S]*?<\/div>/);
 const singleFinal = singleShiftHtml.match(/<div class="timer-stat timer-stat-final">[\s\S]*?<\/div>/);
-const singleAvg = singleShiftHtml.match(/<span>Average<\/span>\s*<strong>[\s\S]*?<\/strong>/);
+const singleAvg = singleShiftHtml.match(/<span>All-time mean<\/span>\s*<strong>[\s\S]*?<\/strong>/);
 assert(singleCross && !singleCross[0].includes("timer-avg-delta"), "single-mode latest solve leaves Cross avg unmarked");
 assert(singleF2l && !singleF2l[0].includes("timer-avg-delta"), "single-mode latest solve leaves F2L avg unmarked");
 assert(singleFinal && !singleFinal[0].includes("timer-avg-delta"), "single-mode latest solve leaves Final avg unmarked");
-assert(singleAvg?.[0].includes("-1.00") && singleAvg[0].includes("is-faster"), "session Average still shifts when the latest solve has no splits");
+assert(singleAvg?.[0].includes("-1.00") && singleAvg[0].includes("is-faster"), "all-time mean still shifts when the latest solve has no splits");
 assert(!renderStats(computeStats([splitRows[0]])).includes("timer-avg-delta"), "first solve has no Average shift yet");
 const aoSeries = [12000, 10000, 14000, 11000, 13000, 9000].map((ms, i) => ({ id: `ao${i}`, ms, at: i + 1 }));
 const aoShiftHtml = renderStats(computeStats(aoSeries), computeStats(aoSeries.slice(0, -1)));
@@ -2036,5 +2036,205 @@ assert(
   renderProgressChart([], { emptyLabel: "Time two cases and a progress chart appears here." }).includes("Time two cases"),
   "PLL chart waits for two case times"
 );
+
+const {
+  describeBottleneck,
+  effortStages,
+  goalForecast,
+  lastLayerSplit,
+  parseGoalInput,
+  subPercents,
+  timeHistogram,
+} = await import("../js/coaching-stats.js");
+
+const subs = subPercents([49000, 44000, 39000, 60000]);
+assert(subs.count === 4 && subs.rows.find((row) => row.sec === 50).pct === 75, "sub-50 is the share of the window under 50 seconds");
+assert(subs.rows.find((row) => row.sec === 45).pct === 50 && subs.rows.find((row) => row.sec === 40).pct === 25, "sub-45 and sub-40 use the same last-100 window");
+const hist = timeHistogram([39000, 44000, 49000, 59000]);
+assert(hist.bins.find((bin) => bin.label === "35–40").count === 1, "histogram counts 39s in 35–40");
+assert(hist.bins.find((bin) => bin.label === "50–60").count === 1, "histogram counts 59s in 50–60");
+assert(hist.bins.find((bin) => bin.label === "<30").count === 0, "an empty histogram bin stays at zero");
+
+const levelHtml = renderStats(computeStats(Array.from({ length: 100 }, (_, i) => ({ id: `lv${i}`, ms: 40000 + (i % 5) * 1000, at: i + 1 }))));
+assert(levelHtml.includes("coach-ao") && levelHtml.includes(">ao100<") && levelHtml.includes("All-time mean"), "level detail names ao100 beside the all-time mean");
+assert(levelHtml.includes("sub-50") && levelHtml.includes("coach-hist"), "level detail includes sub-50 and a histogram");
+assert(levelHtml.includes('id="coach-goal-form"'), "a target ao100 can be set from the level detail");
+assert(!levelHtml.includes("<span>Average</span>"), "the solve stats card is labeled all-time mean");
+
+const flow = effortStages({
+  ms: 3000,
+  moves: [
+    { move: "R", t: 0 },
+    { move: "U", t: 100 },
+    { move: "R'", t: 200 },
+    { move: "U'", t: 2000 },
+  ],
+});
+assert(flow.length === 1 && flow[0].short === "Solve" && flow[0].pause === 2800 && flow[0].turning === 200, "gaps of 500ms or more are pause and the rest is turning");
+const stagedEffort = effortStages({
+  ms: 5000,
+  splits: { cross: 1000, f2l: 1000, final: 3000 },
+  moves: [
+    { move: "R", t: 100 },
+    { move: "U", t: 400 },
+  ],
+});
+assert(stagedEffort.length === 1 && stagedEffort[0].id === "cross", "a long stage with no logged turn is left out");
+const moveListHtml = renderTimesList([
+  {
+    id: "mv",
+    ms: 10000,
+    at: 1,
+    scramble: "R U",
+    moves: [
+      { move: "R", t: 100 },
+      { move: "U", t: 300 },
+    ],
+  },
+]);
+assert(moveListHtml.includes("2 moves · 0.20 tps"), "a smart-cube solve lists move count and tps");
+assert(moveListHtml.includes("Solve turn") && moveListHtml.includes("pause"), "a cube solve without stage marks still splits pause and turning");
+
+const aoBottleneck = describeBottleneck({
+  splits: { cross: 8000, f2l: 20000, final: 12000 },
+  refs: {
+    cross: { ao100: 7000, mean: 7000, count: 100 },
+    f2l: { ao100: 15000, mean: 15000, count: 100 },
+    final: { ao100: 10000, mean: 10000, count: 100 },
+  },
+});
+assert(aoBottleneck.id === "f2l" && aoBottleneck.basis === "ao100" && aoBottleneck.bottleneck.includes("over your ao100"), "bottleneck is the stage furthest over its ao100");
+assert(aoBottleneck.drill === "Drill F2L", "the drill line names that stage");
+const inside = describeBottleneck({
+  splits: { cross: 6000, f2l: 14000, final: 9000 },
+  refs: {
+    cross: { ao100: 7000, mean: 7000, count: 100 },
+    f2l: { ao100: 15000, mean: 15000, count: 100 },
+    final: { ao100: 10000, mean: 10000, count: 100 },
+  },
+});
+assert(inside.over === false && inside.bottleneck === "No stage over your ao100" && inside.drill === "", "a solve inside ao100 has no drill nag");
+const goalLine = describeBottleneck({
+  splits: { cross: 9000, f2l: 14000, final: 12000 },
+  goalMs: 32000,
+  refs: {
+    cross: { ao100: null, mean: 10000, count: 10 },
+    f2l: { ao100: null, mean: 20000, count: 10 },
+    final: { ao100: null, mean: 10000, count: 10 },
+  },
+});
+assert(goalLine.basis === "goal" && goalLine.id === "final" && goalLine.bottleneck.includes("goal pace"), "without ao100 the bottleneck uses goal pace");
+const unqualified = describeBottleneck({
+  splits: { cross: 4000, f2l: 18000, final: 8000 },
+  refs: {
+    cross: { ao100: null, mean: 4000, count: 2 },
+    f2l: { ao100: null, mean: 18000, count: 2 },
+    final: { ao100: null, mean: 8000, count: 2 },
+  },
+});
+assert(unqualified.basis == null && unqualified.short === "F2L" && !unqualified.bottleneck.includes("ao100"), "a thin history does not invent an ao100 comparison");
+
+const met = goalForecast({ ao100: 39000, priorAo100: 42000, span: 20, targetMs: 40000, count: 120 });
+assert(met.reason === "met" && met.solves === 0, "an ao100 already at the target needs no solves");
+const eta = goalForecast({ ao100: 46000, priorAo100: 50000, span: 20, targetMs: 40000, count: 120 });
+assert(eta.reason === "eta" && eta.gap === 6000 && eta.solves === 30, "ETA is the gap divided by the recent ao100 slope");
+const flat = goalForecast({ ao100: 50000, priorAo100: 50000, span: 20, targetMs: 40000, count: 120 });
+assert(flat.reason === "flat" && flat.solves == null, "a flat ao100 does not invent a solve count");
+const shortGoal = goalForecast({ ao100: null, targetMs: 40000, count: 12 });
+assert(shortGoal.reason === "short" && shortGoal.need === 88, "ETA waits until ao100 exists");
+assert(parseGoalInput("40") === 40000 && parseGoalInput("40s") === 40000 && parseGoalInput("") === null, "a target is seconds, and a blank clears it");
+assert(parseGoalInput("1:00") === undefined && parseGoalInput("3") === undefined, "a target has to be 5 to 600 seconds");
+
+const SUNE = "R U R' U R U2 R'";
+const TPERM = "R U R' U' R' F R2 U' R' U' R U R' F'";
+const solveAlg = `${SUNE} ${TPERM}`;
+const llScramble = invertAlg(solveAlg);
+let llCube = solvedFacelets();
+applyAlg(llCube, llScramble);
+applyAlg(llCube, solveAlg);
+assert(isSolved(llCube), "Sune then T-perm solves the last-layer scramble");
+const suneMoves = SUNE.split(" ");
+const tMoves = TPERM.split(" ");
+const llMoves = [];
+let llTime = 200;
+for (const move of suneMoves) {
+  llMoves.push({ move, t: llTime });
+  llTime += 200;
+}
+const ollAt = llTime - 200;
+llTime += 800;
+for (const move of tMoves) {
+  llMoves.push({ move, t: llTime });
+  llTime += 200;
+}
+const llTotal = llTime;
+const llSplits = { cross: 0, f2l: 0, final: llTotal };
+const layer = lastLayerSplit({ scramble: llScramble, moves: llMoves, splits: llSplits, totalMs: llTotal });
+assert(layer && layer.oll === ollAt && layer.pll === llTotal - ollAt, "OLL is stamped when the yellow face is first oriented, and PLL is the rest");
+const lateF2l = lastLayerSplit({
+  scramble: llScramble,
+  moves: llMoves,
+  splits: { cross: 0, f2l: llTotal - 40, final: 40 },
+  totalMs: llTotal,
+});
+assert(lateF2l == null, "a Final that only exists at the solved packet is not split into OLL and PLL");
+assert(lastLayerSplit({ moves: llMoves, splits: llSplits, totalMs: llTotal }) == null, "OLL and PLL are not inferred without a scramble");
+const suneThenU = `${SUNE} U`;
+const suneUMoves = [];
+let suneUTime = 1000;
+for (const move of suneThenU.split(" ")) {
+  suneUMoves.push({ move, t: suneUTime });
+  suneUTime += 400;
+}
+const suneUTotal = suneUTime;
+let suneUCube = solvedFacelets();
+applyAlg(suneUCube, invertAlg(suneThenU));
+applyAlg(suneUCube, suneThenU);
+assert(isSolved(suneUCube), "Sune plus a U solves its scramble");
+const aufOnly = lastLayerSplit({
+  scramble: invertAlg(suneThenU),
+  moves: suneUMoves,
+  splits: { cross: 0, f2l: 0, final: suneUTotal },
+  totalMs: suneUTotal,
+});
+assert(aufOnly == null, "orientation that shows up only as a trailing U is not split into PLL");
+
+const layerStore = memoryStore();
+addPracticeTime(
+  {
+    id: "layer-1",
+    ms: 10000,
+    at: 1,
+    scramble: "R",
+    splits: {
+      cross: 1000,
+      f2l: 2000,
+      final: 7000,
+      oll: 3000,
+      pll: 4000,
+      pairs: [
+        { id: "FR", at: 1500 },
+        { id: "nope", at: 1 },
+      ],
+    },
+  },
+  layerStore
+);
+addPracticeTime(
+  {
+    id: "layer-bad",
+    ms: 10000,
+    at: 2,
+    splits: { cross: 1000, f2l: 2000, final: 7000, oll: 3000, pll: 3000 },
+  },
+  layerStore
+);
+const storedLayer = loadPracticeTimes(layerStore).find((row) => row.id === "layer-1");
+const droppedLayer = loadPracticeTimes(layerStore).find((row) => row.id === "layer-bad");
+assert(storedLayer.splits.oll === 3000 && storedLayer.splits.pll === 4000, "OLL and PLL round-trip when they add up to Final");
+assert(storedLayer.splits.pairs.map((pair) => pair.id).join(" ") === "FR", "pair marks stay beside an OLL and PLL split");
+assert(droppedLayer.splits.oll == null && droppedLayer.splits.pll == null, "OLL and PLL that do not add up to Final are dropped");
+const shownLayer = renderTimesList([storedLayer]);
+assert(shownLayer.includes("OLL") && shownLayer.includes("PLL") && !shownLayer.includes(">Final<"), "a detected last layer replaces Final on the times row");
 
 console.log("ALL PASS");

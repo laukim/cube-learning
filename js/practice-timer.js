@@ -27,10 +27,26 @@ import {
   savePllSelection,
   toggleSelectedId,
 } from "./pll-case-trainer.js?v=pllreveal2";
-import { faceletsForScramble, renderReconstruction } from "./cube-reconstruction.js?v=cube3";
-import { cubeTimerDecision, faceletsSolved, normalizeMoves } from "./move-log.js?v=cube2";
-import { formatSolvedAt, normalizeSplits, solveTimestamp, sortSolves } from "./solve-order.js?v=sync3";
-import { formatClock, splitStagesFromFacelets } from "./solve-timer.js?v=splitsauto2";
+import { faceletsForScramble, renderReconstruction } from "./cube-reconstruction.js?v=p1coach1";
+import {
+  describeBottleneck,
+  formatGoalSeconds,
+  GOAL_SLOPE_SPAN,
+  goalForecast,
+  lastLayerSplit,
+  LEVEL_WINDOW,
+  loadAo100Goal,
+  parseGoalInput,
+  renderCoachFocus,
+  renderCoachingDetail,
+  renderEffort,
+  renderLevelChip,
+  saveAo100Goal,
+  splitsForDisplay,
+} from "./coaching-stats.js?v=p1coach1";
+import { cubeTimerDecision, faceletsSolved, formatMoveMeta, normalizeMoves } from "./move-log.js?v=p1coach1";
+import { formatSolvedAt, normalizeSplits, solveTimestamp, sortSolves } from "./solve-order.js?v=p1coach1";
+import { formatClock, splitStagesFromFacelets } from "./solve-timer.js?v=p1coach1";
 
 export const PRACTICE_TIMES_KEY = "cube-coach-practice-times";
 export const PRACTICE_INSPECT_KEY = "cube-coach-practice-inspect";
@@ -66,6 +82,19 @@ export const SPLIT_STEPS = [
   { id: "f2l", short: "F2L", title: "F2L" },
   { id: "final", short: "Final", title: "Final" },
 ];
+
+/** Shown instead of Final when the cube log supports an OLL/PLL split. */
+export const LAST_LAYER_STEPS = [
+  { id: "oll", short: "OLL", title: "OLL" },
+  { id: "pll", short: "PLL", title: "PLL" },
+];
+
+export function displaySplitSteps(splits) {
+  if (Number.isFinite(Number(splits?.oll)) && Number.isFinite(Number(splits?.pll))) {
+    return [SPLIT_STEPS[0], SPLIT_STEPS[1], ...LAST_LAYER_STEPS];
+  }
+  return SPLIT_STEPS;
+}
 
 function browserStore() {
   try {
@@ -302,6 +331,8 @@ export function splitBests(splitStats) {
     cross: stageBest(splitStats, "cross"),
     f2l: stageBest(splitStats, "f2l"),
     final: stageBest(splitStats, "final"),
+    oll: stageBest(splitStats, "oll"),
+    pll: stageBest(splitStats, "pll"),
   };
 }
 
@@ -315,7 +346,8 @@ export function renderPairMarks(pairs) {
 export function renderLiveSplits({ marks = [], elapsed = 0, running = false, splits = null, bests = null, pairs = null } = {}) {
   const durations = liveSplitDurations(marks, elapsed, { running, splits });
   const liveIndex = running ? currentSplitIndex(marks) : -1;
-  const stages = SPLIT_STEPS.map((step, i) => {
+  const steps = displaySplitSteps(splits);
+  const stages = steps.map((step, i) => {
     const ms = durations[step.id];
     const isLive = i === liveIndex;
     const shown = ms != null ? formatClock(ms) : "—";
@@ -563,7 +595,11 @@ export function summarizeStage(values) {
 export function computeSplitStats(records) {
   const rows = (records || []).filter((r) => r?.splits);
   if (!rows.length) return null;
-  const stages = SPLIT_STEPS.map((step) => {
+  const steps = [
+    ...SPLIT_STEPS,
+    ...LAST_LAYER_STEPS.filter((step) => rows.some((row) => Number.isFinite(Number(row.splits?.[step.id])))),
+  ];
+  const stages = steps.map((step) => {
     const summary = summarizeStage(rows.map((r) => r.splits[step.id]));
     if (!summary) return null;
     return { ...step, ...summary };
@@ -598,10 +634,39 @@ export function computeStageAverages(times) {
 
 export function computeSplitAverages(records) {
   const out = {};
-  for (const step of SPLIT_STEPS) {
+  for (const step of [...SPLIT_STEPS, ...LAST_LAYER_STEPS]) {
     out[step.id] = computeStageAverages(stageSplitTimes(records, step.id));
   }
   return out;
+}
+
+/** ao100 and all-time mean for each stage, for the bottleneck line. */
+export function stageReferences(records) {
+  const out = {};
+  for (const step of [...SPLIT_STEPS, ...LAST_LAYER_STEPS]) {
+    const times = stageSplitTimes(records, step.id);
+    const averages = computeStageAverages(times);
+    out[step.id] = { ao100: averages.ao100, mean: averages.all, count: times.length };
+  }
+  return out;
+}
+
+/** Gap from the current ao100 to a target, plus a rough ETA from the last 20 ao100s. */
+export function ao100Outlook(records, targetMs, span = GOAL_SLOPE_SPAN) {
+  const times = sortSolves(records)
+    .map((row) => row.ms)
+    .filter((ms) => Number.isFinite(ms) && ms > 0);
+  const ao100 = averageOf(times, LEVEL_WINDOW);
+  const series = rollingAverages(times, LEVEL_WINDOW);
+  const idx = series.length - 1;
+  const prior = idx >= span && Number.isFinite(series[idx - span]) ? series[idx - span] : null;
+  return goalForecast({
+    ao100,
+    priorAo100: prior,
+    span: prior == null ? 0 : span,
+    targetMs,
+    count: times.length,
+  });
 }
 
 /** Asia/Hong_Kong is UTC+8 all year, so day windows must not follow the browser zone. */
@@ -697,6 +762,7 @@ export function computeStats(records, now = Date.now()) {
     best: null,
     worst: null,
     trimmed: null,
+    last100: [],
     ...emptyWindowStats(),
     splits: null,
     splitAverages,
@@ -711,6 +777,7 @@ export function computeStats(records, now = Date.now()) {
     best: sorted[0],
     worst: sorted[sorted.length - 1],
     trimmed: times.length >= 3 ? mean(sorted.slice(1, -1)) : null,
+    last100: times.slice(-LEVEL_WINDOW),
     ...computeWindowStats(times),
     splits: computeSplitStats(ordered),
     splitAverages,
@@ -1099,13 +1166,18 @@ export function renderTimesList(records) {
       const scramble = row.scramble
         ? `<code class="timer-time-scramble">${escapeHtml(row.scramble)}</code>`
         : "";
-      const splits = row.splits
-        ? `<div class="timer-time-splits">${SPLIT_STEPS.map((step) => {
-            const bestCls = isSessionBest(row.splits[step.id], stageBests[step.id]) ? " is-best" : "";
-            return `<span class="split-${step.id}${bestCls}"><em>${step.short}</em> ${formatClock(row.splits[step.id])}</span>`;
-          }).join("")}</div>${renderPairMarks(row.splits.pairs)}`
+      const shown = splitsForDisplay(row);
+      const steps = displaySplitSteps(shown);
+      const splits = shown
+        ? `<div class="timer-time-splits">${steps.map((step) => {
+            const bestCls = isSessionBest(shown[step.id], stageBests[step.id]) ? " is-best" : "";
+            return `<span class="split-${step.id}${bestCls}"><em>${step.short}</em> ${formatClock(shown[step.id])}</span>`;
+          }).join("")}</div>${renderPairMarks(shown.pairs)}`
         : "";
-      const reconstruction = renderReconstruction(row.moves, row.splits);
+      const moveMeta = formatMoveMeta(row.moves, row.ms);
+      const moveHtml = moveMeta ? `<p class="timer-time-moves">${escapeHtml(moveMeta)}</p>` : "";
+      const effort = renderEffort(row);
+      const reconstruction = renderReconstruction(row.moves, shown, row.ms);
       const when = formatSolvedAt(row.at);
       const whenHtml = when
         ? `<time class="timer-time-when" datetime="${escapeHtml(new Date(row.at).toISOString())}">${escapeHtml(when)}</time>`
@@ -1117,7 +1189,9 @@ export function renderTimesList(records) {
           <span class="timer-time-ms${bestCls}">${formatClock(row.ms)}${whenHtml}</span>
           ${row.scramble ? "" : deleteBtn}
         </div>
+        ${moveHtml}
         ${splits}
+        ${effort}
         ${scramble}`;
       if (!row.scramble) {
         return `<li data-id="${escapeHtml(row.id)}">${body}${reconstruction}</li>`;
@@ -1136,17 +1210,18 @@ export function renderTimesList(records) {
   return `${hint}<ol class="timer-times-list">${items}</ol>`;
 }
 
-export function renderStats(stats, previous = null, { splitShift = false, stages = true } = {}) {
+export function renderStats(stats, previous = null, { splitShift = false, stages = true, goalMs = null, outlook = null } = {}) {
   const crossNow = stageMean(stats.splits, "cross");
   const f2lNow = stageMean(stats.splits, "f2l");
   const finalNow = stageMean(stats.splits, "final");
   const crossDelta = splitShift ? renderAvgDelta(averageShift(crossNow, stageMean(previous?.splits, "cross")), "Cross avg") : "";
   const f2lDelta = splitShift ? renderAvgDelta(averageShift(f2lNow, stageMean(previous?.splits, "f2l")), "F2L avg") : "";
   const finalDelta = splitShift ? renderAvgDelta(averageShift(finalNow, stageMean(previous?.splits, "final")), "Final avg") : "";
-  const meanDelta = renderAvgDelta(averageShift(stats.mean, previous?.mean), "Average");
+  const meanLabel = stages ? "All-time mean" : "Average";
+  const meanDelta = renderAvgDelta(averageShift(stats.mean, previous?.mean), meanLabel);
   const rows = [
     ["Solves", String(stats.count || 0), "", ""],
-    ["Average", dash(stats.mean), "", meanDelta],
+    [meanLabel, dash(stats.mean), "", meanDelta],
     ["Best", dash(stats.best), "timer-stat-best", ""],
     ["Worst", dash(stats.worst), "", ""],
     // Two-column grid: each stage is one row, avg left and best right.
@@ -1170,7 +1245,8 @@ export function renderStats(stats, previous = null, { splitShift = false, stages
       </div>`
     )
     .join("");
-  return `${cards}${renderAverageTable(stats, previous, { splits: stages })}`;
+  const level = stages ? renderCoachingDetail({ stats, goalMs, outlook }) : "";
+  return `${level}${cards}${renderAverageTable(stats, previous, { splits: stages })}`;
 }
 
 const SPLIT_AVERAGE_COLUMNS = [...SPLIT_AVERAGE_WINDOWS.map((n) => `ao${n}`), "all"];
@@ -1181,7 +1257,11 @@ function splitAverageColgroup() {
 
 function renderSplitAverageTable(splitAverages) {
   const head = SPLIT_AVERAGE_COLUMNS.map((col) => `<th scope="col">${col}</th>`).join("");
-  const body = SPLIT_STEPS.map((step) => {
+  const steps = [
+    ...SPLIT_STEPS,
+    ...LAST_LAYER_STEPS.filter((step) => Number.isFinite(splitAverages?.[step.id]?.all)),
+  ];
+  const body = steps.map((step) => {
     const row = splitAverages?.[step.id] || {};
     const cells = SPLIT_AVERAGE_COLUMNS.map(
       (col) => `<td data-split-window="${col}">${dash(row[col])}</td>`
@@ -1333,6 +1413,8 @@ export function initPracticeTimer({
 } = {}) {
   const clockBtn = document.getElementById("practice-clock");
   const clockValue = document.getElementById("practice-clock-value");
+  const levelEl = document.getElementById("coach-level");
+  const focusEl = document.getElementById("coach-focus");
   const scrambleEl = document.getElementById("practice-scramble");
   const scrambleLoad = document.getElementById("practice-scramble-load");
   const scrambleInput = document.getElementById("practice-scramble-input");
@@ -1442,11 +1524,38 @@ export function initPracticeTimer({
     return text;
   }
 
-  function paintReconstruction(moves, splits) {
+  function paintReconstruction(moves, splits, totalMs = null) {
     if (!reconEl) return;
-    const html = renderReconstruction(moves, splits);
+    const html = renderReconstruction(moves, splits, totalMs);
     reconEl.hidden = !html;
     reconEl.innerHTML = html;
+  }
+
+  function paintCoach() {
+    const solveMode = !pllOn() && !crossOn();
+    const idle = state.phase === "idle";
+    const records = solveMode ? loadPracticeTimes(store) : [];
+    const stats = solveMode ? computeStats(records) : null;
+    if (levelEl) {
+      const show = solveMode && idle;
+      levelEl.hidden = !show;
+      levelEl.innerHTML = show ? renderLevelChip(stats) : "";
+    }
+    if (focusEl) {
+      const latest = state.lastMs > 0 ? records.at(-1) : null;
+      const shown = latest ? splitsForDisplay(latest) : null;
+      const line =
+        solveMode && idle && shown
+          ? describeBottleneck({
+              splits: shown,
+              refs: stageReferences(records),
+              goalMs: loadAo100Goal(store),
+            })
+          : null;
+      const html = line ? renderCoachFocus(line) : "";
+      focusEl.hidden = !html;
+      focusEl.innerHTML = html;
+    }
   }
 
   function clearCubeStop() {
@@ -1501,6 +1610,7 @@ export function initPracticeTimer({
     syncPllLocks();
     syncScrambleLock();
     if (crossOn()) paintCross();
+    paintCoach();
   }
 
   function setStatus(text) {
@@ -1951,11 +2061,15 @@ export function initPracticeTimer({
           : renderTimesList(records);
     }
     if (statsEl) {
+      const goalMs = pll || cross ? null : loadAo100Goal(store);
       statsEl.innerHTML = renderStats(stats, previous, {
         splitShift: !pll && !cross && Boolean(records.at(-1)?.splits),
         stages: !pll && !cross,
+        goalMs,
+        outlook: pll || cross ? null : ao100Outlook(records, goalMs),
       });
     }
+    paintCoach();
     if (splitStatsEl) splitStatsEl.innerHTML = pll || cross ? "" : renderSplitStats(stats.splits);
     if (pllSummaryEl) pllSummaryEl.innerHTML = pll ? renderPllCaseSummary(records) : "";
     if (chartEl) {
@@ -2107,18 +2221,22 @@ export function initPracticeTimer({
         setStatus(done ? `${caseMark(done)} ${formatClock(ms)}. Next case is ready.` : statusForIdle());
         return;
       }
-      const splits =
+      let splits =
         state.mode === TIMER_MODE_SPLITS && state.marks.length >= SPLIT_STEPS.length - 1
           ? splitDurationsFromMarks(state.marks, ms)
           : null;
       if (splits && state.pairMarks.length) splits.pairs = state.pairMarks.map((pair) => ({ id: pair.id, at: pair.at }));
+      const moves = normalizeMoves(state.moves);
+      if (splits && moves) {
+        const layer = lastLayerSplit({ scramble: state.scramble, moves, splits, totalMs: ms });
+        if (layer) splits = { ...splits, ...layer };
+      }
       state.lastSplits = splits;
       state.lastMs = ms;
       state.marks = [];
       state.pairMarks = [];
       state.shadowFacelets = "";
       state.lastTapElapsed = 0;
-      const moves = normalizeMoves(state.moves);
       state.lastMoves = moves;
       state.moves = [];
       state.cubeSawMove = false;
@@ -2130,13 +2248,14 @@ export function initPracticeTimer({
       addPracticeTime(record, store);
       onRecordsChanged?.({ reason: "add", record });
       paintClock(ms);
-      paintReconstruction(moves, splits);
+      paintReconstruction(moves, splits, ms);
       renderRecords();
       newScramble();
       const splitBits = splits
-        ? SPLIT_STEPS.map((step) => `${step.short} ${formatClock(splits[step.id])}`).join(" · ")
+        ? displaySplitSteps(splits).map((step) => `${step.short} ${formatClock(splits[step.id])}`).join(" · ")
         : "";
-      const moveBits = moves ? ` ${moves.length} cube move${moves.length === 1 ? "" : "s"} saved.` : "";
+      const moveMeta = formatMoveMeta(moves, ms);
+      const moveBits = moveMeta ? ` ${moveMeta}.` : "";
       const ready = wasRerun ? "Rerun saved. New scramble ready." : "Scramble ready for the next solve.";
       setStatus(
         splitBits
@@ -2374,6 +2493,19 @@ export function initPracticeTimer({
   for (const btn of modeBtns) {
     btn.addEventListener("click", () => setMode(btn.dataset.timerMode));
   }
+  statsEl?.addEventListener("submit", (event) => {
+    const form = event.target?.closest?.("#coach-goal-form");
+    if (!form || !statsEl.contains(form)) return;
+    event.preventDefault();
+    const parsed = parseGoalInput(form.goal?.value);
+    if (parsed === undefined) {
+      setStatus("Target ao100 is a time in seconds, from 5 to 600.");
+      return;
+    }
+    saveAo100Goal(parsed, store);
+    renderRecords();
+    setStatus(parsed == null ? "Target ao100 cleared." : `Target ao100 ${formatGoalSeconds(parsed)}s.`);
+  });
 
   function isPllRevealTarget(target) {
     return Boolean(

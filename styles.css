@@ -2543,6 +2543,66 @@ body.timer-page .topbar {
   font-size: 0.95rem;
 }
 
+.coach-level {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0.18rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--timer-ao100) 55%, var(--line));
+  background: color-mix(in srgb, var(--timer-ao100) 14%, transparent);
+  font-size: 0.82rem;
+}
+
+.coach-level[hidden],
+.coach-focus[hidden] {
+  display: none;
+}
+
+.coach-level-kicker {
+  color: var(--timer-ao100);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.coach-level-value {
+  color: var(--ink);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.coach-level-need {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.coach-focus {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  width: min(100%, 28rem);
+  margin: 0;
+}
+
+.coach-bottleneck,
+.coach-drill {
+  margin: 0;
+  font-size: 0.88rem;
+}
+
+.coach-bottleneck {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.coach-drill {
+  color: var(--muted);
+}
+
 .timer-mode {
   display: inline-flex;
   flex-wrap: wrap;
@@ -2959,6 +3019,14 @@ body.timer-cross .timer-stage {
   color: var(--timer-f2l);
 }
 
+.practice-splits li.split-oll:not(.is-live) strong {
+  color: var(--yellow);
+}
+
+.practice-splits li.split-pll:not(.is-live) strong {
+  color: var(--timer-ao100);
+}
+
 .practice-splits li.split-cross.is-best {
   border-color: color-mix(in srgb, var(--blue) 55%, transparent);
   background: color-mix(in srgb, var(--blue) 18%, transparent);
@@ -3320,6 +3388,132 @@ body.timer-cross .timer-stage {
   gap: 0.45rem;
   margin-bottom: 0.9rem;
   min-width: 0;
+}
+
+.coach-detail {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--timer-ao100) 45%, var(--line));
+  background: color-mix(in srgb, var(--timer-ao100) 8%, transparent);
+}
+
+.coach-detail-levels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+}
+
+.coach-detail-levels p {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.coach-detail-levels em {
+  font-style: normal;
+  color: var(--muted);
+}
+
+.coach-ao em {
+  color: var(--timer-ao100);
+  font-weight: 700;
+}
+
+.coach-detail-levels strong,
+.coach-subs strong {
+  color: var(--ink);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.coach-subs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.7rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.coach-subs-label {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.68rem;
+}
+
+.coach-hist-empty,
+.coach-hist-caption,
+.coach-eta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.coach-hist {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.coach-hist-row {
+  display: grid;
+  grid-template-columns: 3.2rem 1fr 1.6rem;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.coach-hist-track {
+  height: 0.42rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.coach-hist-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--timer-ao100);
+}
+
+.coach-goal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.coach-goal-label,
+.coach-goal-unit {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.coach-goal input {
+  width: 4.5rem;
+  border: 1px solid var(--line);
+  background: rgba(8, 14, 12, 0.7);
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 0.28rem 0.45rem;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.coach-goal input:focus-visible {
+  outline: none;
+  border-color: rgba(109, 255, 176, 0.45);
 }
 
 .timer-stat {
@@ -3997,6 +4191,22 @@ body.timer-cross .timer-stage {
   color: var(--timer-f2l);
 }
 
+.timer-time-splits .split-oll {
+  color: var(--yellow);
+}
+
+.timer-time-splits .split-pll {
+  color: var(--timer-ao100);
+}
+
+.timer-time-moves,
+.timer-time-effort {
+  margin: 0.15rem 0 0 1.5rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
 .timer-time-splits .is-best {
   font-weight: 700;
 }
@@ -4210,7 +4420,9 @@ body.timer-cross .timer-stage {
 
   .practice-scramble-load .btn,
   .timer-time-item .timer-time-delete,
-  .cube-connect-mac-row .btn {
+  .cube-connect-mac-row .btn,
+  .coach-goal .btn,
+  .coach-goal input {
     min-height: 44px;
     min-width: 44px;
   }

@@ -103,7 +103,9 @@ assert(
 );
 assert(!html.includes("timer-reconstruction-algs"), "named algs stay hidden until the solve has stage marks");
 assert(html.includes("<details") && !html.includes("<details open") && !html.includes(" open"), "reconstruction starts collapsed");
-assert(html.includes("Reconstruction · 3 moves") && html.includes(">Show<"), "reconstruction summary is the expand control");
+assert(html.includes("Reconstruction · 3 moves") && html.includes(">Show<") && !html.includes("tps"), "reconstruction summary is the expand control");
+const tpsHtml = renderReconstruction(stored, null, 10000);
+assert(tpsHtml.includes("3 moves · 0.30 tps"), "reconstruction summary adds tps when the solve time is known");
 assert(html.indexOf("<summary>") < html.indexOf("timer-reconstruction-moves"), "the move string sits inside the expand panel");
 const rightyHtml = renderReconstruction([
   { move: "R", t: 0 },
@@ -139,6 +141,8 @@ assert(
   "the pause line names the longest gap, its stage, and the moves around it"
 );
 assert(!worstHtml.includes("4.02s"), "a shorter earlier gap is not the pause line");
+const ollPause = renderReconstruction(twoPauses, { cross: 4000, f2l: 5000, final: 4000, oll: 1000, pll: 3000 });
+assert(ollPause.includes("Worst pause 7.00s in PLL"), "a pause after OLL is named PLL");
 
 const target = faceletsForScramble("R U");
 assert(cubeTimerDecision({ mode: "pll", move: "R", phase: "idle", armed: true }).action === "ignore", "PLL drill stays on spacebar");

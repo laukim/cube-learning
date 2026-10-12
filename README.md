@@ -26,4 +26,4 @@ Training uses the same arm and stop for a case. After a success there, the next 
 
 Deploy uses Wrangler static assets (`npx wrangler deploy`); `.assetsignore` excludes `node_modules` (and `.git` / `.wrangler`) so they are not uploaded.
 
-The footer version is a short `v1.02` label on the timer and the PLL page. Each deploy rewrites it from the commit count, so a merge to main shows the next number. `python3 -m http.server` and `npm start` leave the placeholder `v0.0.0-dev`. Open `/pll.html` on that static server; a deploy serves the same page at `/pll`.
+The footer version is a short `v1.02` label on the timer and the PLL page. Each deploy rewrites it from the commit count, so a merge to main shows the next number. `python3 -m http.server` and `npm start` leave the placeholder `v0.0.0-dev`. Open `/pll.html` and `/training.html` on that static server; a deploy serves the same pages at `/pll` and `/training`.

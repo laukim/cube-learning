@@ -244,7 +244,7 @@ assert(
 
 const page = readFileSync("training.html", "utf8");
 assert(page.includes('href="/training"'), "training nav points at /training");
-assert(page.includes('styles.css?v=training1'), "training css is cache-busted");
+assert(page.includes('styles.css?v=training3'), "training css is cache-busted");
 assert(page.includes('js/training-page.js?v=training1'), "training script is cache-busted");
 assert(page.includes('id="training-session"') && page.includes('id="training-picker"'), "training has a session and a case picker");
 assert(page.includes("data-session-mode=\"drill\"") && page.includes("data-session-mode=\"learn\""), "drill and learn are both on the session");

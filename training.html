@@ -16,7 +16,7 @@
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=training1" />
+    <link rel="stylesheet" href="styles.css?v=training3" />
   </head>
   <body class="training-page">
     <div class="ambient" aria-hidden="true"></div>
@@ -59,13 +59,6 @@
       <section id="training-session" aria-label="Training session" hidden>
         <div class="training-session">
           <aside class="training-rail" aria-label="Current case">
-            <button type="button" class="btn btn-ghost btn-small" id="training-back">Training</button>
-            <div class="training-mode" role="group" aria-label="Drill or learn">
-              <button type="button" class="method-btn" data-session-mode="drill" aria-pressed="true">Drill</button>
-              <button type="button" class="method-btn" data-session-mode="learn" aria-pressed="false">Learn</button>
-            </div>
-            <p class="training-badge" id="training-badge">Drill</p>
-            <h2 class="training-case-title" id="training-case-title">Case</h2>
             <div id="training-diagram"></div>
             <p class="training-setup-kicker">From a solved cube</p>
             <code class="alg training-setup" id="training-setup"></code>
@@ -92,6 +85,15 @@
           </aside>
 
           <div class="training-stage">
+            <div class="training-stage-head">
+              <button type="button" class="btn btn-ghost btn-small" id="training-back">Training</button>
+              <div class="training-mode" role="group" aria-label="Drill or learn">
+                <button type="button" class="method-btn" data-session-mode="drill" aria-pressed="true">Drill</button>
+                <button type="button" class="method-btn" data-session-mode="learn" aria-pressed="false">Learn</button>
+              </div>
+            </div>
+            <p class="training-badge" id="training-badge">Drill</p>
+            <h2 class="training-case-title" id="training-case-title">Case</h2>
             <div class="training-dots" id="training-dots" aria-hidden="true"></div>
             <p class="training-goal" id="training-goal"></p>
             <button type="button" class="practice-clock training-clock" id="training-clock" aria-label="Start timer">

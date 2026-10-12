@@ -220,7 +220,7 @@ export function renderPostSolveCard(summary, { pb = false, canReplay = false, pa
     ? `${timeLabel}, personal best. Tap to start the next solve.`
     : `${timeLabel}. Tap to start the next solve.`;
   const share = summary.stages?.length
-    ? `<div class="post-solve-share">${renderRing(summary.stages)}${renderLegend(summary.stages)}</div>
+    ? `<div class="post-solve-lesson"><div class="post-solve-share">${renderRing(summary.stages)}${renderLegend(summary.stages)}</div></div>
        <div class="post-solve-table-wrap">${renderTable(summary.stages)}</div>`
     : "";
   const replay = canReplay

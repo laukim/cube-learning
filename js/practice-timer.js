@@ -29,7 +29,7 @@ import {
   toggleSelectedId,
 } from "./pll-case-trainer.js?v=pllreveal2";
 import { faceletsForScramble, renderReconstruction } from "./cube-reconstruction.js?v=lllive1";
-import { postSolveSummary, previewSolveRecord, renderPostSolveCard } from "./post-solve.js?v=lllive1";
+import { postSolveSummary, previewSolveRecord, renderPostSolveCard } from "./post-solve.js?v=llcalm1";
 import {
   describeBottleneck,
   effortStages,
@@ -1014,6 +1014,7 @@ export function computeStats(records, now = Date.now()) {
     best: null,
     worst: null,
     trimmed: null,
+    single: null,
     last100: [],
     ...emptyWindowStats(),
     splits: null,
@@ -1029,6 +1030,7 @@ export function computeStats(records, now = Date.now()) {
     best: sorted[0],
     worst: sorted[sorted.length - 1],
     trimmed: times.length >= 3 ? mean(sorted.slice(1, -1)) : null,
+    single: times[times.length - 1],
     last100: times.slice(-LEVEL_WINDOW),
     ...computeWindowStats(times),
     splits: computeSplitStats(ordered),
@@ -1462,43 +1464,55 @@ export function renderTimesList(records) {
   return `${hint}<ol class="timer-times-list">${items}</ol>`;
 }
 
-export function renderStats(stats, previous = null, { splitShift = false, stages = true, goalMs = null, outlook = null, session = null } = {}) {
-  const crossNow = stageMean(stats.splits, "cross");
-  const f2lNow = stageMean(stats.splits, "f2l");
-  const finalNow = stageMean(stats.splits, "final");
-  const crossDelta = splitShift ? renderAvgDelta(averageShift(crossNow, stageMean(previous?.splits, "cross")), "Cross avg") : "";
-  const f2lDelta = splitShift ? renderAvgDelta(averageShift(f2lNow, stageMean(previous?.splits, "f2l")), "F2L avg") : "";
-  const finalDelta = splitShift ? renderAvgDelta(averageShift(finalNow, stageMean(previous?.splits, "final")), "Final avg") : "";
+const STAGE_BOARD = [
+  ["cross", "Cross", "timer-stat-cross"],
+  ["f2l", "F2L", "timer-stat-f2l"],
+  ["final", "Final", "timer-stat-final"],
+];
+
+/** Cross / F2L / Final as one quiet avg/best table, not a grid of cards. */
+function renderStageBoard(stats, previous, { splitShift = false } = {}) {
+  const body = STAGE_BOARD.map(([id, label, cls]) => {
+    const now = stageMean(stats.splits, id);
+    const best = stageBest(stats.splits, id);
+    const delta = splitShift
+      ? renderAvgDelta(averageShift(now, stageMean(previous?.splits, id)), `${label} avg`)
+      : "";
+    return `<tr class="timer-stat ${cls}" data-stage-row="${id}">
+      <th scope="row">${label}</th>
+      <td data-stage="avg">${dash(now)}${delta}</td>
+      <td data-stage="best">${dash(best)}</td>
+    </tr>`;
+  }).join("");
+  return `<table class="timer-averages timer-stage-board">
+    <caption>Stages</caption>
+    <thead>
+      <tr>
+        <th scope="col"></th>
+        <th scope="col">avg</th>
+        <th scope="col">best</th>
+      </tr>
+    </thead>
+    <tbody>${body}</tbody>
+  </table>`;
+}
+
+function renderSessionMeta(stats, previous, { stages = true } = {}) {
   const meanLabel = stages ? "All-time mean" : "Average";
   const meanDelta = renderAvgDelta(averageShift(stats.mean, previous?.mean), meanLabel);
-  const rows = [
-    ["Solves", String(stats.count || 0), "", ""],
-    [meanLabel, dash(stats.mean), "", meanDelta],
-    ["Best", dash(stats.best), "timer-stat-best", ""],
-    ["Worst", dash(stats.worst), "", ""],
-    // Two-column grid: each stage is one row, avg left and best right.
-    ...(stages
-      ? [
-          ["Cross avg", dash(crossNow), "timer-stat-cross", crossDelta],
-          ["Cross best", dash(stageBest(stats.splits, "cross")), "timer-stat-cross", ""],
-          ["F2L avg", dash(f2lNow), "timer-stat-f2l", f2lDelta],
-          ["F2L best", dash(stageBest(stats.splits, "f2l")), "timer-stat-f2l", ""],
-          ["Final avg", dash(finalNow), "timer-stat-final", finalDelta],
-          ["Final best", dash(stageBest(stats.splits, "final")), "timer-stat-final", ""],
-        ]
-      : []),
-    ["Trimmed", dash(stats.trimmed), "", ""],
-  ];
-  const cards = rows
-    .map(
-      ([label, value, extra, delta]) => `<div class="timer-stat${extra ? ` ${extra}` : ""}">
-        <span>${label}</span>
-        <strong>${value}${delta}</strong>
-      </div>`
-    )
-    .join("");
+  const count = Number(stats.count) || 0;
+  return `<p class="timer-session-meta">
+    <span>${count} ${count === 1 ? "solve" : "solves"}</span>
+    <span class="timer-session-mean"><span class="timer-session-mean-label">${meanLabel}</span> <strong>${dash(stats.mean)}${meanDelta}</strong></span>
+    <span>Worst <strong>${dash(stats.worst)}</strong></span>
+    <span>Trimmed <strong>${dash(stats.trimmed)}</strong></span>
+  </p>`;
+}
+
+export function renderStats(stats, previous = null, { splitShift = false, stages = true, goalMs = null, outlook = null, session = null } = {}) {
   const level = stages ? renderCoachingDetail({ stats, goalMs, outlook, session }) : "";
-  return `${level}${cards}${renderAverageTable(stats, previous, { splits: stages })}`;
+  const board = stages ? renderStageBoard(stats, previous, { splitShift }) : "";
+  return `${renderAverageTable(stats, previous, { splits: stages, stageBoard: board })}${renderSessionMeta(stats, previous, { stages })}${level}`;
 }
 
 const SPLIT_AVERAGE_COLUMNS = [...SPLIT_AVERAGE_WINDOWS.map((n) => `ao${n}`), "all"];
@@ -1569,15 +1583,17 @@ function renderPeriodAverageTable(periodMeans) {
   </div>`;
 }
 
-export function renderAverageTable(stats, previous = null, { splits = true } = {}) {
+export function renderAverageTable(stats, previous = null, { splits = true, stageBoard = "" } = {}) {
   const metrics = [
-    ...MEAN_WINDOWS.map((n) => [`mo${n}`, stats[`mo${n}`], stats[`bestMo${n}`]]),
-    ...AVERAGE_WINDOWS.map((n) => [`ao${n}`, stats[`ao${n}`], stats[`bestAo${n}`]]),
+    ["single", stats?.single ?? null, stats?.best ?? null, "timer-stat-best"],
+    ...MEAN_WINDOWS.map((n) => [`mo${n}`, stats[`mo${n}`], stats[`bestMo${n}`], ""]),
+    ...AVERAGE_WINDOWS.map((n) => [`ao${n}`, stats[`ao${n}`], stats[`bestAo${n}`], ""]),
   ];
   const body = metrics
-    .map(([label, current, best]) => {
-      const delta = renderAvgDelta(averageShift(current, previous?.[label]), label);
-      return `<tr>
+    .map(([label, current, best, extra]) => {
+      const delta = label === "single" ? "" : renderAvgDelta(averageShift(current, previous?.[label]), label);
+      const rowCls = extra ? ` class="timer-stat ${extra}"` : "";
+      return `<tr${rowCls}>
         <th scope="row" class="timer-avg-${label}">${label}</th>
         <td>${dash(current)}${delta}</td>
         <td>${dash(best)}</td>
@@ -1585,8 +1601,8 @@ export function renderAverageTable(stats, previous = null, { splits = true } = {
     })
     .join("");
   return `<div class="timer-averages-wrap">
-    <table class="timer-averages">
-      <caption>Averages</caption>
+    <table class="timer-averages timer-session-averages">
+      <caption>Session</caption>
       <thead>
         <tr>
           <th scope="col"></th>
@@ -1596,6 +1612,7 @@ export function renderAverageTable(stats, previous = null, { splits = true } = {
       </thead>
       <tbody>${body}</tbody>
     </table>
+    ${stageBoard}
     ${splits ? `<div class="timer-split-averages-scroll">${renderSplitAverageTable(stats?.splitAverages)}${renderPeriodAverageTable(stats?.periodMeans)}</div>` : ""}
   </div>`;
 }

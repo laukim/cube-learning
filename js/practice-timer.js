@@ -28,8 +28,8 @@ import {
   savePllSelection,
   toggleSelectedId,
 } from "./pll-case-trainer.js?v=pllreveal2";
-import { faceletsForScramble, renderReconstruction } from "./cube-reconstruction.js?v=postsolve1";
-import { postSolveSummary, previewSolveRecord, renderPostSolveCard } from "./post-solve.js?v=postsolve1";
+import { faceletsForScramble, renderReconstruction } from "./cube-reconstruction.js?v=lllive1";
+import { postSolveSummary, previewSolveRecord, renderPostSolveCard } from "./post-solve.js?v=lllive1";
 import {
   describeBottleneck,
   effortStages,
@@ -46,10 +46,10 @@ import {
   renderLevelChip,
   saveAo100Goal,
   splitsForDisplay,
-} from "./coaching-stats.js?v=p2coach1";
-import { cubeTimerDecision, cubeTimerGoalReached, formatMoveMeta, normalizeMoves } from "./move-log.js?v=postsolve1";
-import { formatSolvedAt, normalizeSplits, solveTimestamp, sortSolves } from "./solve-order.js?v=p1coach1";
-import { formatClock, splitStagesFromFacelets } from "./solve-timer.js?v=p1coach1";
+} from "./coaching-stats.js?v=lllive1";
+import { cubeTimerDecision, cubeTimerGoalReached, formatMoveMeta, normalizeMoves } from "./move-log.js?v=lllive1";
+import { formatSolvedAt, normalizeSplits, solveTimestamp, sortSolves } from "./solve-order.js?v=lllive1";
+import { formatClock, splitStagesFromFacelets } from "./solve-timer.js?v=lllive1";
 
 export const PRACTICE_TIMES_KEY = "cube-coach-practice-times";
 export const PRACTICE_INSPECT_KEY = "cube-coach-practice-inspect";
@@ -92,11 +92,85 @@ export const LAST_LAYER_STEPS = [
   { id: "pll", short: "PLL", title: "PLL" },
 ];
 
-export function displaySplitSteps(splits) {
-  if (Number.isFinite(Number(splits?.oll)) && Number.isFinite(Number(splits?.pll))) {
-    return [SPLIT_STEPS[0], SPLIT_STEPS[1], ...LAST_LAYER_STEPS];
+/** 2-look OLL and 2-look PLL. Shown once each look has its own duration. */
+export const LAYER_LOOK_STEPS = [
+  { id: "yellowCross", short: "Y-cross", title: "Yellow cross" },
+  { id: "ollLook", short: "OLL", title: "OLL" },
+  { id: "headlights", short: "Headlights", title: "Headlights" },
+  { id: "edges", short: "Edges", title: "Last edges" },
+];
+
+/** Live last-layer chips once F2L is marked on a smart-cube splits solve. */
+const CUBE_LAYER_STEPS = [
+  SPLIT_STEPS[0],
+  SPLIT_STEPS[1],
+  LAYER_LOOK_STEPS[0],
+  LAYER_LOOK_STEPS[1],
+  LAYER_LOOK_STEPS[2],
+  LAYER_LOOK_STEPS[3],
+];
+
+const LAYER_IDS = ["yellowCross", "oll", "headlights"];
+
+export function emptyLayerMarks() {
+  return { yellowCross: null, oll: null, headlights: null };
+}
+
+/** A stored timestamp. Null stays null — `Number(null)` is 0 and would lock the look at the start. */
+function finiteAt(value) {
+  if (value == null || value === "") return null;
+  const at = Number(value);
+  return Number.isFinite(at) ? at : null;
+}
+
+/** First-occurrence last-layer timestamps. A later mark cannot precede an earlier one. */
+export function copyLayerMarks(layer) {
+  const out = emptyLayerMarks();
+  if (!layer || typeof layer !== "object") return out;
+  let floor = 0;
+  for (const id of LAYER_IDS) {
+    const at = finiteAt(layer[id]);
+    if (at == null || at < floor) continue;
+    out[id] = at;
+    floor = at;
   }
-  return SPLIT_STEPS;
+  return out;
+}
+
+/**
+ * Add the 2nd-look durations when a parent stage was split.
+ * `oll` and `pll` stay the full stages. `ollLook` is yellow-face time after
+ * the yellow cross. `edges` is PLL after headlights.
+ */
+export function decorateLayerSplits(splits) {
+  if (!splits || typeof splits !== "object") return splits;
+  const out = { ...splits };
+  const oll = Number(out.oll);
+  const pll = Number(out.pll);
+  const yellowCross = Number(out.yellowCross);
+  const headlights = Number(out.headlights);
+  if (Number.isFinite(yellowCross) && Number.isFinite(oll) && yellowCross >= 0 && yellowCross <= oll) {
+    out.ollLook = Math.max(0, Math.round(oll - yellowCross));
+  }
+  if (Number.isFinite(headlights) && Number.isFinite(pll) && headlights >= 0 && headlights <= pll) {
+    out.edges = Math.max(0, Math.round(pll - headlights));
+  }
+  return out;
+}
+
+export function displaySplitSteps(splits) {
+  const shown = decorateLayerSplits(splits);
+  if (!(Number.isFinite(Number(shown?.oll)) && Number.isFinite(Number(shown?.pll)))) return SPLIT_STEPS;
+  const steps = [SPLIT_STEPS[0], SPLIT_STEPS[1]];
+  const yellowCross = Number(shown.yellowCross);
+  const ollLook = Number(shown.ollLook);
+  if (yellowCross > 0 && ollLook > 0) steps.push(LAYER_LOOK_STEPS[0], LAYER_LOOK_STEPS[1]);
+  else steps.push(LAST_LAYER_STEPS[0]);
+  const headlights = Number(shown.headlights);
+  const edges = Number(shown.edges);
+  if (headlights > 0 && edges > 0) steps.push(LAYER_LOOK_STEPS[2], LAYER_LOOK_STEPS[3]);
+  else steps.push(LAST_LAYER_STEPS[1]);
+  return steps;
 }
 
 function browserStore() {
@@ -214,23 +288,53 @@ function copyPairs(pairs) {
 }
 
 /**
- * Append Cross, F2L, and per-slot marks from one cube state.
- * The first time a stage or pair is complete wins. A later facelet — including
- * the solved cube — does not move that mark, and breaking the cross does not
- * either. Pairs count only while the white cross is intact, so a mid-insert
- * phantom slot is ignored.
+ * First time a last-layer look is true on an unsolved cube. Later looks that
+ * are also true on this same state share the timestamp. A look already marked
+ * stays put.
+ */
+function stampLayerMarks(layer, stages, at) {
+  const next = { ...layer };
+  let action = null;
+  let floor = at;
+  const flags = [
+    ["yellowCross", stages.yellowCross],
+    ["oll", stages.oll],
+    ["headlights", stages.headlights],
+  ];
+  for (const [id, on] of flags) {
+    if (next[id] != null) {
+      floor = Math.max(floor, next[id]);
+      continue;
+    }
+    if (!on) continue;
+    next[id] = Math.max(at, floor);
+    floor = next[id];
+    action = id;
+  }
+  return { layer: next, action };
+}
+
+/**
+ * Append Cross, F2L, per-slot, and last-layer marks from one cube state.
+ * The first time a stage, pair, or look is complete wins. A later facelet —
+ * including the solved cube — does not move that mark, and breaking the cross
+ * does not either. Pairs count only while the white cross is intact, so a
+ * mid-insert phantom slot is ignored. Yellow cross, OLL, and headlights are
+ * stamped only while that look is true and the cube is still unsolved.
  * Pass the state after every move. Facelet packets often arrive only on a
  * pause, and the next one can be the solved cube.
  */
-export function applyCubeSplitMarks({ mode, marks = [], pairs = [], elapsed = 0, facelets = "" } = {}) {
+export function applyCubeSplitMarks({ mode, marks = [], pairs = [], layer = null, elapsed = 0, facelets = "" } = {}) {
   const current = Array.isArray(marks) ? marks.slice(0, SPLIT_STEPS.length - 1) : [];
   const currentPairs = copyPairs(pairs);
-  if (mode !== TIMER_MODE_SPLITS) return { action: "none", marks: current, pairs: currentPairs };
+  const currentLayer = copyLayerMarks(layer);
+  if (mode !== TIMER_MODE_SPLITS) return { action: "none", marks: current, pairs: currentPairs, layer: currentLayer };
   const stages = splitStagesFromFacelets(facelets);
-  if (!stages.cross && !stages.f2l) return { action: "none", marks: current, pairs: currentPairs };
+  if (!stages.cross && !stages.f2l) return { action: "none", marks: current, pairs: currentPairs, layer: currentLayer };
   const at = Math.max(0, Number(elapsed) || 0);
   const next = current.slice();
   const nextPairs = currentPairs.slice();
+  let nextLayer = currentLayer;
   let action = "none";
   if (next.length === 0 && stages.cross) {
     next.push(at);
@@ -249,8 +353,13 @@ export function applyCubeSplitMarks({ mode, marks = [], pairs = [], elapsed = 0,
       if (action === "none") action = "pairs";
     }
   }
-  if (action === "none") return { action, marks: current, pairs: currentPairs };
-  return { action, marks: next, pairs: nextPairs };
+  if (next.length >= 2 && stages.f2l) {
+    const stamped = stampLayerMarks(nextLayer, stages, Math.max(at, Number(next[1]) || 0));
+    nextLayer = stamped.layer;
+    if (stamped.action && action === "none") action = stamped.action;
+  }
+  if (action === "none") return { action, marks: current, pairs: currentPairs, layer: currentLayer };
+  return { action, marks: next, pairs: nextPairs, layer: nextLayer };
 }
 
 /** 54-letter coach facelets after one move. Unchanged when the move cannot be applied. */
@@ -279,9 +388,17 @@ export function seedSplitFacelets(facelets, scramble) {
  * One observation. `move` advances `facelets`; a facelet packet passes no move
  * and replaces the shadow with that packet.
  */
-export function stepCubeSplit({ facelets = "", move = "", marks = [], pairs = [], elapsed = 0, mode = TIMER_MODE_SPLITS } = {}) {
+export function stepCubeSplit({
+  facelets = "",
+  move = "",
+  marks = [],
+  pairs = [],
+  layer = null,
+  elapsed = 0,
+  mode = TIMER_MODE_SPLITS,
+} = {}) {
   const next = move ? applyMoveLetters(facelets, move) : String(facelets || "");
-  const result = applyCubeSplitMarks({ mode, marks, pairs, elapsed, facelets: next });
+  const result = applyCubeSplitMarks({ mode, marks, pairs, layer, elapsed, facelets: next });
   return { ...result, facelets: next };
 }
 
@@ -294,21 +411,49 @@ export function foldCubeSplitEvents(events, { seed = "", mode = TIMER_MODE_SPLIT
   let facelets = String(seed || "");
   let marks = [];
   let pairs = [];
+  let layer = emptyLayerMarks();
   for (const event of events || []) {
     const stepped = event?.facelets
-      ? stepCubeSplit({ facelets: event.facelets, marks, pairs, elapsed: event.t, mode })
+      ? stepCubeSplit({ facelets: event.facelets, marks, pairs, layer, elapsed: event.t, mode })
       : event?.move
-        ? stepCubeSplit({ facelets, move: event.move, marks, pairs, elapsed: event.t, mode })
+        ? stepCubeSplit({ facelets, move: event.move, marks, pairs, layer, elapsed: event.t, mode })
         : null;
     if (!stepped) continue;
     facelets = stepped.facelets;
     marks = stepped.marks;
     pairs = stepped.pairs;
+    layer = stepped.layer;
   }
-  return { marks, pairs, facelets };
+  return { marks, pairs, layer, facelets };
 }
 
-export function liveSplitDurations(marks = [], elapsed = 0, { running = false, splits = null } = {}) {
+/**
+ * Cross / F2L / Final from the elapsed marks, plus OLL and PLL when the yellow
+ * face was seen while the cube was still unsolved. Yellow cross and headlights
+ * are the gaps inside those stages when each look was marked on its own.
+ */
+export function layerSplitsFromMarks(marks, layer, totalMs) {
+  const base = splitDurationsFromMarks(marks, totalMs);
+  if (!Array.isArray(marks) || marks.length < 2) return base;
+  const total = Math.max(0, Number(totalMs) || 0);
+  const f2lAt = base.cross + base.f2l;
+  const copied = copyLayerMarks(layer);
+  const ollAt = copied.oll;
+  if (ollAt == null || ollAt < f2lAt || ollAt >= total) return base;
+  const oll = Math.round(ollAt - f2lAt);
+  const pll = Math.round(total - f2lAt) - oll;
+  if (oll < 0 || pll <= 0) return base;
+  const out = { ...base, oll, pll };
+  if (copied.yellowCross != null && copied.yellowCross >= f2lAt && copied.yellowCross <= ollAt) {
+    out.yellowCross = Math.round(copied.yellowCross - f2lAt);
+  }
+  if (copied.headlights != null && copied.headlights >= ollAt && copied.headlights < total) {
+    out.headlights = Math.round(copied.headlights - ollAt);
+  }
+  return out;
+}
+
+export function liveSplitDurations(marks = [], elapsed = 0, { running = false, splits = null, layer = null } = {}) {
   if (splits) return { ...splits };
   const out = { cross: null, f2l: null, final: null };
   const crossMark = marks[0];
@@ -319,10 +464,41 @@ export function liveSplitDurations(marks = [], elapsed = 0, { running = false, s
   if (f2lMark != null) out.f2l = Math.max(0, f2lMark - (crossMark || 0));
   else if (running && crossMark != null) out.f2l = Math.max(0, elapsed - crossMark);
 
-  if (f2lMark != null && (running || elapsed >= f2lMark)) {
-    out.final = Math.max(0, elapsed - f2lMark);
+  const tracked = layer && f2lMark != null;
+  if (!tracked) {
+    if (f2lMark != null && (running || elapsed >= f2lMark)) out.final = Math.max(0, elapsed - f2lMark);
+    return out;
   }
+
+  const yellowAt = finiteAt(layer.yellowCross);
+  const ollAt = finiteAt(layer.oll);
+  const headsAt = finiteAt(layer.headlights);
+  if (yellowAt != null) out.yellowCross = Math.max(0, yellowAt - f2lMark);
+  else if (running) out.yellowCross = Math.max(0, elapsed - f2lMark);
+
+  if (ollAt != null) out.ollLook = Math.max(0, ollAt - (yellowAt != null ? yellowAt : ollAt));
+  else if (running && yellowAt != null) out.ollLook = Math.max(0, elapsed - yellowAt);
+
+  if (headsAt != null) out.headlights = Math.max(0, headsAt - (ollAt != null ? ollAt : headsAt));
+  else if (running && ollAt != null) out.headlights = Math.max(0, elapsed - ollAt);
+
+  if (headsAt != null && (running || elapsed >= headsAt)) out.edges = Math.max(0, elapsed - headsAt);
   return out;
+}
+
+function cubeLayerLiveIndex(marks, layer) {
+  if (marks[0] == null) return 0;
+  if (marks[1] == null) return 1;
+  if (layer?.yellowCross == null) return 2;
+  if (layer?.oll == null) return 3;
+  if (layer?.headlights == null) return 4;
+  return 5;
+}
+
+function splitChipClass(id) {
+  if (id === "ollLook") return "oll";
+  if (id === "edges") return "pll";
+  return id;
 }
 
 export function isSessionBest(ms, best) {
@@ -346,16 +522,26 @@ export function renderPairMarks(pairs) {
   return `<p class="timer-pair-marks"><span>Pairs</span> ${bits}</p>`;
 }
 
-export function renderLiveSplits({ marks = [], elapsed = 0, running = false, splits = null, bests = null, pairs = null } = {}) {
-  const durations = liveSplitDurations(marks, elapsed, { running, splits });
-  const liveIndex = running ? currentSplitIndex(marks) : -1;
-  const steps = displaySplitSteps(splits);
+export function renderLiveSplits({
+  marks = [],
+  elapsed = 0,
+  running = false,
+  splits = null,
+  bests = null,
+  pairs = null,
+  layer = null,
+} = {}) {
+  const shownSplits = splits ? decorateLayerSplits(splits) : null;
+  const durations = liveSplitDurations(marks, elapsed, { running, splits: shownSplits, layer });
+  const tracking = Boolean(layer) && marks.length >= 2 && !shownSplits;
+  const steps = shownSplits ? displaySplitSteps(shownSplits) : tracking ? CUBE_LAYER_STEPS : SPLIT_STEPS;
+  const liveIndex = running ? (tracking ? cubeLayerLiveIndex(marks, layer) : currentSplitIndex(marks)) : -1;
   const stages = steps.map((step, i) => {
     const ms = durations[step.id];
     const isLive = i === liveIndex;
     const shown = ms != null ? formatClock(ms) : "—";
     const isBest = !running && isSessionBest(ms, bests?.[step.id]);
-    const cls = [`split-${step.id}`, isLive ? "is-live" : "", !isLive && ms != null ? "is-done" : "", isBest ? "is-best" : ""]
+    const cls = [`split-${splitChipClass(step.id)}`, isLive ? "is-live" : "", !isLive && ms != null ? "is-done" : "", isBest ? "is-best" : ""]
       .filter(Boolean)
       .join(" ");
     return `<li class="${cls}"><span>${step.short}</span><strong>${shown}</strong></li>`;
@@ -1232,12 +1418,12 @@ export function renderTimesList(records) {
       const scramble = row.scramble
         ? `<code class="timer-time-scramble">${escapeHtml(row.scramble)}</code>`
         : "";
-      const shown = splitsForDisplay(row);
+      const shown = decorateLayerSplits(splitsForDisplay(row));
       const steps = displaySplitSteps(shown);
       const splits = shown
         ? `<div class="timer-time-splits">${steps.map((step) => {
             const bestCls = isSessionBest(shown[step.id], stageBests[step.id]) ? " is-best" : "";
-            return `<span class="split-${step.id}${bestCls}"><em>${step.short}</em> ${formatClock(shown[step.id])}</span>`;
+            return `<span class="split-${splitChipClass(step.id)}${bestCls}"><em>${step.short}</em> ${formatClock(shown[step.id])}</span>`;
           }).join("")}</div>${renderPairMarks(shown.pairs)}`
         : "";
       const moveMeta = formatMoveMeta(row.moves, row.ms);
@@ -1457,7 +1643,7 @@ function idleStatus(mode) {
   return "Space or tap to start · next scramble appears when you stop";
 }
 
-function runningStatus(mode, marks = [], { cubeSplits = false } = {}) {
+function runningStatus(mode, marks = [], { cubeSplits = false, layer = null } = {}) {
   if (mode === TIMER_MODE_PLL) return "Timing this case — space or tap to stop";
   if (mode === TIMER_MODE_CROSS) return "Timing the cross — space or tap to stop";
   if (mode !== TIMER_MODE_SPLITS) return "Timing — space or tap to stop";
@@ -1465,7 +1651,10 @@ function runningStatus(mode, marks = [], { cubeSplits = false } = {}) {
   if (cubeSplits) {
     if (next.id === "cross") return "Timing — Cross marks when the white cross is done · tap if it misses";
     if (next.id === "f2l") return "Timing — each pair marks as it goes in · F2L marks when the first two layers are done";
-    return "Timing — the cube stops when solved";
+    if (layer?.headlights != null) return "Timing — last edges, and the cube stops when solved";
+    if (layer?.oll != null) return "Timing — Headlights marks when the corners are done · the cube stops when solved";
+    if (layer?.yellowCross != null) return "Timing — OLL marks when the yellow face is done · the cube stops when solved";
+    return "Timing — yellow cross marks when it is up · the cube stops when solved";
   }
   if (next.id === "cross") return "Timing — space or tap when white cross is done";
   if (next.id === "f2l") return "Timing — space or tap when F2L is done";
@@ -1522,6 +1711,7 @@ export function initPracticeTimer({
     inspectTimer: 0,
     marks: [],
     pairMarks: [],
+    layerMarks: emptyLayerMarks(),
     shadowFacelets: "",
     lastTapElapsed: 0,
     lastSplits: null,
@@ -1580,7 +1770,10 @@ export function initPracticeTimer({
   }
 
   function statusWhileRunning() {
-    const running = runningStatus(state.mode, state.marks, { cubeSplits: cubeMarksSplits() });
+    const running = runningStatus(state.mode, state.marks, {
+      cubeSplits: cubeMarksSplits(),
+      layer: state.layerMarks,
+    });
     if (!cubeDrivesTimer() || cubeMarksSplits()) return running;
     if (crossOn()) return `${running} · the cube stops it when the white cross is done`;
     return `${running} · the cube stops it when solved`;
@@ -1597,7 +1790,7 @@ export function initPracticeTimer({
         ? "Cross set up — turn the cube to start. Space still works."
         : "Cube connected · apply the cross scramble to arm. Space or tap still starts.";
     }
-    const auto = state.mode === TIMER_MODE_SPLITS ? " Cross and F2L mark themselves." : "";
+    const auto = state.mode === TIMER_MODE_SPLITS ? " Cross and F2L mark themselves, then yellow cross, OLL, and PLL." : "";
     return state.cubeArmed
       ? `Scramble matched — turn the cube to start. Space still works.${auto}`
       : `Cube connected · apply the scramble to arm. Space or tap still starts.${auto}`;
@@ -1700,6 +1893,7 @@ export function initPracticeTimer({
     if (stepped.action === "none") return;
     state.marks = stepped.marks;
     state.pairMarks = stepped.pairs;
+    state.layerMarks = stepped.layer;
     setStatus(statusWhileRunning());
     paintSplits(elapsed);
   }
@@ -1714,6 +1908,7 @@ export function initPracticeTimer({
       move,
       marks: state.marks,
       pairs: state.pairMarks,
+      layer: state.layerMarks,
       elapsed,
       mode: state.mode,
     });
@@ -1770,6 +1965,7 @@ export function initPracticeTimer({
       running,
       splits: running || inspecting ? null : state.lastSplits,
       pairs: running ? state.pairMarks : inspecting ? [] : state.lastSplits?.pairs,
+      layer: running ? state.layerMarks : null,
       bests,
     });
   }
@@ -1852,6 +2048,7 @@ export function initPracticeTimer({
     scrambleEl?.classList.remove("is-held");
     state.marks = [];
     state.pairMarks = [];
+    state.layerMarks = emptyLayerMarks();
     state.shadowFacelets = "";
     state.lastTapElapsed = 0;
     state.lastSplits = null;
@@ -2006,6 +2203,7 @@ export function initPracticeTimer({
       facelets,
       marks: state.marks,
       pairs: state.pairMarks,
+      layer: state.layerMarks,
       elapsed,
       mode: state.mode,
     });
@@ -2315,6 +2513,7 @@ export function initPracticeTimer({
     state.startedAt = 0;
     state.marks = [];
     state.pairMarks = [];
+    state.layerMarks = emptyLayerMarks();
     state.shadowFacelets = "";
     state.lastTapElapsed = 0;
     state.lastSplits = null;
@@ -2345,6 +2544,7 @@ export function initPracticeTimer({
     state.startedAt = Date.now();
     state.marks = [];
     state.pairMarks = [];
+    state.layerMarks = emptyLayerMarks();
     state.shadowFacelets = seedSplitFacelets(state.latestFacelets, state.scramble);
     state.lastTapElapsed = 0;
     state.lastSplits = null;
@@ -2394,6 +2594,7 @@ export function initPracticeTimer({
         state.lastMs = ms;
         state.marks = [];
         state.pairMarks = [];
+        state.layerMarks = emptyLayerMarks();
         state.shadowFacelets = "";
         state.lastTapElapsed = 0;
         if (crossCase) {
@@ -2423,6 +2624,7 @@ export function initPracticeTimer({
         state.lastMs = ms;
         state.marks = [];
         state.pairMarks = [];
+        state.layerMarks = emptyLayerMarks();
         state.shadowFacelets = "";
         state.lastTapElapsed = 0;
         if (done) {
@@ -2449,11 +2651,11 @@ export function initPracticeTimer({
       }
       let splits =
         state.mode === TIMER_MODE_SPLITS && state.marks.length >= SPLIT_STEPS.length - 1
-          ? splitDurationsFromMarks(state.marks, ms)
+          ? layerSplitsFromMarks(state.marks, state.layerMarks, ms)
           : null;
       if (splits && state.pairMarks.length) splits.pairs = state.pairMarks.map((pair) => ({ id: pair.id, at: pair.at }));
       const moves = normalizeMoves(state.moves);
-      if (splits && moves) {
+      if (splits && moves && !Number.isFinite(Number(splits.oll))) {
         const layer = lastLayerSplit({ scramble: state.scramble, moves, splits, totalMs: ms });
         if (layer) splits = { ...splits, ...layer };
       }
@@ -2461,6 +2663,7 @@ export function initPracticeTimer({
       state.lastMs = ms;
       state.marks = [];
       state.pairMarks = [];
+      state.layerMarks = emptyLayerMarks();
       state.shadowFacelets = "";
       state.lastTapElapsed = 0;
       state.lastMoves = moves;
@@ -2479,8 +2682,9 @@ export function initPracticeTimer({
       renderRecords();
       paintReconstruction(moves, splits, ms);
       paintPostSolve();
-      const splitBits = splits
-        ? displaySplitSteps(splits).map((step) => `${step.short} ${formatClock(splits[step.id])}`).join(" · ")
+      const splitShown = splits ? decorateLayerSplits(splits) : null;
+      const splitBits = splitShown
+        ? displaySplitSteps(splitShown).map((step) => `${step.short} ${formatClock(splitShown[step.id])}`).join(" · ")
         : "";
       const moveMeta = formatMoveMeta(moves, ms);
       const moveBits = moveMeta ? ` ${moveMeta}.` : "";
@@ -2552,6 +2756,7 @@ export function initPracticeTimer({
     state.lastMs = 0;
     state.marks = [];
     state.pairMarks = [];
+    state.layerMarks = emptyLayerMarks();
     state.shadowFacelets = "";
     state.lastMoves = null;
     state.lastScramble = "";

@@ -1,19 +1,24 @@
-import { formatClock } from "./solve-timer.js?v=p1coach1";
-import { normalizeMoves, phaseSegments, solveMoveStats } from "./move-log.js?v=postsolve1";
+import { formatClock } from "./solve-timer.js?v=lllive1";
+import { normalizeMoves, phaseSegments, solveMoveStats } from "./move-log.js?v=lllive1";
 
 /**
  * Post-solve card for a smart-cube solve.
- * Cross / F2L / OLL / PLL when those marks exist. Final replaces OLL and PLL
- * when the last layer was not split. Pair rows are the gaps between pair marks.
+ * Cross / F2L / OLL / PLL when those marks exist. Yellow cross and headlights
+ * split OLL and PLL when those looks were marked as their own gaps. Final
+ * replaces OLL and PLL when the last layer was not split. Pair rows are the
+ * gaps between pair marks.
  * No fluency score — that number is not something this timer measures.
  */
 
-const STAGE_ORDER = ["cross", "f2l", "oll", "pll", "final"];
+const STAGE_ORDER = ["cross", "f2l", "yellow-cross", "oll", "headlights", "edges", "pll", "final"];
 
 const STAGE_META = {
   cross: { letter: "C", label: "Cross" },
   f2l: { letter: "F", label: "F2L" },
+  "yellow-cross": { letter: "Y", label: "Y-cross" },
   oll: { letter: "O", label: "OLL" },
+  headlights: { letter: "H", label: "Headlights" },
+  edges: { letter: "E", label: "Edges" },
   pll: { letter: "P", label: "PLL" },
   final: { letter: "Final", label: "Final" },
 };

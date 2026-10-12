@@ -154,24 +154,31 @@ export function currentSplitMs(t, now) {
 }
 
 /**
- * White cross, F2L, and a held OLL for one cube state.
- * Same predicates Guide uses: analyze() stepsDone[0], [1], and [3].
- * `oll` is the yellow face oriented while the cube is still unsolved — the
- * OLL/PLL boundary. A solved cube is not that boundary.
+ * White cross, F2L, and last-layer looks for one cube state.
+ * Same predicates Guide uses: analyze() stepsDone.
+ * `yellowCross` is look 1 of OLL (stepsDone[2]). `oll` is the yellow face,
+ * look 2 (stepsDone[3]). `headlights` is look 1 of PLL, corners done
+ * (stepsDone[4]). Each is true only while the cube is still unsolved — a
+ * solved packet is not that boundary. PLL done is `solved`.
  * `facelets` is a 54-letter URFDLB string (smart-cube / coach notation) or a colour array.
  */
 export function splitStagesFromFacelets(facelets) {
   const colors = faceletColors(facelets);
-  if (!colors) return { cross: false, f2l: false, oll: false, solved: false, pairs: [] };
+  if (!colors) {
+    return { cross: false, f2l: false, yellowCross: false, oll: false, headlights: false, solved: false, pairs: [] };
+  }
   const result = analyze(colors);
   const cross = Boolean(result.stepsDone?.[0]);
+  const solved = Boolean(result.solved);
   // Solved cubes skip the slot check inside analyze(); still list the four pairs.
   const pairs = cross ? stableSolvedSlotIds(colors) || [] : [];
   return {
     cross,
     f2l: Boolean(result.stepsDone?.[1]),
-    oll: Boolean(result.stepsDone?.[3]) && !result.solved,
-    solved: Boolean(result.solved),
+    yellowCross: Boolean(result.stepsDone?.[2]) && !solved,
+    oll: Boolean(result.stepsDone?.[3]) && !solved,
+    headlights: Boolean(result.stepsDone?.[4]) && !solved,
+    solved,
     pairs,
   };
 }

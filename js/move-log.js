@@ -399,11 +399,19 @@ function f2lPairGroups(pairs, start, end) {
   return groups;
 }
 
+function phaseSpan(segments, ids) {
+  const rows = segments.filter((segment) => ids.includes(segment.id));
+  if (!rows.length) return null;
+  return { start: rows[0].start, end: rows[rows.length - 1].end };
+}
+
 /**
  * Phases a reconstruction can color.
  * Cross, F2L, and Final come from the stored split marks. Pair names come only
  * from pair marks inside the F2L window. OLL and PLL are included only when
- * both were stored and they add up to Final. Anything not detected stays null.
+ * both were stored and they add up to Final. A stored yellow-cross or
+ * headlights duration splits that parent when it is a real gap inside it.
+ * Anything not detected stays null.
  */
 export function phaseSegments(splits) {
   const empty = { segments: null, cross: null, f2lPairs: null, oll: null, pll: null };
@@ -447,23 +455,43 @@ export function phaseSegments(splits) {
   const layer =
     Number.isFinite(oll) && Number.isFinite(pll) && oll >= 0 && pll > 0 && Math.abs(oll + pll - marks.final) <= 1;
   if (layer) {
+    const yellowCross = Number(splits.yellowCross);
+    const headlights = Number(splits.headlights);
+    const splitOll = Number.isFinite(yellowCross) && yellowCross > 0 && yellowCross < oll;
+    const splitPll = Number.isFinite(headlights) && headlights > 0 && headlights < pll;
+    let cursor = marks.f2lEnd;
+    if (splitOll) {
+      const yellowEnd = cursor + yellowCross;
+      pushSegment(segments, { id: "yellow-cross", label: "Y-cross", pair: false, start: cursor, end: yellowEnd });
+      cursor = yellowEnd;
+    }
     const ollEnd = marks.f2lEnd + oll;
-    pushSegment(segments, { id: "oll", label: "OLL", pair: false, start: marks.f2lEnd, end: ollEnd });
-    pushSegment(segments, { id: "pll", label: "PLL", pair: false, start: ollEnd, end: ollEnd + pll });
+    pushSegment(segments, { id: "oll", label: "OLL", pair: false, start: cursor, end: ollEnd });
+    cursor = ollEnd;
+    if (splitPll) {
+      const headsEnd = cursor + headlights;
+      pushSegment(segments, { id: "headlights", label: "Headlights", pair: false, start: cursor, end: headsEnd });
+      cursor = headsEnd;
+    }
+    pushSegment(segments, {
+      id: splitPll ? "edges" : "pll",
+      label: splitPll ? "Edges" : "PLL",
+      pair: false,
+      start: cursor,
+      end: ollEnd + pll,
+    });
   } else {
     pushSegment(segments, { id: "final", label: "Final", pair: false, start: marks.f2lEnd, end: marks.f2lEnd + marks.final });
   }
 
   if (!segments.length) return empty;
   const cross = segments.find((segment) => segment.id === "cross") || null;
-  const ollSeg = segments.find((segment) => segment.id === "oll") || null;
-  const pllSeg = segments.find((segment) => segment.id === "pll") || null;
   return {
     segments,
     cross: cross ? { start: cross.start, end: cross.end } : null,
     f2lPairs: f2lPairs.length ? f2lPairs : null,
-    oll: ollSeg ? { start: ollSeg.start, end: ollSeg.end } : null,
-    pll: pllSeg ? { start: pllSeg.start, end: pllSeg.end } : null,
+    oll: phaseSpan(segments, ["yellow-cross", "oll"]),
+    pll: phaseSpan(segments, ["headlights", "pll", "edges"]),
   };
 }
 

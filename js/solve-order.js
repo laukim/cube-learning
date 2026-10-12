@@ -58,6 +58,15 @@ function normalizeLastLayer(raw, final) {
   return { oll: ollMs, pll: pllMs };
 }
 
+/** A look inside OLL or PLL. Dropped when it falls outside that parent stage. */
+function normalizeLook(raw, key, max) {
+  const n = Number(raw?.[key]);
+  if (!Number.isFinite(n) || n < 0) return null;
+  const ms = Math.round(n);
+  if (ms > max) return null;
+  return ms;
+}
+
 export function normalizeSplits(raw) {
   if (!raw || typeof raw !== "object") return null;
   const cross = Number(raw.cross);
@@ -69,6 +78,10 @@ export function normalizeSplits(raw) {
   if (layer) {
     out.oll = layer.oll;
     out.pll = layer.pll;
+    const yellowCross = normalizeLook(raw, "yellowCross", layer.oll);
+    const headlights = normalizeLook(raw, "headlights", layer.pll);
+    if (yellowCross != null) out.yellowCross = yellowCross;
+    if (headlights != null) out.headlights = headlights;
   }
   const pairs = normalizePairs(raw.pairs);
   if (pairs.length) out.pairs = pairs;

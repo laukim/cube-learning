@@ -4,9 +4,9 @@
  * OLL vs PLL is stored only when the replay shows the boundary; otherwise Final stays whole.
  */
 import { applyMove, stringToFacelets } from "./cube.js?v=timer4";
-import { faceletsForScramble } from "./cube-reconstruction.js?v=p2coach1";
-import { normalizeMoves, RECOGNITION_PAUSE_MS } from "./move-log.js?v=p2coach1";
-import { formatClock, splitStagesFromFacelets } from "./solve-timer.js?v=p1coach1";
+import { faceletsForScramble } from "./cube-reconstruction.js?v=lllive1";
+import { normalizeMoves, RECOGNITION_PAUSE_MS } from "./move-log.js?v=lllive1";
+import { formatClock, splitStagesFromFacelets } from "./solve-timer.js?v=lllive1";
 
 export const AO100_GOAL_KEY = "cube-coach-ao100-goal";
 export const LEVEL_WINDOW = 100;

@@ -19,6 +19,8 @@ const {
 const { faceletsForScramble, renderReconstruction } = await import("../js/cube-reconstruction.js");
 const { postSolveSummary, previewSolveRecord, renderPostSolveCard } = await import("../js/post-solve.js");
 const { applyAlg, faceletsToString, solvedFacelets, stringToFacelets } = await import("../js/cube.js");
+const { invertAlg } = await import("../js/alg.js");
+const { PLL_T, PLL_U } = await import("../js/pll-trainer.js");
 const {
   CHROME_BLUETOOTH_MAC_FLAG,
   MAC_CONNECT_GUIDANCE,
@@ -162,6 +164,30 @@ assert(stagedHtml.includes("<details") && !stagedHtml.includes("<details open"),
 assert(stagedHtml.indexOf("timer-recon-strip") < stagedHtml.indexOf("timer-reconstruction-moves"), "the move string stays inside the expand panel");
 assert(worstHtml.includes("timer-recon-pause"), "recognition gaps are marked on the phase strip");
 assert(ollPause.includes(">OLL<") && ollPause.includes(">PLL<") && !ollPause.includes(">Final<"), "a detected last layer colors OLL and PLL instead of Final");
+const lookPause = renderReconstruction(twoPauses, {
+  cross: 4000,
+  f2l: 5000,
+  final: 6000,
+  oll: 2000,
+  pll: 4000,
+  yellowCross: 800,
+  headlights: 2500,
+});
+assert(
+  lookPause.includes(">Y-cross<") && lookPause.includes(">OLL<") && lookPause.includes(">Headlights<") && lookPause.includes(">Edges<") && !lookPause.includes(">PLL<"),
+  "yellow cross and headlights split OLL and PLL on the phase strip"
+);
+assert(lookPause.includes("Worst pause 7.00s in Headlights"), "a pause during corners is named Headlights");
+const lookHooks = reconstructionHooks(twoPauses, {
+  cross: 4000,
+  f2l: 5000,
+  final: 6000,
+  oll: 2000,
+  pll: 4000,
+  yellowCross: 800,
+  headlights: 2500,
+});
+assert(lookHooks.oll.end - lookHooks.oll.start === 2000 && lookHooks.pll.end - lookHooks.pll.start === 4000, "hooks still span the full OLL and PLL when the looks are split");
 const pairSplits = {
   cross: 4000,
   f2l: 8000,
@@ -216,6 +242,15 @@ const layerSummary = postSolveSummary({
 assert(
   layerSummary.stages.map((stage) => stage.letter).join(" ") === "C F O P",
   "OLL and PLL replace Final when both were stored"
+);
+const lookSummary = postSolveSummary({
+  moves: summaryMoves,
+  splits: { cross: 1000, f2l: 2000, final: 4000, oll: 1600, pll: 2400, yellowCross: 700, headlights: 900 },
+  totalMs: 7000,
+});
+assert(
+  lookSummary.stages.map((stage) => stage.letter).join(" ") === "C F Y O H E",
+  "yellow cross, OLL, headlights, and edges replace Final on the post-solve card"
 );
 assert(!layerSummary.pairs, "pair rows stay off when the solve has no pair marks");
 const preview = previewSolveRecord();
@@ -562,6 +597,13 @@ function lettersAfter(alg) {
   return faceletsToString(facelets);
 }
 
+const OLL_LINE = "F R U R' U' F'";
+const OLL_SUNE = "R U R' U R U2 R'";
+const f2lOnlyLetters = lettersAfter(invertAlg(`${OLL_LINE} ${OLL_SUNE} ${PLL_T.alg} ${PLL_U.alg}`));
+const yellowCrossLetters = lettersAfter(invertAlg(`${OLL_SUNE} ${PLL_T.alg} ${PLL_U.alg}`));
+const ollLetters = lettersAfter(invertAlg(`${PLL_T.alg} ${PLL_U.alg}`));
+const headlightsLetters = lettersAfter(invertAlg(PLL_U.alg));
+
 function element(id) {
   const listeners = {};
   const classes = new Set();
@@ -725,7 +767,7 @@ await (async function verifyConnectedSplitMarks() {
   assert(statusEl.textContent.includes("F2L marks when the first two layers are done"), "white cross records the Cross mark");
   assert(splitsEl.innerHTML.includes("is-done") && splitsEl.innerHTML.includes("4.12"), "the live Cross split shows the auto mark");
   now = autoStart + 22460;
-  timer.onCubeFacelets(lettersAfter("U"));
+  timer.onCubeFacelets(f2lOnlyLetters);
   assert(statusEl.textContent.includes("the cube stops when solved"), "F2L records the F2L mark");
   assert(splitsEl.innerHTML.includes("18.34"), "the live F2L split is the gap after Cross");
   now = autoStart + 30680;
@@ -755,7 +797,7 @@ await (async function verifyConnectedSplitMarks() {
   clock.click();
   assert(statusEl.textContent.includes("F2L marks when the first two layers are done"), "a tap still records Cross when auto detection has not");
   now = tapStart + 20000;
-  timer.onCubeFacelets(lettersAfter("U"));
+  timer.onCubeFacelets(f2lOnlyLetters);
   assert(statusEl.textContent.includes("the cube stops when solved"), "F2L still auto-marks after a manual Cross tap");
   now = tapStart + 28000;
   await stopFromSolvedCube();
@@ -781,6 +823,48 @@ await (async function verifyConnectedSplitMarks() {
     row.splits.cross === 4000 && row.splits.f2l === 18000 && row.splits.final === 8000,
     "a tap can mark F2L early and then stop"
   );
+
+  dealFromSolvedCube();
+  armScramble();
+  const lookStart = (now = 3_500_000_000_000);
+  timer.onCubeMove("R");
+  now = lookStart + 3000;
+  timer.onCubeFacelets(lettersAfter("R U R' U'"));
+  now = lookStart + 7000;
+  timer.onCubeFacelets(f2lOnlyLetters);
+  assert(statusEl.textContent.includes("yellow cross"), "after F2L the live stage is the yellow cross");
+  assert(splitsEl.innerHTML.includes(">Y-cross<") && splitsEl.innerHTML.includes("split-yellowCross is-live"), "the phase strip counts the yellow cross");
+  now = lookStart + 9000;
+  timer.onCubeFacelets(yellowCrossLetters);
+  assert(splitsEl.innerHTML.includes("split-yellowCross is-done") && statusEl.textContent.includes("OLL marks when the yellow face is done"), "yellow cross locks and OLL is live");
+  now = lookStart + 12000;
+  timer.onCubeFacelets(ollLetters);
+  assert(splitsEl.innerHTML.includes("split-oll is-done") && statusEl.textContent.includes("Headlights"), "OLL locks and headlights is live");
+  now = lookStart + 15000;
+  timer.onCubeFacelets(headlightsLetters);
+  assert(splitsEl.innerHTML.includes("split-headlights is-done") && statusEl.textContent.includes("last edges"), "headlights locks and the last edges are live");
+  now = lookStart + 18000;
+  await stopFromSolvedCube();
+  row = latestSolve();
+  assert(
+    row.splits.cross === 3000 &&
+      row.splits.f2l === 4000 &&
+      row.splits.final === 11000 &&
+      row.splits.yellowCross === 2000 &&
+      row.splits.oll === 5000 &&
+      row.splits.headlights === 3000 &&
+      row.splits.pll === 6000,
+    "a running splits solve stores yellow cross, OLL, headlights, and PLL"
+  );
+  assert(
+    statusEl.textContent.includes("Y-cross 2.00") &&
+      statusEl.textContent.includes("OLL 3.00") &&
+      statusEl.textContent.includes("Headlights 3.00") &&
+      statusEl.textContent.includes("Edges 3.00"),
+    "the stopped solve reads the last-layer looks back"
+  );
+  assert(nodes["post-solve"].innerHTML.includes(">Y<") && nodes["post-solve"].innerHTML.includes(">H<") && nodes["post-solve"].innerHTML.includes(">E<"), "the post-solve card shows yellow cross, headlights, and edges");
+  assert(!nodes["post-solve"].innerHTML.includes(">Final<"), "Final stays off the card once the last layer was split");
 
   timer.setCubeConnected(false);
   now = 4_000_000_000_000;

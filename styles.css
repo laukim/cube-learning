@@ -2351,32 +2351,50 @@ body.timer-page .topbar {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
-  gap: clamp(1rem, 3vw, 2rem);
-  padding: 0.75rem clamp(1rem, 3vw, 2rem) 1.5rem;
-  max-width: 1100px;
+  grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.72fr);
+  gap: clamp(1.75rem, 4vw, 3.25rem);
+  padding: 0.35rem clamp(1.15rem, 3vw, 2.25rem) 2rem;
+  max-width: 1120px;
   margin: 0 auto;
   width: 100%;
   flex: 1;
+  align-items: start;
 }
 
 .timer-stage,
 .timer-side {
-  border: 1px solid var(--line);
-  border-radius: calc(var(--radius) + 6px);
-  background: linear-gradient(165deg, rgba(18, 28, 24, 0.92), rgba(11, 18, 16, 0.75));
-  box-shadow: var(--shadow);
-  padding: 1.15rem 1rem 1.25rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0.85rem 0.15rem 1.25rem;
 }
 
 .timer-stage {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
+  justify-content: flex-start;
+  gap: 1.15rem;
   text-align: center;
-  min-height: 28rem;
+  min-height: 0;
+}
+
+.timer-stage-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem 0.85rem;
+  width: min(100%, 42rem);
+}
+
+.timer-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  width: min(100%, 42rem);
 }
 
 .timer-stage:has(#cube-connect-3d:not([hidden])) {
@@ -2388,6 +2406,8 @@ body.timer-page .topbar {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  padding-left: clamp(1.15rem, 2vw, 1.75rem);
+  border-left: 1px solid var(--line);
 }
 
 .practice-scramble-kicker {
@@ -2402,17 +2422,17 @@ body.timer-page .topbar {
 .practice-scramble {
   appearance: none;
   display: block;
-  max-width: 36rem;
+  max-width: 40rem;
   width: 100%;
   margin: 0;
-  padding: 0.75rem 1rem;
-  border-radius: 14px;
-  border: 1px solid var(--line);
-  background: rgba(8, 14, 12, 0.55);
+  padding: 0.1rem 0.4rem 0.2rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   color: var(--ink);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: clamp(0.82rem, 1.7vw, 1.05rem);
-  line-height: 1.5;
+  font-size: clamp(0.98rem, 1.9vw, 1.22rem);
+  line-height: 1.55;
   white-space: normal;
   overflow-wrap: break-word;
   text-align: center;
@@ -2422,14 +2442,41 @@ body.timer-page .topbar {
 
 .practice-scramble:hover,
 .practice-scramble:focus-visible {
-  border-color: rgba(109, 255, 176, 0.45);
+  color: var(--accent);
   outline: none;
 }
 
 .practice-scramble.is-rerun {
-  border-color: rgba(255, 200, 87, 0.72);
-  box-shadow: 0 0 0 1px rgba(255, 200, 87, 0.28);
   color: var(--warn);
+}
+
+.practice-scramble-paste {
+  width: min(100%, 36rem);
+}
+
+.practice-scramble-paste summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  list-style: none;
+}
+
+.practice-scramble-paste summary::-webkit-details-marker {
+  display: none;
+}
+
+.practice-scramble-paste summary:focus-visible {
+  outline: 2px solid rgba(109, 255, 176, 0.45);
+  outline-offset: 2px;
+}
+
+.practice-scramble-paste[open] summary {
+  margin-bottom: 0.4rem;
+}
+
+.practice-scramble-paste:has(#practice-scramble-load[hidden]) {
+  display: none;
 }
 
 .practice-scramble-kicker.is-rerun {
@@ -2471,43 +2518,43 @@ body.timer-page .topbar {
 
 .practice-clock {
   appearance: none;
-  border: 1px solid var(--line);
-  background: rgba(8, 14, 12, 0.65);
+  border: 0;
+  background: transparent;
   color: inherit;
-  border-radius: 22px;
-  width: min(100%, 28rem);
-  min-height: 7.5rem;
+  border-radius: 0;
+  width: auto;
+  max-width: 100%;
+  min-height: 0;
   cursor: pointer;
-  padding: 1.1rem 1.25rem;
+  padding: 0.35rem 0.4rem 0.15rem;
   touch-action: manipulation;
 }
 
 .practice-clock:hover,
 .practice-clock:focus-visible {
-  border-color: rgba(109, 255, 176, 0.45);
   outline: none;
 }
 
+.practice-clock:focus-visible {
+  outline: 2px solid rgba(109, 255, 176, 0.45);
+  outline-offset: 6px;
+}
+
 .practice-clock[data-phase="inspecting"] {
-  border-color: rgba(255, 200, 87, 0.55);
   color: var(--warn);
 }
 
 .practice-clock[data-phase="running"] {
-  border-color: rgba(109, 255, 176, 0.55);
   color: var(--accent);
 }
 
 .practice-clock.is-best {
-  border-color: color-mix(in srgb, var(--warn) 72%, transparent);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--warn) 28%, transparent),
-    0 16px 36px color-mix(in srgb, var(--warn) 16%, transparent);
+  color: var(--warn);
 }
 
 .practice-clock.is-best:hover,
 .practice-clock.is-best:focus-visible {
-  border-color: color-mix(in srgb, var(--warn) 88%, transparent);
+  color: var(--warn);
 }
 
 .practice-clock.is-best .practice-clock-value {
@@ -2528,10 +2575,10 @@ body.timer-page .topbar {
 
 .practice-clock-value {
   font-family: var(--font-display);
-  font-size: clamp(2.8rem, 7vw, 4.6rem);
+  font-size: clamp(4.6rem, 8vw, 6.8rem);
   font-weight: 800;
-  letter-spacing: 0.04em;
-  line-height: 1;
+  letter-spacing: 0.02em;
+  line-height: 0.95;
   font-variant-numeric: tabular-nums;
 }
 
@@ -2555,9 +2602,10 @@ body.timer-page .topbar {
 }
 
 .practice-status {
-  margin: 0;
+  margin: 0.2rem 0 0;
+  max-width: 36rem;
   color: var(--muted);
-  font-size: 0.95rem;
+  font-size: 0.88rem;
 }
 
 .post-solve {
@@ -2570,14 +2618,14 @@ body.timer-page .topbar {
 }
 
 .post-solve-card {
-  border: 1px solid var(--line);
-  border-radius: 22px;
-  background: rgba(8, 14, 12, 0.65);
-  padding: 0.35rem 1rem 1rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
 }
 
 .post-solve-card.is-pb {
-  border-color: color-mix(in srgb, var(--warn) 55%, var(--line));
+  border: 0;
 }
 
 .post-solve-time {
@@ -2606,10 +2654,10 @@ body.timer-page .topbar {
 
 .post-solve-time-value {
   font-family: var(--font-display);
-  font-size: clamp(2.8rem, 7vw, 4.6rem);
+  font-size: clamp(4.6rem, 8vw, 6.8rem);
   font-weight: 800;
-  letter-spacing: 0.04em;
-  line-height: 1;
+  letter-spacing: 0.02em;
+  line-height: 0.95;
   font-variant-numeric: tabular-nums;
 }
 
@@ -2648,16 +2696,24 @@ body.timer-page .topbar {
   color: var(--ink);
 }
 
+.post-solve-lesson {
+  width: 100%;
+  margin-top: 0.35rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
 .post-solve-share {
   display: grid;
-  grid-template-columns: 7.5rem minmax(0, 1fr);
-  gap: 0.85rem 1rem;
+  grid-template-columns: 6.4rem minmax(0, 1fr);
+  gap: 0.75rem 1rem;
   align-items: center;
 }
 
 .post-solve-ring {
-  width: 7.5rem;
-  height: 7.5rem;
+  width: 6.4rem;
+  height: 6.4rem;
   justify-self: center;
 }
 
@@ -2751,7 +2807,7 @@ body.timer-page .topbar {
 }
 
 .post-solve-table-wrap {
-  margin-top: 0.85rem;
+  margin-top: 0.55rem;
   overflow-x: auto;
 }
 
@@ -2835,7 +2891,7 @@ body.timer-page .topbar {
 
 @media (max-width: 520px) {
   .post-solve-card {
-    padding: 0.2rem 0.75rem 0.85rem;
+    padding: 0;
   }
 
   .post-solve-share {
@@ -2917,10 +2973,14 @@ body.timer-page .topbar {
 
 .coach-focus {
   display: flex;
-  flex-direction: column;
-  gap: 0.12rem;
-  width: min(100%, 28rem);
-  margin: 0;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.15rem 0.85rem;
+  width: min(100%, 36rem);
+  margin: 0.15rem 0 0;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--line);
 }
 
 .coach-bottleneck,
@@ -2943,12 +3003,12 @@ body.timer-page .topbar {
   flex-wrap: wrap;
   justify-content: center;
   align-items: center;
-  gap: 0.2rem;
+  gap: 0.1rem 0.15rem;
   max-width: 100%;
-  padding: 0.2rem;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgba(8, 14, 12, 0.55);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .timer-mode-btn {
@@ -2958,16 +3018,18 @@ body.timer-page .topbar {
   color: var(--muted);
   font: inherit;
   font-weight: 600;
-  font-size: 0.82rem;
-  letter-spacing: 0.03em;
-  padding: 0.35rem 0.85rem;
-  border-radius: 999px;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  padding: 0.28rem 0.55rem;
+  border-radius: 0;
   cursor: pointer;
+  box-shadow: inset 0 -1px 0 transparent;
 }
 
 .timer-mode-btn.is-active {
-  background: var(--accent-dim);
-  color: var(--accent);
+  background: transparent;
+  color: var(--ink);
+  box-shadow: inset 0 -1px 0 var(--accent);
 }
 
 .timer-mode-btn:disabled {
@@ -2987,7 +3049,7 @@ body.timer-cross .timer-stage {
 
 .practice-scramble.is-static:hover,
 .practice-scramble.is-static:focus-visible {
-  border-color: var(--line);
+  color: var(--ink);
 }
 
 .cross-drill {
@@ -3397,9 +3459,33 @@ body.timer-cross .timer-stage {
 
 .cube-connect-title {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  letter-spacing: 0.02em;
+  font-family: var(--font-body);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.cube-connect-help {
+  margin-top: 0.45rem;
+}
+
+.cube-connect-help summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.cube-connect-help summary:focus-visible {
+  outline: 2px solid rgba(109, 255, 176, 0.45);
+  outline-offset: 2px;
+}
+
+.cube-connect-help:not([open]) > :not(summary),
+.practice-scramble-paste:not([open]) > :not(summary) {
+  display: none;
 }
 
 .cube-connect-status,
@@ -3807,8 +3893,8 @@ body.timer-cross .timer-stage {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.45rem 0.75rem;
-  margin-bottom: 0.85rem;
-  min-height: 2.4rem;
+  margin-bottom: 0.55rem;
+  min-height: 0;
 }
 
 .timer-account-status {
@@ -3835,8 +3921,9 @@ body.timer-cross .timer-stage {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.65rem 0.85rem;
+  gap: 0.45rem 0.75rem;
   margin-bottom: 0.85rem;
+  color: var(--muted);
 }
 
 .timer-toolbar .btn {
@@ -3865,22 +3952,37 @@ body.timer-cross .timer-stage {
 }
 
 .timer-stats {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.45rem;
-  margin-bottom: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-bottom: 0.35rem;
   min-width: 0;
 }
 
+.timer-session-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.05rem;
+  margin: 0.15rem 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-session-meta strong {
+  color: var(--ink);
+  font-weight: 650;
+}
+
 .coach-detail {
-  grid-column: 1 / -1;
   display: flex;
   flex-direction: column;
   gap: 0.45rem;
-  padding: 0.6rem 0.7rem;
-  border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--timer-ao100) 45%, var(--line));
-  background: color-mix(in srgb, var(--timer-ao100) 8%, transparent);
+  padding: 0.85rem 0 0;
+  border-radius: 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: transparent;
 }
 
 .coach-detail-levels {
@@ -4020,6 +4122,16 @@ body.timer-cross .timer-stage {
   color: var(--muted);
 }
 
+tr.timer-stat {
+  display: table-row;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: inherit;
+  color: inherit;
+}
+
 .timer-stat strong {
   color: var(--ink);
   font-variant-numeric: tabular-nums;
@@ -4048,6 +4160,34 @@ body.timer-cross .timer-stage {
 .timer-stat-best {
   border-color: color-mix(in srgb, var(--warn) 45%, var(--line));
   background: color-mix(in srgb, var(--warn) 10%, transparent);
+}
+
+tr.timer-stat-best,
+tr.timer-stat-cross,
+tr.timer-stat-f2l,
+tr.timer-stat-final {
+  border: 0;
+  background: transparent;
+}
+
+.timer-session-averages .timer-stat-best th {
+  color: var(--warn);
+}
+
+.timer-stage-board .timer-stat-cross th {
+  color: var(--timer-cross);
+}
+
+.timer-stage-board .timer-stat-f2l th {
+  color: var(--timer-f2l);
+}
+
+.timer-stage-board .timer-stat-final th {
+  color: var(--timer-final);
+}
+
+.timer-stage-board {
+  margin-top: 1.15rem;
 }
 
 .timer-stat-best strong {
@@ -4082,13 +4222,12 @@ body.timer-cross .timer-stage {
 }
 
 .timer-averages-wrap {
-  grid-column: 1 / -1;
   min-width: 0;
   max-width: 100%;
-  padding: 0.55rem 0.65rem 0.4rem;
-  border-radius: 10px;
-  border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.02);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .timer-split-averages-scroll {
@@ -4212,6 +4351,24 @@ body.timer-cross .timer-stage {
   text-align: left;
   font-weight: 600;
   color: var(--ink);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.timer-session-averages .timer-stat-best th {
+  color: var(--warn);
+}
+
+.timer-stage-board .timer-stat-cross th {
+  color: var(--timer-cross);
+}
+
+.timer-stage-board .timer-stat-f2l th {
+  color: var(--timer-f2l);
+}
+
+.timer-stage-board .timer-stat-final th {
+  color: var(--timer-final);
 }
 
 .timer-averages td {
@@ -4255,11 +4412,12 @@ body.timer-cross .timer-stage {
 }
 
 .timer-chart {
-  margin: 0 0 1rem;
-  padding: 0.65rem 0.45rem 0.4rem;
-  border-radius: 14px;
-  border: 1px solid var(--line);
-  background: rgba(8, 14, 12, 0.4);
+  margin: 0.35rem 0 1rem;
+  padding: 0.7rem 0 0.2rem;
+  border-radius: 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: transparent;
 }
 
 .timer-chart-frame {
@@ -4577,12 +4735,12 @@ body.timer-cross .timer-stage {
 
 .timer-times-empty {
   margin: 0;
-  padding: 1.2rem 0.6rem;
-  text-align: center;
+  padding: 0.35rem 0 0.6rem;
+  text-align: left;
   color: var(--muted);
-  font-size: 0.9rem;
-  border: 1px dashed var(--line);
-  border-radius: 12px;
+  font-size: 0.88rem;
+  border: 0;
+  border-radius: 0;
 }
 
 .timer-times-list {
@@ -4769,7 +4927,11 @@ body.timer-cross .timer-stage {
 }
 
 .timer-split-stats {
-  margin: 0 0 0.9rem;
+  margin: 0.35rem 0 0.7rem;
+}
+
+.timer-split-stats .timer-times-title {
+  font-size: 0.72rem;
 }
 
 .timer-split-stats:empty {
@@ -4802,7 +4964,7 @@ body.timer-cross .timer-stage {
 
 .timer-split-avg-track {
   grid-area: track;
-  height: 0.45rem;
+  height: 0.22rem;
   border-radius: 99px;
   background: rgba(232, 242, 236, 0.08);
   overflow: hidden;
@@ -4894,11 +5056,29 @@ body.timer-cross .timer-stage {
 
   .timer-page-main {
     grid-template-columns: 1fr;
-    padding: 0.45rem 0.7rem 1.25rem;
+    padding: 0.35rem 0.85rem 1.5rem;
+    gap: 0;
   }
 
   .timer-stage {
-    min-height: 22rem;
+    min-height: calc(100svh - 6.5rem);
+    justify-content: flex-start;
+    padding: 7vh 0.2rem 2.75rem;
+  }
+
+  .timer-side {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    padding: 1.35rem 0.1rem 0.5rem;
+  }
+
+  .timer-times-list {
+    max-height: 9.5rem;
+  }
+
+  .practice-clock-value,
+  .post-solve-time-value {
+    font-size: clamp(3.5rem, 16vw, 5.4rem);
   }
 
   .cube-mirror-scene {
@@ -4906,11 +5086,14 @@ body.timer-cross .timer-stage {
   }
 
   .timer-stage:has(#cube-connect-3d:not([hidden])) {
+    min-height: 0;
     justify-content: flex-start;
+    padding-top: 0.5rem;
+    padding-bottom: 1.25rem;
   }
 
   .practice-clock {
-    min-height: 6.2rem;
+    min-height: 0;
   }
 
   .timer-mode-btn {

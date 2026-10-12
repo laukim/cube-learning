@@ -13,7 +13,7 @@
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=lllive1" />
+    <link rel="stylesheet" href="styles.css?v=llcalm1" />
   </head>
   <body class="timer-page">
     <div class="ambient" aria-hidden="true"></div>
@@ -31,38 +31,45 @@
 
     <main class="timer-page-main">
       <section class="timer-stage" aria-label="Scramble and timer">
+        <div class="timer-stage-bar">
+          <div class="timer-mode" role="group" aria-label="Timer mode">
+            <button type="button" class="timer-mode-btn is-active" data-timer-mode="single" aria-pressed="true">
+              Single
+            </button>
+            <button type="button" class="timer-mode-btn" data-timer-mode="cross" aria-pressed="false">
+              Cross drill
+            </button>
+            <button type="button" class="timer-mode-btn" data-timer-mode="splits" aria-pressed="false">
+              Cross · F2L · Final
+            </button>
+            <button type="button" class="timer-mode-btn" data-timer-mode="pll" aria-pressed="false">
+              PLL cases
+            </button>
+          </div>
+          <p class="coach-level" id="coach-level" hidden></p>
+        </div>
+        <div class="timer-hero">
         <p class="practice-scramble-kicker" id="practice-scramble-kicker">Scramble</p>
         <button type="button" class="practice-scramble" id="practice-scramble" title="Tap for a new scramble" aria-label="Current scramble. Tap for a new scramble.">
           —
         </button>
-        <form class="practice-scramble-load" id="practice-scramble-load">
-          <input
-            id="practice-scramble-input"
-            class="practice-scramble-input"
-            type="text"
-            inputmode="text"
-            autocomplete="off"
-            autocapitalize="characters"
-            spellcheck="false"
-            placeholder="Paste a scramble"
-            aria-label="Scramble to load"
-          />
-          <button type="submit" class="btn btn-ghost btn-small">Load</button>
-        </form>
-        <div class="timer-mode" role="group" aria-label="Timer mode">
-          <button type="button" class="timer-mode-btn is-active" data-timer-mode="single" aria-pressed="true">
-            Single
-          </button>
-          <button type="button" class="timer-mode-btn" data-timer-mode="cross" aria-pressed="false">
-            Cross drill
-          </button>
-          <button type="button" class="timer-mode-btn" data-timer-mode="splits" aria-pressed="false">
-            Cross · F2L · Final
-          </button>
-          <button type="button" class="timer-mode-btn" data-timer-mode="pll" aria-pressed="false">
-            PLL cases
-          </button>
-        </div>
+        <details class="practice-scramble-paste">
+          <summary>Paste a scramble</summary>
+          <form class="practice-scramble-load" id="practice-scramble-load">
+            <input
+              id="practice-scramble-input"
+              class="practice-scramble-input"
+              type="text"
+              inputmode="text"
+              autocomplete="off"
+              autocapitalize="characters"
+              spellcheck="false"
+              placeholder="Paste a scramble"
+              aria-label="Scramble to load"
+            />
+            <button type="submit" class="btn btn-ghost btn-small">Load</button>
+          </form>
+        </details>
         <div class="cross-drill" id="cross-drill" hidden>
           <p class="cross-drill-hold">White on bottom, blue in front</p>
           <div class="cross-drill-actions">
@@ -84,15 +91,15 @@
           </div>
         </div>
         <div class="pll-trainer-case" id="pll-trainer-case" hidden></div>
-        <p class="coach-level" id="coach-level" hidden></p>
         <button type="button" class="practice-clock" id="practice-clock" data-phase="idle" aria-label="Start timer">
           <span class="practice-clock-value" id="practice-clock-value">0.00</span>
         </button>
         <div class="post-solve" id="post-solve" hidden></div>
         <ol class="practice-splits" id="practice-splits" hidden></ol>
+        <p class="practice-status" id="practice-status">Space or tap to start · next scramble appears when you stop</p>
         <div class="coach-focus" id="coach-focus" hidden></div>
         <p class="coach-session" id="coach-session" hidden></p>
-        <p class="practice-status" id="practice-status">Space or tap to start · next scramble appears when you stop</p>
+        </div>
         <div class="practice-reconstruction" id="practice-reconstruction" hidden></div>
         <div class="cube-mirror-slot" id="cube-connect-3d" hidden>
           <p class="cube-mirror-kicker">Live cube</p>
@@ -139,12 +146,15 @@
           </form>
           <p class="cube-connect-meta" id="cube-connect-meta" hidden></p>
           <p class="cube-connect-feed" id="cube-connect-feed" hidden></p>
-          <p class="cube-connect-note">
-            Chrome on a Mac. GAN i4 and GAN12 ui Maglev — names starting with GAN, MG, or AiCube. No CubeStation app.
-            Gen2, Gen3, and Gen4 need the cube's Bluetooth MAC. If Connect cannot read it, enable
-            <span class="cube-connect-code">chrome://flags/#enable-web-bluetooth-new-permissions-backend</span>
-            or enter the address when asked.
-          </p>
+          <details class="cube-connect-help">
+            <summary>Connection help</summary>
+            <p class="cube-connect-note">
+              Chrome on a Mac. GAN i4 and GAN12 ui Maglev — names starting with GAN, MG, or AiCube. No CubeStation app.
+              Gen2, Gen3, and Gen4 need the cube's Bluetooth MAC. If Connect cannot read it, enable
+              <span class="cube-connect-code">chrome://flags/#enable-web-bluetooth-new-permissions-backend</span>
+              or enter the address when asked.
+            </p>
+          </details>
         </section>
         <div class="timer-account" id="timer-account">
           <div id="timer-google-slot">
@@ -222,7 +232,7 @@
     </footer>
 
     <script src="vendor/cubejs.js?v=cube3d2"></script>
-    <script type="module" src="js/timer-page.js?v=lllive1"></script>
+    <script type="module" src="js/timer-page.js?v=llcalm1"></script>
     <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "fd680e4c7f304be681f2fca80e8000e2"}'></script><!-- End Cloudflare Web Analytics -->
   </body>
 </html>

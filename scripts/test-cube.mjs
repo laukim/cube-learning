@@ -1299,6 +1299,8 @@ const {
   applyCubeSplitMarks,
   applySplitTap,
   foldCubeSplitEvents,
+  layerSplitsFromMarks,
+  stepCubeSplit,
   AVERAGE_WINDOWS,
   averageOf,
   averageTrimCount,
@@ -1478,6 +1480,7 @@ const f2lLetters = lettersAfter("U");
 const scrambledLetters = lettersAfter("F2");
 const solvedStages = splitStagesFromFacelets(solvedLetters);
 assert(solvedStages.cross && solvedStages.f2l && solvedStages.solved, "a solved cube has cross, F2L, and the solve");
+assert(!solvedStages.yellowCross && !solvedStages.oll && !solvedStages.headlights, "a solved cube is not a yellow-cross, OLL, or headlights boundary");
 const crossOnlyStages = splitStagesFromFacelets(crossOnlyLetters);
 assert(crossOnlyStages.cross && !crossOnlyStages.f2l && !crossOnlyStages.solved, "cross can be done with F2L still open");
 const f2lStages = splitStagesFromFacelets(f2lLetters);
@@ -1528,6 +1531,93 @@ const tappedCross = applyCubeSplitMarks({
 assert(tappedCross.action === "f2l" && tappedCross.marks[0] === 3000 && tappedCross.marks[1] === 22460, "a manual cross tap stays and F2L still auto-marks");
 const singleAuto = applyCubeSplitMarks({ mode: TIMER_MODE_SINGLE, marks: [], elapsed: 4120, facelets: crossOnlyLetters });
 assert(singleAuto.action === "none" && singleAuto.marks.length === 0, "single mode does not auto-mark stages");
+assert(singleAuto.layer.yellowCross == null && singleAuto.layer.oll == null && singleAuto.layer.headlights == null, "single mode does not mark OLL or PLL");
+
+const OLL_LINE = "F R U R' U' F'";
+const OLL_SUNE = "R U R' U R U2 R'";
+const lastLayerSolve = `${OLL_LINE} ${OLL_SUNE} ${PLL_T.alg} ${PLL_U.alg}`;
+const yellowCrossLetters = lettersAfter(invertAlg(`${OLL_SUNE} ${PLL_T.alg} ${PLL_U.alg}`));
+const ollLetters = lettersAfter(invertAlg(`${PLL_T.alg} ${PLL_U.alg}`));
+const headlightsLetters = lettersAfter(invertAlg(PLL_U.alg));
+const openLastLayer = lettersAfter(invertAlg(lastLayerSolve));
+const yellowStages = splitStagesFromFacelets(yellowCrossLetters);
+assert(yellowStages.f2l && yellowStages.yellowCross && !yellowStages.oll && !yellowStages.solved, "look 1 is the yellow cross before the face is oriented");
+const ollStages = splitStagesFromFacelets(ollLetters);
+assert(ollStages.oll && ollStages.yellowCross && !ollStages.headlights && !ollStages.solved, "look 2 is a full yellow face before the corners are permuted");
+const headStages = splitStagesFromFacelets(headlightsLetters);
+assert(headStages.headlights && headStages.oll && !headStages.solved, "PLL look 1 is headlights while the edges are still open");
+const llEvents = [];
+let llTick = 1000;
+for (const move of lastLayerSolve.split(" ")) {
+  llEvents.push({ t: llTick, move });
+  llTick += 400;
+}
+const llFlow = foldCubeSplitEvents(llEvents, { seed: openLastLayer });
+assert(llFlow.marks.length === 2, "a last-layer replay still marks Cross and F2L");
+assert(
+  llFlow.layer.yellowCross <= llFlow.layer.oll && llFlow.layer.oll < llFlow.layer.headlights,
+  "OLL and headlights mark on the move that first finishes each look"
+);
+const looked = foldCubeSplitEvents(
+  [
+    { t: 3000, facelets: crossOnlyLetters },
+    { t: 7000, facelets: openLastLayer },
+    { t: 9000, facelets: yellowCrossLetters },
+    { t: 12000, facelets: ollLetters },
+    { t: 15000, facelets: headlightsLetters },
+    { t: 18000, facelets: solvedLetters },
+  ],
+  { seed: scrambledLetters }
+);
+assert(looked.marks[0] === 3000 && looked.marks[1] === 7000, "Cross and F2L stay on the packet that first finished them");
+assert(
+  looked.layer.yellowCross === 9000 && looked.layer.oll === 12000 && looked.layer.headlights === 15000,
+  "yellow cross, OLL, and headlights take the first packet that reaches each look"
+);
+const llStored = layerSplitsFromMarks(looked.marks, looked.layer, 18000);
+assert(
+  llStored.yellowCross === 2000 && llStored.oll === 5000 && llStored.headlights === 3000 && llStored.pll === 6000 && llStored.ollLook == null,
+  "stored splits keep a yellow-cross gap inside OLL and a headlights gap inside PLL"
+);
+assert(llStored.yellowCross + (llStored.oll - llStored.yellowCross) === llStored.oll, "yellow cross is part of OLL");
+assert(llStored.headlights < llStored.pll && llStored.oll + llStored.pll === llStored.final, "OLL and PLL still add up to Final");
+const restamp = applyCubeSplitMarks({
+  mode: TIMER_MODE_SPLITS,
+  marks: looked.marks,
+  pairs: looked.pairs,
+  layer: looked.layer,
+  elapsed: 20000,
+  facelets: yellowCrossLetters,
+});
+assert(restamp.action === "none" && restamp.layer.yellowCross === 9000 && restamp.layer.oll === 12000, "a finished look is not restamped");
+const brokenLook = applyCubeSplitMarks({
+  mode: TIMER_MODE_SPLITS,
+  marks: looked.marks,
+  pairs: looked.pairs,
+  layer: looked.layer,
+  elapsed: 19000,
+  facelets: scrambledLetters,
+});
+assert(brokenLook.layer.yellowCross === 9000 && brokenLook.layer.headlights === 15000, "breaking the last layer leaves the first marks");
+const jumped = foldCubeSplitEvents(
+  [
+    { t: 2000, facelets: openLastLayer },
+    { t: 9000, facelets: solvedLetters },
+  ],
+  { seed: openLastLayer }
+);
+assert(jumped.layer.yellowCross == null && jumped.layer.oll == null && jumped.layer.headlights == null, "a solved packet does not invent an OLL or PLL boundary");
+const oneLook = stepCubeSplit({ facelets: openLastLayer, move: OLL_LINE.split(" ")[0], marks: [], pairs: [], elapsed: 500, mode: TIMER_MODE_SPLITS });
+assert(oneLook.layer.yellowCross == null && oneLook.facelets.length === 54, "the first turn of the cross alg does not mark the yellow cross");
+const liveLooks = renderLiveSplits({
+  marks: looked.marks,
+  elapsed: 13000,
+  running: true,
+  layer: { yellowCross: looked.layer.yellowCross, oll: looked.layer.oll, headlights: null },
+});
+assert(liveLooks.includes("split-yellowCross is-done") && liveLooks.includes(">Y-cross<"), "the live strip freezes yellow cross once it is marked");
+assert(liveLooks.includes("split-oll is-done") && liveLooks.includes("split-headlights is-live"), "OLL locks and headlights is the live look");
+assert(!liveLooks.includes("split-final"), "last-layer looks replace Final while a cube splits solve is running");
 const crossPairs = applyCubeSplitMarks({ mode: TIMER_MODE_SPLITS, marks: [], elapsed: 4010, facelets: crossOnlyLetters });
 assert(
   crossPairs.pairs.map((pair) => pair.id).join(" ") === "BR BL FL" && crossPairs.pairs.every((pair) => pair.at === 4010),
@@ -2331,6 +2421,31 @@ addPracticeTime(
 const storedLayer = loadPracticeTimes(layerStore).find((row) => row.id === "layer-1");
 const droppedLayer = loadPracticeTimes(layerStore).find((row) => row.id === "layer-bad");
 assert(storedLayer.splits.oll === 3000 && storedLayer.splits.pll === 4000, "OLL and PLL round-trip when they add up to Final");
+const lookStore = memoryStore();
+addPracticeTime(
+  {
+    id: "looks-1",
+    ms: 10000,
+    at: 3,
+    splits: { cross: 1000, f2l: 2000, final: 7000, oll: 3000, pll: 4000, yellowCross: 1200, headlights: 1800 },
+  },
+  lookStore
+);
+addPracticeTime(
+  {
+    id: "looks-bad",
+    ms: 10000,
+    at: 4,
+    splits: { cross: 1000, f2l: 2000, final: 7000, oll: 3000, pll: 4000, yellowCross: 9000, headlights: 9000 },
+  },
+  lookStore
+);
+const storedLooks = loadPracticeTimes(lookStore).find((row) => row.id === "looks-1");
+const droppedLooks = loadPracticeTimes(lookStore).find((row) => row.id === "looks-bad");
+assert(storedLooks.splits.yellowCross === 1200 && storedLooks.splits.headlights === 1800, "yellow cross and headlights round-trip inside OLL and PLL");
+assert(droppedLooks.splits.oll === 3000 && droppedLooks.splits.yellowCross == null && droppedLooks.splits.headlights == null, "a look outside its parent stage is dropped");
+const lookList = renderTimesList([storedLooks]);
+assert(lookList.includes("Y-cross") && lookList.includes("Headlights") && lookList.includes("Edges") && !lookList.includes(">PLL<"), "a 2-look last layer replaces the single PLL chip");
 assert(storedLayer.splits.pairs.map((pair) => pair.id).join(" ") === "FR", "pair marks stay beside an OLL and PLL split");
 assert(droppedLayer.splits.oll == null && droppedLayer.splits.pll == null, "OLL and PLL that do not add up to Final are dropped");
 const shownLayer = renderTimesList([storedLayer]);

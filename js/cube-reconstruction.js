@@ -8,7 +8,7 @@ import {
   RECOGNITION_PAUSE_MS,
   reconstructionHooks,
   worstPause,
-} from "./move-log.js?v=p2coach1";
+} from "./move-log.js?v=lllive1";
 
 const LETTER_COLOR = {
   U: "yellow",
@@ -98,8 +98,17 @@ function stageAt(at, splits) {
   if (at <= f2lEnd) return "F2L";
   const oll = Number(splits.oll);
   const pll = Number(splits.pll);
-  if (Number.isFinite(oll) && Number.isFinite(pll) && oll >= 0 && pll > 0 && Math.abs(oll + pll - (Number(splits.final) || oll + pll)) <= 1) {
-    if (at <= f2lEnd + oll) return "OLL";
+  const final = Number(splits.final);
+  if (Number.isFinite(oll) && Number.isFinite(pll) && oll >= 0 && pll > 0 && Math.abs(oll + pll - (Number.isFinite(final) ? final : oll + pll)) <= 1) {
+    const ollEnd = f2lEnd + oll;
+    if (at <= ollEnd) {
+      const yellowCross = Number(splits.yellowCross);
+      if (Number.isFinite(yellowCross) && yellowCross > 0 && yellowCross < oll && at <= f2lEnd + yellowCross) return "Y-cross";
+      return "OLL";
+    }
+    const headlights = Number(splits.headlights);
+    if (Number.isFinite(headlights) && headlights > 0 && headlights < pll && at <= ollEnd + headlights) return "Headlights";
+    if (Number.isFinite(headlights) && headlights > 0 && headlights < pll) return "Edges";
     return "PLL";
   }
   return "Final";

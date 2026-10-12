@@ -11,8 +11,8 @@ import {
   shouldApplyAdapterIdleStatus,
 } from "./bluetooth-support.js?v=cube2";
 import { createCubeMirror } from "./cube-mirror.js?v=postsolve1";
-import { faceletsForScramble, renderCubeNet } from "./cube-reconstruction.js?v=postsolve1";
-import { ganFaceletsToApp, ganMoveToApp, normalizeMoves } from "./move-log.js?v=postsolve1";
+import { faceletsForScramble, renderCubeNet } from "./cube-reconstruction.js?v=lllive1";
+import { ganFaceletsToApp, ganMoveToApp, normalizeMoves } from "./move-log.js?v=lllive1";
 
 const FEED_LIMIT = 24;
 const MAC_DRAFT_KEY = "gan-cube-mac-draft";

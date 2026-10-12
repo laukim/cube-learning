@@ -2669,11 +2669,20 @@ body.timer-page .topbar {
   stroke: var(--timer-f2l);
 }
 
+.post-solve-arc.is-yellow-cross {
+  stroke: color-mix(in srgb, var(--yellow) 62%, white);
+}
+
 .post-solve-arc.is-oll {
   stroke: var(--yellow);
 }
 
-.post-solve-arc.is-pll {
+.post-solve-arc.is-headlights {
+  stroke: var(--timer-ao50);
+}
+
+.post-solve-arc.is-pll,
+.post-solve-arc.is-edges {
   stroke: var(--timer-ao100);
 }
 
@@ -2713,11 +2722,20 @@ body.timer-page .topbar {
   color: var(--timer-f2l);
 }
 
+.post-solve-legend .is-yellow-cross {
+  color: color-mix(in srgb, var(--yellow) 62%, white);
+}
+
 .post-solve-legend .is-oll {
   color: var(--yellow);
 }
 
-.post-solve-legend .is-pll {
+.post-solve-legend .is-headlights {
+  color: var(--timer-ao50);
+}
+
+.post-solve-legend .is-pll,
+.post-solve-legend .is-edges {
   color: var(--timer-ao100);
 }
 
@@ -3336,8 +3354,16 @@ body.timer-cross .timer-stage {
   color: var(--timer-f2l);
 }
 
+.practice-splits li.split-yellowCross:not(.is-live) strong {
+  color: color-mix(in srgb, var(--yellow) 62%, white);
+}
+
 .practice-splits li.split-oll:not(.is-live) strong {
   color: var(--yellow);
+}
+
+.practice-splits li.split-headlights:not(.is-live) strong {
+  color: var(--timer-ao50);
 }
 
 .practice-splits li.split-pll:not(.is-live) strong {
@@ -3636,11 +3662,20 @@ body.timer-cross .timer-stage {
   background: color-mix(in srgb, var(--timer-f2l) 62%, white);
 }
 
+.timer-recon-seg.is-yellow-cross {
+  background: color-mix(in srgb, var(--yellow) 62%, white);
+}
+
 .timer-recon-seg.is-oll {
   background: var(--yellow);
 }
 
-.timer-recon-seg.is-pll {
+.timer-recon-seg.is-headlights {
+  background: var(--timer-ao50);
+}
+
+.timer-recon-seg.is-pll,
+.timer-recon-seg.is-edges {
   background: var(--timer-ao100);
 }
 
@@ -3683,11 +3718,20 @@ body.timer-cross .timer-stage {
   color: var(--timer-f2l);
 }
 
+.timer-recon-legend .is-yellow-cross {
+  color: color-mix(in srgb, var(--yellow) 62%, white);
+}
+
 .timer-recon-legend .is-oll {
   color: var(--yellow);
 }
 
-.timer-recon-legend .is-pll {
+.timer-recon-legend .is-headlights {
+  color: var(--timer-ao50);
+}
+
+.timer-recon-legend .is-pll,
+.timer-recon-legend .is-edges {
   color: var(--timer-ao100);
 }
 
@@ -3703,11 +3747,20 @@ body.timer-cross .timer-stage {
   color: var(--timer-f2l);
 }
 
+.timer-recon-move.is-yellow-cross {
+  color: color-mix(in srgb, var(--yellow) 62%, white);
+}
+
 .timer-recon-move.is-oll {
   color: var(--yellow);
 }
 
-.timer-recon-move.is-pll {
+.timer-recon-move.is-headlights {
+  color: var(--timer-ao50);
+}
+
+.timer-recon-move.is-pll,
+.timer-recon-move.is-edges {
   color: var(--timer-ao100);
 }
 
@@ -4630,8 +4683,16 @@ body.timer-cross .timer-stage {
   color: var(--timer-f2l);
 }
 
+.timer-time-splits .split-yellowCross {
+  color: color-mix(in srgb, var(--yellow) 62%, white);
+}
+
 .timer-time-splits .split-oll {
   color: var(--yellow);
+}
+
+.timer-time-splits .split-headlights {
+  color: var(--timer-ao50);
 }
 
 .timer-time-splits .split-pll {

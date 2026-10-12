@@ -73,7 +73,7 @@ function stampText(html) {
   return match ? match[1] : "";
 }
 
-for (const file of ["timer.html", "index.html", "pll.html"]) {
+for (const file of ["timer.html", "index.html", "pll.html", "training.html"]) {
   const html = readFileSync(file, "utf8");
   assert(html.includes('data-build-stamp'), `${file} has a build stamp`);
   assert(stampText(html) === "v0.0.0-dev", `${file} placeholder is the dev version, was ${stampText(html)}`);
@@ -153,6 +153,8 @@ const pages = {
   "/timer.html": readFileSync("timer.html", "utf8"),
   "/pll": readFileSync("pll.html", "utf8"),
   "/pll.html": readFileSync("pll.html", "utf8"),
+  "/training": readFileSync("training.html", "utf8"),
+  "/training.html": readFileSync("training.html", "utf8"),
 };
 
 function wranglerRunWorkerFirst() {
@@ -168,6 +170,8 @@ for (const path of PAGE_PATHS) {
 assert(PAGE_PATHS.has("/timer"), "the extensionless timer URL is a stamped page");
 assert(PAGE_PATHS.has("/pll"), "the extensionless PLL URL is a stamped page");
 assert(PAGE_PATHS.has("/pll.html"), "the PLL html URL is a stamped page");
+assert(PAGE_PATHS.has("/training"), "the extensionless training URL is a stamped page");
+assert(PAGE_PATHS.has("/training.html"), "the training html URL is a stamped page");
 
 const sharedDb = memoryDb();
 const envA = { ASSETS: assetsOf(pages), CF_VERSION_METADATA: versionA, DB: sharedDb };
@@ -195,6 +199,8 @@ assert(!homeHtml.includes(">Coach<"), "home does not link to the on-screen coach
 assert(!homeHtml.includes("Pieces"), "home does not describe on-screen turns");
 assert(homeHtml.includes('href="/pll"'), "home links to the PLL alg page");
 assert(homeHtml.includes(">PLL algs<"), "home names the PLL alg page");
+assert(homeHtml.includes('href="/training"'), "home links to Training");
+assert(homeHtml.includes(">Training<"), "home names the Training page");
 
 const timerAlias = await worker.fetch(new Request("https://3x3coach.example/timer"), envA);
 assert(timerAlias.status === 200, "/timer is served");
@@ -225,6 +231,8 @@ function htmlHandlingAssets(files) {
     "/timer/": "/timer",
     "/pll.html": "/pll",
     "/pll/": "/pll",
+    "/training.html": "/training",
+    "/training/": "/training",
   };
   return {
     async fetch(request) {
@@ -245,6 +253,7 @@ const handledEnv = {
     "/": pages["/"],
     "/timer": pages["/timer"],
     "/pll": pages["/pll"],
+    "/training": pages["/training"],
   }),
   CF_VERSION_METADATA: versionA,
   DB: memoryDb(),
@@ -284,6 +293,19 @@ assert(handledPllHtml.includes('data-pll-look="known"'), "/pll includes Cases I 
 assert(!handledPllHtml.includes('id="move-pad"'), "/pll does not bring back the move pad");
 const pllDirect = await worker.fetch(new Request("https://3x3coach.example/pll"), envA);
 assert(stampText(await pllDirect.text()) === timerStamp, "/pll shares this deploy's version without html_handling");
+const handledTrainingFile = await worker.fetch(new Request("https://3x3coach.example/training.html"), handledEnv);
+assert(handledTrainingFile.status === 307, "/training.html redirects to the canonical training URL");
+assert(handledTrainingFile.headers.get("location") === "/training", "/training.html redirects to /training");
+const handledTraining = await worker.fetch(new Request("https://3x3coach.example/training"), handledEnv);
+assert(handledTraining.status === 200, "canonical /training is stamped when assets redirect the .html URL");
+const handledTrainingHtml = await handledTraining.text();
+const handledTrainingStamp = stampText(handledTrainingHtml);
+assert(handledTrainingStamp === handledStamp, `canonical /training shares the home version, was ${handledTrainingStamp}`);
+assert(handledTrainingHtml.includes('id="training-session"'), "/training has the session shell");
+assert(handledTrainingHtml.includes('href="/pll"'), "/training links back to PLL algs");
+assert(!handledTrainingHtml.includes("Acubemy"), "/training does not use the Acubemy name");
+const trainingDirect = await worker.fetch(new Request("https://3x3coach.example/training"), envA);
+assert(stampText(await trainingDirect.text()) === timerStamp, "/training shares this deploy's version without html_handling");
 
 const next = await worker.fetch(new Request("https://3x3coach.example/timer.html"), {
   ASSETS: assetsOf(pages),

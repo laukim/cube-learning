@@ -2,7 +2,9 @@
 
 Smart-cube timer for 3×3. Open the site and you are on the timer: GAN connect, Cross · F2L · Final splits, a live 3D cube, and coaching stats.
 
-`/` is home. `/timer` and `/timer.html` are the same page. `/pll` is the PLL algorithm reference (2-look and Cases I know) — diagrams and algs, not another timer mode.
+`/` is home. `/timer` and `/timer.html` are the same page. `/pll` is the PLL algorithm reference (2-look and Cases I know) — diagrams and algs, not another timer mode. `/training` is case practice for 2-look OLL and the PLL cases: Drill hides the algorithm, Learn shows it, and a custom set is stored in this browser.
+
+Gyro is not wired. The GAN connection reports moves and facelets, not which way the cube is held, so a Gyro toggle that tilts the 3D view to the recorded grip has to wait until that orientation is in the feed. Training does not depend on it.
 
 ## Run
 
@@ -18,8 +20,10 @@ Pair a GAN smart cube from **Chrome on a Mac** (Web Bluetooth, HTTPS). GAN i4 Ma
 
 Apply the scramble with white on the bottom and blue in front, and the clock arms when the cube matches. The first turn starts it (after inspection, if inspection is on). Solved stops it and saves a timestamped move list. In Cross · F2L · Final, the cube marks Cross when the white cross is done, each F2L pair, and F2L when the first two layers are done. After a Single or Cross · F2L · Final solve, any turn on the solved cube loads the next scramble; when the cube matches, inspection starts if it is on, otherwise the clock stays armed until the first turn. PLL cases and Cross drill do not use that rule: a turn after the case or cross does not deal a new one, and the clock still waits until the cube matches the setup that is already on screen. PLL cases arm when the cube matches that case's setup and stop when the cube is solved. Cross drill arms on the cross scramble and stops when the white cross is done. Space or tap still times a solve when no cube is connected.
 
+Training uses the same arm and stop for a case. After a success there, the next turn loads another case, the way a timed solve loads the next scramble. The timer's PLL cases still stay on the case that is already showing.
+
 ## Cloudflare
 
 Deploy uses Wrangler static assets (`npx wrangler deploy`); `.assetsignore` excludes `node_modules` (and `.git` / `.wrangler`) so they are not uploaded.
 
-The footer version is a short `v1.02` label on the timer and the PLL page. Each deploy rewrites it from the commit count, so a merge to main shows the next number. `python3 -m http.server` and `npm start` leave the placeholder `v0.0.0-dev`. Open `/pll.html` on that static server; a deploy serves the same page at `/pll`.
+The footer version is a short `v1.02` label on the timer and the PLL page. Each deploy rewrites it from the commit count, so a merge to main shows the next number. `python3 -m http.server` and `npm start` leave the placeholder `v0.0.0-dev`. Open `/pll.html` and `/training.html` on that static server; a deploy serves the same pages at `/pll` and `/training`.

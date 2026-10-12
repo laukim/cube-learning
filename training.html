@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b1210" />
+    <meta
+      name="description"
+      content="Train 3×3 OLL and PLL cases. Drill hides the algorithm. Learn shows it. A GAN cube or the spacebar times each case."
+    />
+    <link rel="canonical" href="/training" />
+    <title>Training — 3×3 Coach</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css?v=training1" />
+  </head>
+  <body class="training-page">
+    <div class="ambient" aria-hidden="true"></div>
+
+    <header class="topbar">
+      <a class="brand" href="/">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-name">3×3 Coach</span>
+      </a>
+      <nav class="site-nav" aria-label="App pages">
+        <a class="site-nav-link" href="/">Timer</a>
+        <a class="site-nav-link is-active" href="/training" aria-current="page">Training</a>
+        <a class="site-nav-link" href="/pll">PLL algs</a>
+      </nav>
+    </header>
+
+    <main class="training-main">
+      <section id="training-home" aria-label="Training sets">
+        <div class="training-home-head">
+          <div>
+            <h1 class="training-title">Training</h1>
+            <p class="training-deck">Drill a case with the algorithm hidden, or learn it with the moves on screen.</p>
+          </div>
+          <div class="look-switch" role="group" aria-label="Solving method">
+            <button type="button" class="method-btn is-active" data-training-method="cfop" aria-pressed="true">CFOP</button>
+            <button type="button" class="method-btn" data-training-method="roux" aria-pressed="false">Roux</button>
+            <button type="button" class="method-btn" data-training-method="zz" aria-pressed="false">ZZ</button>
+          </div>
+        </div>
+
+        <div id="training-cfop">
+          <h2 class="training-kicker">Case sets</h2>
+          <div id="training-cards" class="training-cards"></div>
+        </div>
+        <p id="training-stub" class="training-stub" hidden>
+          Roux and ZZ case sets are not in this version. CFOP OLL and PLL are ready.
+        </p>
+      </section>
+
+      <section id="training-session" aria-label="Training session" hidden>
+        <div class="training-session">
+          <aside class="training-rail" aria-label="Current case">
+            <button type="button" class="btn btn-ghost btn-small" id="training-back">Training</button>
+            <div class="training-mode" role="group" aria-label="Drill or learn">
+              <button type="button" class="method-btn" data-session-mode="drill" aria-pressed="true">Drill</button>
+              <button type="button" class="method-btn" data-session-mode="learn" aria-pressed="false">Learn</button>
+            </div>
+            <p class="training-badge" id="training-badge">Drill</p>
+            <h2 class="training-case-title" id="training-case-title">Case</h2>
+            <div id="training-diagram"></div>
+            <p class="training-setup-kicker">From a solved cube</p>
+            <code class="alg training-setup" id="training-setup"></code>
+            <dl class="training-times">
+              <div>
+                <dt>Solve</dt>
+                <dd id="training-best">—</dd>
+              </div>
+              <div>
+                <dt>Training</dt>
+                <dd id="training-last">—</dd>
+              </div>
+            </dl>
+            <p class="training-progress" id="training-progress"></p>
+            <p class="training-streak-label" id="training-streak-label"></p>
+            <label class="training-order">
+              Queue
+              <select id="training-order" aria-label="Queue order">
+                <option value="random">Random</option>
+                <option value="weakest">Weakest first</option>
+                <option value="fixed">Fixed</option>
+              </select>
+            </label>
+          </aside>
+
+          <div class="training-stage">
+            <div class="training-dots" id="training-dots" aria-hidden="true"></div>
+            <p class="training-goal" id="training-goal"></p>
+            <button type="button" class="practice-clock training-clock" id="training-clock" aria-label="Start timer">
+              <span class="practice-clock-value" id="training-clock-value">0.00</span>
+            </button>
+            <div class="training-learn" id="training-learn" hidden>
+              <p class="training-alg-kicker">Algorithm</p>
+              <code class="alg training-alg" id="training-alg"></code>
+              <label class="training-alg-pick" id="training-alg-pick" hidden>
+                Algorithm
+                <select id="training-alg-select" aria-label="Choose an algorithm"></select>
+              </label>
+            </div>
+            <div class="cube-mirror-slot training-cube-slot">
+              <div
+                class="cube-mirror-scene training-cube-scene"
+                id="training-scene"
+                tabindex="0"
+                aria-label="3D cube. Drag to look around. Arrow keys turn the view."
+              >
+                <div class="cube-mirror" id="training-cube" role="img" aria-label="3D cube for this case"></div>
+              </div>
+            </div>
+            <p class="training-status" id="training-status" aria-live="polite"></p>
+            <div class="training-actions">
+              <button type="button" class="btn btn-ghost" id="training-again">Again</button>
+              <button type="button" class="btn btn-primary" id="training-next">Next case</button>
+            </div>
+            <section class="cube-connect training-connect" id="cube-connect" aria-label="Smart cube">
+              <div class="cube-connect-head">
+                <h2 class="cube-connect-title">Smart cube</h2>
+                <button type="button" class="btn btn-small" id="cube-connect-btn">Connect</button>
+              </div>
+              <p class="cube-connect-status" id="cube-connect-status" aria-live="polite">Checking Bluetooth…</p>
+              <form class="cube-connect-mac" id="cube-connect-mac" hidden>
+                <label class="cube-connect-mac-label" for="cube-connect-mac-input">Bluetooth MAC</label>
+                <div class="cube-connect-mac-row">
+                  <input
+                    id="cube-connect-mac-input"
+                    class="cube-connect-mac-input"
+                    name="mac"
+                    autocomplete="off"
+                    autocapitalize="off"
+                    spellcheck="false"
+                    placeholder="aa:bb:cc:dd:ee:ff"
+                    aria-describedby="cube-connect-mac-help"
+                  />
+                  <button type="submit" class="btn btn-small btn-primary">Use MAC</button>
+                  <button type="button" class="btn btn-small btn-ghost" id="cube-connect-mac-cancel">Cancel</button>
+                </div>
+                <p class="cube-connect-mac-help" id="cube-connect-mac-help"></p>
+              </form>
+              <p class="cube-connect-meta" id="cube-connect-meta" hidden></p>
+              <p class="cube-connect-feed" id="cube-connect-feed" hidden></p>
+              <p class="cube-connect-note">
+                The timer arms when the cube matches this case and stops when it is solved. The next turn loads another
+                case. Space still works with no cube. Gyro hold is not available yet — the connection reports moves and
+                facelets, not orientation.
+              </p>
+            </section>
+          </div>
+
+          <aside class="training-queue" aria-label="Cases in this set">
+            <h2 class="training-kicker">Queue</h2>
+            <div id="training-queue"></div>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <dialog class="training-dialog" id="training-picker" aria-labelledby="training-picker-title">
+      <form method="dialog" class="training-dialog-panel" id="training-picker-form">
+        <header class="training-dialog-head">
+          <div>
+            <h2 id="training-picker-title">Cases</h2>
+            <p class="training-picker-count" id="training-picker-count">0 selected</p>
+          </div>
+          <button type="button" class="btn btn-ghost btn-small" id="training-picker-close">Close</button>
+        </header>
+        <div class="training-picker-fields">
+          <label>
+            Name
+            <input id="training-picker-name" type="text" maxlength="40" autocomplete="off" aria-label="Training name" />
+          </label>
+          <label>
+            Queue
+            <select id="training-picker-order" aria-label="Queue order for this set">
+              <option value="random">Random</option>
+              <option value="weakest">Weakest first</option>
+              <option value="fixed">Fixed</option>
+            </select>
+          </label>
+        </div>
+        <div class="training-picker-bar">
+          <div class="look-switch" role="group" aria-label="OLL or PLL">
+            <button type="button" class="method-btn is-active" data-picker-tab="oll">OLL</button>
+            <button type="button" class="method-btn" data-picker-tab="pll">PLL</button>
+          </div>
+          <div class="training-picker-bulk">
+            <button type="button" class="btn btn-ghost btn-small" id="training-select-all">Select all</button>
+            <button type="button" class="btn btn-ghost btn-small" id="training-select-none">Unselect all</button>
+          </div>
+        </div>
+        <div id="training-grid" class="training-grid"></div>
+        <p class="training-picker-error" id="training-picker-error" hidden>Select at least one case.</p>
+        <div class="training-dialog-actions">
+          <button type="button" class="btn btn-primary" id="training-picker-save">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <footer class="foot">
+      <p class="foot-notes">
+        <span>Works offline · times stay on this device</span>
+        <span>Drill hides the alg · Learn shows it · space or a GAN cube</span>
+      </p>
+      <span class="build-stamp" data-build-stamp>v0.0.0-dev</span>
+    </footer>
+
+    <script src="vendor/cubejs.js?v=cube3d2"></script>
+    <script type="module" src="js/training-page.js?v=training1"></script>
+    <!-- Cloudflare Web Analytics --><script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "fd680e4c7f304be681f2fca80e8000e2"}'></script><!-- End Cloudflare Web Analytics -->
+  </body>
+</html>

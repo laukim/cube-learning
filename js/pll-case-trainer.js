@@ -25,10 +25,10 @@ const TWO_LOOK_SHARED = new Set(TWO_LOOK_CASE_IDS);
  * Corners are solved. Edges cycle UR → UL → UB.
  */
 export const TWO_LOOK_UA_SIDES = {
-  B: ["green", "orange", "green"],
+  B: ["blue", "orange", "blue"],
   L: ["orange", "red", "orange"],
-  R: ["red", "green", "red"],
-  F: ["blue", "blue", "blue"],
+  R: ["red", "blue", "red"],
+  F: ["green", "green", "green"],
 };
 
 const TWO_LOOK_UA_CUE = "Solved bar on the front";

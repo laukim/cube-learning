@@ -12,6 +12,7 @@ import {
 } from "./bluetooth-support.js?v=cube2";
 import { createCubeMirror } from "./cube-mirror.js?v=postsolve1";
 import { faceletsForScramble, renderCubeNet } from "./cube-reconstruction.js?v=lllive1";
+import { createGyroTracker } from "./cube-gyro.js?v=gyro1";
 import { ganFaceletsToApp, ganMoveToApp, normalizeMoves } from "./move-log.js?v=lllive1";
 
 const FEED_LIMIT = 24;
@@ -70,6 +71,12 @@ export function initSmartCube({ timer } = {}) {
   let busy = false;
   let adapterNote = "";
   let statusSettled = false;
+  const gyro = createGyroTracker({
+    onRotation(move) {
+      rememberMove(move);
+      timer?.onCubeRotation?.(move);
+    },
+  });
 
   function setStatus(text) {
     statusEl.textContent = text;
@@ -126,6 +133,7 @@ export function initSmartCube({ timer } = {}) {
     facelets = "";
     mirroredFacelets = "";
     feed = [];
+    gyro.reset();
     if (macForm) macForm.hidden = true;
     timer?.setCubeConnected?.(false);
     paint();
@@ -176,6 +184,11 @@ export function initSmartCube({ timer } = {}) {
       rememberMove(move);
       mirror?.turn(move);
       timer?.onCubeMove?.(move, Number.isFinite(cubeT) ? cubeT : undefined);
+      return;
+    }
+    if (event?.type === "GYRO") {
+      stopReplay();
+      gyro.observe(event.quaternion);
       return;
     }
     if (event?.type === "FACELETS") {
@@ -241,6 +254,7 @@ export function initSmartCube({ timer } = {}) {
           setStatus("The cube connection dropped. Connect again when you're ready.");
         },
       });
+      gyro.reset();
       session = {
         conn,
         name: conn.deviceName || "GAN cube",

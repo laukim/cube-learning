@@ -68,7 +68,7 @@ export function renderCubeNet(facelets) {
   const groups = faces
     .map((face) => `<g transform="translate(${face.x} ${face.y})">${faceCells(text, face.id)}</g>`)
     .join("");
-  return `<svg class="cube-net" viewBox="0 0 202 152" role="img" aria-label="Cube state, white on the bottom and blue in front">${groups}</svg>`;
+  return `<svg class="cube-net" viewBox="0 0 202 152" role="img" aria-label="Cube state, white on the bottom and green in front">${groups}</svg>`;
 }
 
 function formatGap(ms) {

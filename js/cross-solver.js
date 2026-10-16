@@ -61,7 +61,7 @@ for (let n = 1; n <= 12; n++) {
 }
 
 export const CROSS_MOVE_NAMES = FACE_ORDER.flatMap((face) => [face, `${face}'`, `${face}2`]);
-export const CROSS_HOLD = "White on bottom, blue in front";
+export const CROSS_HOLD = "White on bottom, green in front";
 
 const DEST = [];
 const FLIP = [];

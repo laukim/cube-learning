@@ -2,7 +2,7 @@
  * Exact onlinecube.com drag behaviour via vendored ERNO / Cuber.
  * https://onlinecube.com — Chrome Cube Lab (Mark Lundin / Stewart Smith / Google Creative Lab)
  *
- * Orbit is look-only: F/R/L/B are the cube’s faces (blue = F with white on
+ * Orbit is look-only: F/R/L/B are the cube’s faces (green = F with white on
  * bottom — Western/BOY). Dragging around the cube does not remap a flick.
  * Flick the sticker you mean — that face turns.
  */

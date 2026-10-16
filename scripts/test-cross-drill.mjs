@@ -56,8 +56,8 @@ function centersStay(facelets) {
   return (
     sticker(facelets, "U", 4) === "yellow" &&
     sticker(facelets, "D", 4) === "white" &&
-    sticker(facelets, "F", 4) === "blue" &&
-    sticker(facelets, "B", 4) === "green" &&
+    sticker(facelets, "F", 4) === "green" &&
+    sticker(facelets, "B", 4) === "blue" &&
     sticker(facelets, "L", 4) === "orange" &&
     sticker(facelets, "R", 4) === "red"
   );
@@ -206,7 +206,7 @@ const timerHtml = readFileSync(new URL("../timer.html", import.meta.url), "utf8"
 assert(timerHtml.includes('data-timer-mode="cross"'), "timer page has a Cross drill mode");
 assert(timerHtml.includes("Repeat this case") && timerHtml.includes(">Next<"), "repeat and next are on the timer");
 assert(timerHtml.includes("Show optimal cross"), "optimal cross stays behind a button");
-assert(timerHtml.includes("White on bottom, blue in front"), "the hold is white on the bottom");
+assert(timerHtml.includes("White on bottom, green in front"), "the hold is white on the bottom");
 assert(timerHtml.includes('id="cross-drill-solution" hidden'), "the solution is hidden until it is shown");
 
 const store = memoryStore();

@@ -377,7 +377,7 @@ assert(F2L_DRILL_CASES.find((c) => c.id === "17R").group === "Connected", "conne
   applyAlg(open17, c17.setup);
   assert(sticker(open17, "R", 0) === "white", "17R setup has white on the right of UFR");
   assert(sticker(open17, "U", 8) !== "white", "17R is not the white-up connected case");
-  assert(sticker(open17, "U", 7) === "blue" && sticker(open17, "F", 1) === "red", "17R edge sits on UF, flipped");
+  assert(sticker(open17, "U", 7) === "green" && sticker(open17, "F", 1) === "red", "17R edge sits on UF, flipped");
   const c20 = F2L_DRILL_CASES.find((c) => c.id === "20R");
   const open20 = solvedFacelets();
   applyAlg(open20, c20.setup);
@@ -486,10 +486,10 @@ for (const c of F2L_DRILL_CASES) {
   applyAlg(cube, c.setup);
   const key = relativeF2lKey(cube, c.slot);
   if (c.hand === "R") {
-    assert(c.slot === "FR", `${c.id} is red-blue front-right`);
+    assert(c.slot === "FR", `${c.id} is red-green front-right`);
     relByN.set(c.n, key);
   } else {
-    assert(c.slot === "FL", `${c.id} is blue-orange front-left`);
+    assert(c.slot === "FL", `${c.id} is green-orange front-left`);
     assert(key === relByN.get(c.n), `${c.id} is the same case as ${c.n}R, not a different hold`);
   }
 }
@@ -1091,19 +1091,19 @@ const jbEdge = {
   UF: sticker(jbSetup, "F", 1),
   UL: sticker(jbSetup, "L", 1),
 };
-assert(jbEdge.UF === "red" && jbEdge.UR === "blue" && jbEdge.UB === "green" && jbEdge.UL === "orange", "Jb swaps the front and right edges");
+assert(jbEdge.UF === "red" && jbEdge.UR === "green" && jbEdge.UB === "blue" && jbEdge.UL === "orange", "Jb swaps the front and right edges");
 assert(
-  sticker(jbSetup, "R", 0) === "green" && sticker(jbSetup, "F", 2) === "red" && sticker(jbSetup, "L", 0) === "orange" && sticker(jbSetup, "L", 2) === "orange",
+  sticker(jbSetup, "R", 0) === "blue" && sticker(jbSetup, "F", 2) === "red" && sticker(jbSetup, "L", 0) === "orange" && sticker(jbSetup, "L", 2) === "orange",
   "Jb swaps the two right corners and leaves the left bar"
 );
 const jaSetup = solvedFacelets();
 applyAlg(jaSetup, knownPllSetupAlg(ja));
 assert(
-  sticker(jaSetup, "R", 1) === "green" && sticker(jaSetup, "B", 1) === "red" && sticker(jaSetup, "F", 1) === "blue" && sticker(jaSetup, "L", 1) === "orange",
+  sticker(jaSetup, "R", 1) === "blue" && sticker(jaSetup, "B", 1) === "red" && sticker(jaSetup, "F", 1) === "green" && sticker(jaSetup, "L", 1) === "orange",
   "Ja swaps the right and back edges"
 );
 assert(
-  sticker(jaSetup, "F", 0) === "blue" && sticker(jaSetup, "F", 1) === "blue" && sticker(jaSetup, "L", 2) === "orange",
+  sticker(jaSetup, "F", 0) === "green" && sticker(jaSetup, "F", 1) === "green" && sticker(jaSetup, "L", 2) === "orange",
   "Ja L is the front pair touching the left side"
 );
 function sameDirectedCycle(stored, derived) {
@@ -1115,7 +1115,7 @@ function sameDirectedCycle(stored, derived) {
   return false;
 }
 function heldCycles(facelets) {
-  const colorToEdge = { blue: "UF", red: "UR", green: "UB", orange: "UL" };
+  const colorToEdge = { green: "UF", red: "UR", blue: "UB", orange: "UL" };
   const edgePos = { UF: ["F", 1], UR: ["R", 1], UB: ["B", 1], UL: ["L", 1] };
   const corners = {
     URF: [["R", 0], ["F", 2]],
@@ -1186,9 +1186,9 @@ for (const c of [ra, rb]) {
 }
 function edgesMatchCentres(facelets) {
   return (
-    sticker(facelets, "F", 1) === "blue" &&
+    sticker(facelets, "F", 1) === "green" &&
     sticker(facelets, "R", 1) === "red" &&
-    sticker(facelets, "B", 1) === "green" &&
+    sticker(facelets, "B", 1) === "blue" &&
     sticker(facelets, "L", 1) === "orange"
   );
 }
@@ -2073,15 +2073,15 @@ for (const face of ["F", "R", "B", "L"]) {
   assert(mapped[face].join() === trainerUa.diagram.sides[face].join(), `Ua ${face} diagram matches the 2-look cube`);
 }
 assert(mapped.F.join() !== knownUa.sides.F.join(), "Ua diagram is not the Cases I know picture");
-assert(sticker(uaCube, "F", 1) === "blue", "Ua bar matches the front centre");
+assert(sticker(uaCube, "F", 1) === "green", "Ua bar matches the front centre");
 assert(
-  sticker(uaCube, "R", 1) === "green" && sticker(uaCube, "L", 1) === "red" && sticker(uaCube, "B", 1) === "orange",
+  sticker(uaCube, "R", 1) === "blue" && sticker(uaCube, "L", 1) === "red" && sticker(uaCube, "B", 1) === "orange",
   "Ua cycles UR, UL, and UB"
 );
 assert(trainerUa.diagram.edges.cycle.join() === "UR,UL,UB", "Ua arrows follow those pieces");
 const fromSolved = solvedFacelets();
 applyAlg(fromSolved, caseSetupMoves(trainerUa.alg));
-assert(getFace(fromSolved, "F").slice(0, 3).join() === "blue,blue,blue", "the setup from solved matches the picture");
+assert(getFace(fromSolved, "F").slice(0, 3).join() === "green,green,green", "the setup from solved matches the picture");
 applyAlg(fromSolved, trainerUa.alg);
 assert(isSolved(fromSolved), "doing the 2-look Ua from that picture solves the cube");
 

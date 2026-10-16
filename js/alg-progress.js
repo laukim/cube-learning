@@ -150,3 +150,8 @@ export function traceAlgMove(remainingAlg, userMove) {
     done: false,
   };
 }
+
+/** Next display token in a notation strip, or "". */
+export function peekNotationToken(alg) {
+  return notationTokens(alg)[0] || "";
+}

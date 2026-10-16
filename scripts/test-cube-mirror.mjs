@@ -76,10 +76,10 @@ const SOLVED = "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB";
 const HEX = {
   "#ffd500": "U",
   "#c41e3a": "R",
-  "#0b5fbf": "F",
+  "#0b9e4a": "F",
   "#f7f7f7": "D",
   "#ff6a00": "L",
-  "#0b9e4a": "B",
+  "#0b5fbf": "B",
 };
 
 function assert(cond, msg) {

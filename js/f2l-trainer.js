@@ -21,10 +21,10 @@ export const LEFTY = "L' U' L U";
 
 /** Four F2L slots, colours for white-on-D cube. */
 export const SLOTS = [
-  { id: "FR", name: "Front-right", f: "F", r: "R", fc: "blue", rc: "red" },
-  { id: "BR", name: "Back-right", f: "B", r: "R", fc: "green", rc: "red" },
-  { id: "BL", name: "Back-left", f: "B", r: "L", fc: "green", rc: "orange" },
-  { id: "FL", name: "Front-left", f: "F", r: "L", fc: "blue", rc: "orange" },
+  { id: "FR", name: "Front-right", f: "F", r: "R", fc: "green", rc: "red" },
+  { id: "BR", name: "Back-right", f: "B", r: "R", fc: "blue", rc: "red" },
+  { id: "BL", name: "Back-left", f: "B", r: "L", fc: "blue", rc: "orange" },
+  { id: "FL", name: "Front-left", f: "F", r: "L", fc: "green", rc: "orange" },
 ];
 
 function setEq(a, b) {
@@ -67,9 +67,9 @@ export function whiteCrossIntact(facelets) {
   const d = getFace(facelets, "D");
   if (![1, 3, 5, 7].every((i) => d[i] === "white")) return false;
   return (
-    sticker(facelets, "F", 7) === "blue" &&
+    sticker(facelets, "F", 7) === "green" &&
     sticker(facelets, "R", 7) === "red" &&
-    sticker(facelets, "B", 7) === "green" &&
+    sticker(facelets, "B", 7) === "blue" &&
     sticker(facelets, "L", 7) === "orange"
   );
 }
@@ -599,11 +599,11 @@ export function scrambleF2L(facelets, mode = "next", caseId = null) {
 }
 
 /**
- * Find FR pair pieces (white+blue+red corner, blue+red edge) locations.
+ * Find FR pair pieces (white+green+red corner, green+red edge) locations.
  */
 function locateFRPair(facelets) {
-  const cornerTarget = new Set(["white", "blue", "red"]);
-  const edgeTarget = new Set(["blue", "red"]);
+  const cornerTarget = new Set(["white", "green", "red"]);
+  const edgeTarget = new Set(["green", "red"]);
 
   const corners = [
     { id: "UFR", colors: colorsAtCornerUFR, whiteUp: () => sticker(facelets, "U", 8) === "white" },
@@ -669,7 +669,7 @@ function locateFRPair(facelets) {
     {
       id: "FR",
       colors: edgeColorsFR,
-      oriented: () => sticker(facelets, "F", 5) === "blue" && sticker(facelets, "R", 3) === "red",
+      oriented: () => sticker(facelets, "F", 5) === "green" && sticker(facelets, "R", 3) === "red",
     },
   ];
 
@@ -689,7 +689,7 @@ function locateFRPair(facelets) {
       edge = {
         id: e.id,
         topColor,
-        topIsBlue: topColor === "blue",
+        topIsBlue: topColor === "green",
         oriented: e.oriented?.() ?? false,
       };
       break;
@@ -719,7 +719,7 @@ function hint(title, copy, alg, note = "") {
 }
 
 /**
- * Coach F2L for the FR pair. User should y-rotate so the pair they want is FR colours (blue-red).
+ * Coach F2L for the FR pair. User should y-rotate so the pair they want is FR colours (green-red).
  * For general slots we analyze FR after telling them which slot to bring forward.
  */
 export function analyzeF2L(facelets) {
@@ -799,7 +799,7 @@ function frCaseHint(facelets, corner, edge) {
   if (edge?.stuckInSlot || (edge?.id && ["FL", "BR", "BL"].includes(edge.id))) {
     return hint(
       "Edge stuck in the middle",
-      "Your blue-red edge is in another slot. Put that slot at front-right with y, do a righty to pop the pair out, then rebuild.",
+      "Your green-red edge is in another slot. Put that slot at front-right with y, do a righty to pop the pair out, then rebuild.",
       `y ${RIGHTY}`,
       "After they’re on top, come back to FR and pair normally."
     );
@@ -809,7 +809,7 @@ function frCaseHint(facelets, corner, edge) {
   if (corner && ["DFL", "DBR", "DBL"].includes(corner.id)) {
     return hint(
       "Corner stuck in the bottom",
-      "The white-blue-red corner is in the wrong slot. Bring that slot to FR (y), righty to eject, then pair on top.",
+      "The white-green-red corner is in the wrong slot. Bring that slot to FR (y), righty to eject, then pair on top.",
       RIGHTY,
       "Don’t force it from the wrong seat — pop out, then insert cleanly."
     );
@@ -850,7 +850,7 @@ function frCaseHint(facelets, corner, edge) {
 
   return hint(
     "Find the FR pair",
-    "Look for the white corner with blue + red, and the blue-red edge (no yellow). Get both to the top layer, then pair and insert into front-right.",
+    "Look for the white corner with green + red, and the green-red edge (no yellow). Get both to the top layer, then pair and insert into front-right.",
     "U / R U R' U'",
     "Goal every time: pair on U → hold above the FR slot → righty (or the matching insert)."
   );
@@ -863,7 +863,7 @@ function bothOnUHint(facelets, corner, edge) {
   if (corner.id !== "UFR") {
     return hint(
       "Setup · corner above the slot",
-      "U-spin until the white–blue–red corner sits at UFR (front-right on top), right above the FR slot. Then ask for another hint — we’ll name which of the 5 cases you have.",
+      "U-spin until the white–green–red corner sits at UFR (front-right on top), right above the FR slot. Then ask for another hint — we’ll name which of the 5 cases you have.",
       "U",
       "All five fundamental cases start with the corner above FR."
     );
@@ -898,7 +898,7 @@ function bothOnUHint(facelets, corner, edge) {
     }
     return hint(
       "Case 3 · White on top",
-      "1) Look at the edge’s side colour (not the top): U-spin so that side sits above its matching centre (blue↔F or red↔R). 2) Look at the edge’s top colour — U-spin the edge away from that centre (a cross edge comes up; that’s OK). 3) U the corner onto the edge to pair. 4) Fix the cross. 5) Insert: y′ · U′ · L′ · U · L · y (slot to front-left, attach to cross, put back).",
+      "1) Look at the edge’s side colour (not the top): U-spin so that side sits above its matching centre (green↔F or red↔R). 2) Look at the edge’s top colour — U-spin the edge away from that centre (a cross edge comes up; that’s OK). 3) U the corner onto the edge to pair. 4) Fix the cross. 5) Insert: y′ · U′ · L′ · U · L · y (slot to front-left, attach to cross, put back).",
       "U  …  y' U' L' U L y",
       "Same case if the edge is “reversed” — only which centre you match changes. Re-hint after each U if you’re unsure."
     );
@@ -980,15 +980,15 @@ function bothOnUHint(facelets, corner, edge) {
 export const F2L_TIPS = [
   {
     title: "How this drill works",
-    body: "Each case is one pair. The other three stay in. When it’s in, stay on this ID until you tap Next or Prev. Again = same ID. Jump to picks a starting ID (e.g. 10R); Next F2L then follows the 41-case list from there. Random walks the groups you tick — Disconnected, Edge in slot, and the rest — in a shuffled order, and only repeats after every selected case has been shown. After the case, the setup scramble is the inverse from a solved cube — do it on a real cube (white D, blue F) to practise the same slot.",
+    body: "Each case is one pair. The other three stay in. When it’s in, stay on this ID until you tap Next or Prev. Again = same ID. Jump to picks a starting ID (e.g. 10R); Next F2L then follows the 41-case list from there. Random walks the groups you tick — Disconnected, Edge in slot, and the rest — in a shuffled order, and only repeats after every selected case has been shown. After the case, the setup scramble is the inverse from a solved cube — do it on a real cube (white D, green F) to practise the same slot.",
   },
   {
     title: "Practise on a real cube",
-    body: "The on-screen cube is already at the case. Under the insert you’ll also see the scramble that gets a solved cube there. Hold white on D and blue on F, do those moves, then insert the pair.",
+    body: "The on-screen cube is already at the case. Under the insert you’ll also see the scramble that gets a solved cube there. Hold white on D and green on F, do those moves, then insert the pair.",
   },
   {
     title: "IDs: R and L share a number",
-    body: "R is red–blue (front-right). L is blue–orange (front-left). Same shape → 1R and 1L. No left version → just 11. Sledge is another way for 1R, not a second exercise.",
+    body: "R is red–green (front-right). L is green–orange (front-left). Same shape → 1R and 1L. No left version → just 11. Sledge is another way for 1R, not a second exercise.",
   },
   {
     title: "Don’t pop a solved pair",

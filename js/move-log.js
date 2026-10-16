@@ -2,9 +2,11 @@
  * Smart-cube move log and GAN → coach orientation.
  *
  * GAN firmware reports faces in its own coordinates (solved: white on U, green
- * on F, red on R). The coach holds white on the bottom and blue in front, so
- * yellow is U and blue is F. Moves and facelets are converted into that hold
- * before they are stored or compared with a scramble.
+ * on F, red on R). The coach holds white on the bottom and green in front, so
+ * yellow is U and green is F (Acubemy Training hold). Facelets match by sticker
+ * colour; that colour map flips U↔D while keeping F, so quarter turns invert
+ * when relabelled. Moves and facelets are converted into that hold before they
+ * are stored or compared with a scramble.
  *
  * `phaseSegments` colors Cross, each detected F2L pair, OLL, and PLL from marks
  * already stored on the solve. It does not guess a phase the solve never marked.
@@ -25,21 +27,21 @@ export const GAN_FACE_COLOR = {
   B: "blue",
 };
 
-/** Home-face colour in the coach (white bottom, blue front). */
+/** Home-face colour in the coach (white bottom, green front). */
 export const APP_FACE_COLOR = {
   U: "yellow",
   R: "red",
-  F: "blue",
+  F: "green",
   D: "white",
   L: "orange",
-  B: "green",
+  B: "blue",
 };
 
 const APP_COLOR_FACE = Object.fromEntries(Object.entries(APP_FACE_COLOR).map(([face, color]) => [color, face]));
 
 /** GAN face turn → the same physical face in coach notation. Clockwise stays clockwise. */
-const GAN_MOVE_FACE = { U: "D", D: "U", F: "B", B: "F", R: "R", L: "L" };
-const APP_MOVE_FACE = { U: "D", D: "U", F: "B", B: "F", R: "R", L: "L" };
+const GAN_MOVE_FACE = { U: "D", D: "U", F: "F", B: "B", R: "R", L: "L" };
+const APP_MOVE_FACE = { U: "D", D: "U", F: "F", B: "B", R: "R", L: "L" };
 
 const MAX_MOVES = 400;
 const MAX_T = 48 * 60 * 60 * 1000;
@@ -158,12 +160,20 @@ export function cubeEventMove(event) {
   return face;
 }
 
+function invertSuffix(suffix) {
+  if (suffix === "2") return "2";
+  if (suffix === "'") return "";
+  return "'";
+}
+
 function relabelMove(move, faces) {
   const token = cubeEventMove(move);
   if (!token) return "";
   const face = faces[token[0]];
   if (!face) return "";
-  return face + token.slice(1);
+  // Equatorial colour remapping (U↔D, F stays) mirrors the cube, so quarter
+  // turns flip when the letter is rewritten into the other hold.
+  return face + invertSuffix(token.slice(1));
 }
 
 export function ganMoveToApp(move) {
@@ -174,7 +184,7 @@ export function appMoveToGan(move) {
   return relabelMove(move, APP_MOVE_FACE);
 }
 
-/** 54-char GAN Kociemba facelets → coach facelets (white bottom, blue front). */
+/** 54-char GAN Kociemba facelets → coach facelets (white bottom, green front). */
 export function ganFaceletsToApp(ganFacelets) {
   const src = String(ganFacelets || "");
   if (src.length !== 54) return "";

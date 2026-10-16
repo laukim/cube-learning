@@ -4,17 +4,22 @@
  * training-queue.js.
  */
 
-import { expandWideAlg } from "./alg.js?v=training2";
+import { expandWideAlg } from "./alg.js?v=training4";
 import {
   initAlgProgress,
   notationTokens,
+  peekNotationToken,
   traceAlgMove,
-} from "./alg-progress.js?v=training2";
-import { renderCaseDiagram } from "./case-diagram.js?v=training2";
-import { createCubeMirror } from "./cube-mirror.js?v=training2";
-import { faceletsSolved } from "./move-log.js?v=training2";
-import { initSmartCube } from "./smart-cube.js?v=training2";
-import { formatClock } from "./solve-timer.js?v=training2";
+} from "./alg-progress.js?v=training4";
+import {
+  isRotationMove,
+  physicalMoveToAlgMove,
+} from "./cube-gyro.js?v=gyro1";
+import { renderCaseDiagram } from "./case-diagram.js?v=training4";
+import { createCubeMirror } from "./cube-mirror.js?v=training4";
+import { faceletsSolved } from "./move-log.js?v=training4";
+import { initSmartCube } from "./smart-cube.js?v=training4";
+import { formatClock } from "./solve-timer.js?v=training4";
 import {
   STREAK_DOTS,
   addTrainingTime,
@@ -43,7 +48,7 @@ import {
   trainingCubeDecision,
   trainingPool,
   withoutTrainingSet,
-} from "./training-queue.js?v=training2";
+} from "./training-queue.js?v=training4";
 
 const ORDER_LABEL = { random: "Random", weakest: "Weakest first", fixed: "Fixed" };
 
@@ -160,6 +165,7 @@ function enterSetupTrace() {
   session.tracePhase = plan.remaining ? "setup" : "alg";
   session.traceFull = plan.fullAlg;
   session.traceRemaining = plan.remaining;
+  session.traceRotations = [];
   session.traceWrong = "";
   session.traceFlashFix = false;
   session.traceFlashWrong = false;
@@ -172,6 +178,7 @@ function enterAlgTrace() {
   session.tracePhase = plan.remaining ? "alg" : "done";
   session.traceFull = plan.fullAlg;
   session.traceRemaining = plan.remaining;
+  session.traceRotations = [];
   session.traceWrong = "";
   session.traceFlashFix = false;
   session.traceFlashWrong = false;
@@ -236,7 +243,34 @@ function paintTrace() {
   }
 }
 
-function advanceTrace(move) {
+
+function cancelInverseRotation(rotations, move) {
+  const list = Array.isArray(rotations) ? rotations.slice() : [];
+  const inv = {
+    x: "x'",
+    "x'": "x",
+    x2: "x2",
+    y: "y'",
+    "y'": "y",
+    y2: "y2",
+    z: "z'",
+    "z'": "z",
+    z2: "z2",
+  };
+  const last = list[list.length - 1];
+  if (last && inv[move] === last) {
+    list.pop();
+    return list;
+  }
+  if (last && last === move && move.endsWith("2")) {
+    list.pop();
+    return list;
+  }
+  list.push(move);
+  return list;
+}
+
+function advanceTrace(move, { kind = "face" } = {}) {
   if (!session || (session.tracePhase !== "setup" && session.tracePhase !== "alg")) return;
   if (!session.traceRemaining) {
     if (session.tracePhase === "setup") {
@@ -246,7 +280,34 @@ function advanceTrace(move) {
     }
     return;
   }
-  const result = traceAlgMove(session.traceRemaining, move);
+  if (!Array.isArray(session.traceRotations)) session.traceRotations = [];
+  const next = peekNotationToken(session.traceRemaining);
+  let traceMove = move;
+  if (kind === "rotation") {
+    // Physical tilt always updates the basis; only a rotation chip can match it.
+    session.traceRotations = cancelInverseRotation(session.traceRotations, move);
+  } else if (isRotationMove(next)) {
+    // Face turn while x/y/z is next: never absorb the rotation chip.
+    traceMove = move;
+  } else {
+    // After a matched x', face turns are read in that tilted frame.
+    traceMove = physicalMoveToAlgMove(move, session.traceRotations);
+  }
+  let result = traceAlgMove(session.traceRemaining, traceMove);
+  // Never let the wrong kind of input clear the next chip, even if letters collide.
+  if (result.matched) {
+    if (kind === "face" && isRotationMove(next)) {
+      result = traceAlgMove(session.traceRemaining, move);
+      if (result.matched) {
+        result = { remaining: session.traceRemaining, matched: false, wrong: true, wrongMove: move, done: false };
+      }
+    } else if (kind === "rotation" && !isRotationMove(next)) {
+      result = traceAlgMove(session.traceRemaining, move);
+      if (result.matched) {
+        result = { remaining: session.traceRemaining, matched: false, wrong: true, wrongMove: move, done: false };
+      }
+    }
+  }
   session.traceRemaining = result.remaining;
   session.traceWrong = result.wrongMove || "";
   session.traceFlashFix = result.wrong;
@@ -695,9 +756,16 @@ function onCubeMove(move) {
   if (!cubeConnected || !session || !move) return;
   mirror?.turn(move);
   if (session.phase === "idle" || session.phase === "running") {
-    advanceTrace(move);
+    advanceTrace(move, { kind: "face" });
   }
   applyCube(trainingCubeDecision(cubeFields({ move, solved: false })));
+}
+
+function onCubeRotation(move) {
+  if (!cubeConnected || !session || !move) return;
+  if (session.phase === "idle" || session.phase === "running") {
+    advanceTrace(move, { kind: "rotation" });
+  }
 }
 
 function setCubeConnected(connected) {
@@ -983,6 +1051,7 @@ initSmartCube({
   timer: {
     onCubeFacelets,
     onCubeMove,
+    onCubeRotation,
     setCubeConnected,
   },
 });

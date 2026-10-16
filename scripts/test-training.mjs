@@ -245,7 +245,7 @@ assert(
 const page = readFileSync("training.html", "utf8");
 assert(page.includes('href="/training"'), "training nav points at /training");
 assert(page.includes('styles.css?v=training6'), "training css is cache-busted");
-assert(page.includes('js/training-page.js?v=gyro4'), "training script is cache-busted");
+assert(page.includes('js/training-page.js?v=gyro5'), "training script is cache-busted");
 assert(page.includes('id="training-session"') && page.includes('id="training-picker"'), "training has a session and a case picker");
 assert(page.includes("data-session-mode=\"drill\"") && page.includes("data-session-mode=\"learn\""), "drill and learn are both on the session");
 assert(page.includes('id="training-trace"') && page.includes('id="training-skip-setup"'), "live notation strip and skip setup are on the session");
@@ -399,14 +399,19 @@ assert(notationTokens(rem)[0] === "R", "after R U' R' D the next chip is R");
 
 assert(pageJs.includes("onCubeRotation") && pageJs.includes('kind: "rotation"'), "training listens for gyro rotations");
 assert(pageJs.includes("onCubeGyro") && pageJs.includes("setHousingOrientation"), "training applies live gyro to the 3D cube");
+assert(pageJs.includes("onCubeGyroHome") && pageJs.includes("resetRestingView"), "training Reset gyro snaps the 3D cube to resting view");
 const smartJs = readFileSync("js/smart-cube.js", "utf8");
 assert(smartJs.includes('type === "GYRO"'), "smart-cube forwards GYRO packets");
 assert(smartJs.includes("onOrientation") && smartJs.includes("onCubeGyro"), "smart-cube streams live gyro orientation");
 assert(smartJs.includes("resetGyro") && smartJs.includes("gyro.rehome"), "smart-cube exposes Reset gyro → rehome");
+assert(smartJs.includes("onCubeGyroHome") && smartJs.includes("resetRestingView"), "Reset gyro snaps Training + timer to resting view");
 assert(smartJs.includes("clearHousingOrientation"), "Reset gyro clears the 3D housing offset");
 assert(!smartJs.includes("traceRotations"), "Reset gyro does not touch Training notation remapping state");
 const mirrorJs = readFileSync("js/cube-mirror.js", "utf8");
 assert(mirrorJs.includes("setHousingOrientation") && mirrorJs.includes("quatToCssMatrix3d"), "cube mirror can follow live housing attitude");
+assert(mirrorJs.includes("RESTING_ORBIT") && mirrorJs.includes("resetRestingView"), "cube mirror exports face-on resting orbit + reset");
+assert(mirrorJs.includes("y: 0") || mirrorJs.includes("y:0"), "resting orbit has zero yaw (no 3-face isometric)");
+assert(!mirrorJs.includes("HOME_Y = 32") && !mirrorJs.includes("y: 32"), "resting orbit no longer uses the old 32° isometric yaw");
 const gyroJs = readFileSync("js/cube-gyro.js", "utf8");
 assert(gyroJs.includes("function rehome") && gyroJs.includes("rehome,"), "gyro tracker exports rehome");
 

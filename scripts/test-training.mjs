@@ -244,8 +244,8 @@ assert(
 
 const page = readFileSync("training.html", "utf8");
 assert(page.includes('href="/training"'), "training nav points at /training");
-assert(page.includes('styles.css?v=training4'), "training css is cache-busted");
-assert(page.includes('js/training-page.js?v=training2'), "training script is cache-busted");
+assert(page.includes('styles.css?v=training5'), "training css is cache-busted");
+assert(page.includes('js/training-page.js?v=training3'), "training script is cache-busted");
 assert(page.includes('id="training-session"') && page.includes('id="training-picker"'), "training has a session and a case picker");
 assert(page.includes("data-session-mode=\"drill\"") && page.includes("data-session-mode=\"learn\""), "drill and learn are both on the session");
 assert(page.includes('id="training-trace"') && page.includes('id="training-skip-setup"'), "live notation strip and skip setup are on the session");
@@ -277,5 +277,17 @@ const pageJs = readFileSync("js/training-page.js", "utf8");
 assert(pageJs.includes("traceAlgMove"), "training page advances the live notation strip");
 assert(pageJs.includes("skipSetupTrace") && pageJs.includes("enterAlgTrace"), "skip setup jumps to algorithm tracing");
 assert(pageJs.includes('tracePhase === "setup"'), "setup and alg phases are tracked");
+
+
+const { COLORS } = await import("../js/cube.js");
+assert(COLORS.U === "yellow" && COLORS.F === "green" && COLORS.B === "blue", "Training hold is yellow on U, green on F");
+const ePerm = pll.find((entry) => entry.id === "e");
+assert(ePerm, "E-perm is in the PLL catalog");
+assert(!/\b[xyz]['2]?\b/.test(ePerm.alg), "E-perm alg has no whole-cube rotations");
+assert(!/\b[xyz]['2]?\b/.test(caseTarget(ePerm).setupNotation), "E-perm setup has no whole-cube rotations");
+for (const entry of pll) {
+  assert(!/\b[xyz]['2]?\b/.test(entry.alg), `${entry.id} alg stays on face turns for a cube without gyro`);
+}
+assert(page.includes("yellow on top, green in front"), "Training states the Acubemy-style hold");
 
 console.log("training queue ok");

@@ -4,17 +4,17 @@
  * training-queue.js.
  */
 
-import { expandWideAlg } from "./alg.js?v=training2";
+import { expandWideAlg } from "./alg.js?v=training3";
 import {
   initAlgProgress,
   notationTokens,
   traceAlgMove,
-} from "./alg-progress.js?v=training2";
-import { renderCaseDiagram } from "./case-diagram.js?v=training2";
-import { createCubeMirror } from "./cube-mirror.js?v=training2";
-import { faceletsSolved } from "./move-log.js?v=training2";
-import { initSmartCube } from "./smart-cube.js?v=training2";
-import { formatClock } from "./solve-timer.js?v=training2";
+} from "./alg-progress.js?v=training3";
+import { renderCaseDiagram } from "./case-diagram.js?v=training3";
+import { createCubeMirror } from "./cube-mirror.js?v=training3";
+import { faceletsSolved } from "./move-log.js?v=training3";
+import { initSmartCube } from "./smart-cube.js?v=training3";
+import { formatClock } from "./solve-timer.js?v=training3";
 import {
   STREAK_DOTS,
   addTrainingTime,
@@ -43,7 +43,7 @@ import {
   trainingCubeDecision,
   trainingPool,
   withoutTrainingSet,
-} from "./training-queue.js?v=training2";
+} from "./training-queue.js?v=training3";
 
 const ORDER_LABEL = { random: "Random", weakest: "Weakest first", fixed: "Fixed" };
 

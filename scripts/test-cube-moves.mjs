@@ -65,7 +65,7 @@ function apply(facelets, alg) {
 
 assert(ganFaceletsToApp(SOLVED) === SOLVED, "a solved GAN cube is solved in coach colours");
 assert(faceletsSolved(ganFaceletsToApp(SOLVED)), "converted solved facelets stay solved");
-assert(ganMoveToApp("U") === "D" && ganMoveToApp("F'") === "B'" && ganMoveToApp("R2") === "R2", "GAN faces map onto white-bottom blue-front");
+assert(ganMoveToApp("U") === "D'" && ganMoveToApp("F'") === "F" && ganMoveToApp("R2") === "R2", "GAN faces map onto white-bottom green-front");
 assert(appMoveToGan(ganMoveToApp("U'")) === "U'", "face relabel round-trips");
 assert(cubeEventMove({ move: "U", direction: 2 }) === "U2", "a 2-bit half turn becomes U2");
 assert(cubeEventMove("R'") === "R'", "a move string keeps its prime");

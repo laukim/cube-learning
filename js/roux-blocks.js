@@ -15,15 +15,15 @@ export function firstBlockDone(facelets) {
   return (
     sticker(facelets, "D", 3) === "white" &&
     sticker(facelets, "L", 7) === "orange" &&
-    sticker(facelets, "F", 3) === "blue" &&
+    sticker(facelets, "F", 3) === "green" &&
     sticker(facelets, "L", 5) === "orange" &&
-    sticker(facelets, "B", 5) === "green" &&
+    sticker(facelets, "B", 5) === "blue" &&
     sticker(facelets, "L", 3) === "orange" &&
     sticker(facelets, "D", 0) === "white" &&
-    sticker(facelets, "F", 6) === "blue" &&
+    sticker(facelets, "F", 6) === "green" &&
     sticker(facelets, "L", 8) === "orange" &&
     sticker(facelets, "D", 6) === "white" &&
-    sticker(facelets, "B", 8) === "green" &&
+    sticker(facelets, "B", 8) === "blue" &&
     sticker(facelets, "L", 6) === "orange"
   );
 }
@@ -33,15 +33,15 @@ export function secondBlockDone(facelets) {
   return (
     sticker(facelets, "D", 5) === "white" &&
     sticker(facelets, "R", 7) === "red" &&
-    sticker(facelets, "F", 5) === "blue" &&
+    sticker(facelets, "F", 5) === "green" &&
     sticker(facelets, "R", 3) === "red" &&
-    sticker(facelets, "B", 3) === "green" &&
+    sticker(facelets, "B", 3) === "blue" &&
     sticker(facelets, "R", 5) === "red" &&
     sticker(facelets, "D", 2) === "white" &&
-    sticker(facelets, "F", 8) === "blue" &&
+    sticker(facelets, "F", 8) === "green" &&
     sticker(facelets, "R", 6) === "red" &&
     sticker(facelets, "D", 8) === "white" &&
-    sticker(facelets, "B", 6) === "green" &&
+    sticker(facelets, "B", 6) === "blue" &&
     sticker(facelets, "R", 8) === "red"
   );
 }
@@ -52,18 +52,18 @@ export function blocksDone(facelets) {
 
 const FB_CHECKS = [
   { id: "DL", label: "DL edge (white–orange)", ok: (f) => sticker(f, "D", 3) === "white" && sticker(f, "L", 7) === "orange" },
-  { id: "FL", label: "FL edge (blue–orange)", ok: (f) => sticker(f, "F", 3) === "blue" && sticker(f, "L", 5) === "orange" },
-  { id: "BL", label: "BL edge (green–orange)", ok: (f) => sticker(f, "B", 5) === "green" && sticker(f, "L", 3) === "orange" },
-  { id: "DFL", label: "DFL corner", ok: (f) => sticker(f, "D", 0) === "white" && sticker(f, "F", 6) === "blue" && sticker(f, "L", 8) === "orange" },
-  { id: "DBL", label: "DBL corner", ok: (f) => sticker(f, "D", 6) === "white" && sticker(f, "B", 8) === "green" && sticker(f, "L", 6) === "orange" },
+  { id: "FL", label: "FL edge (green–orange)", ok: (f) => sticker(f, "F", 3) === "green" && sticker(f, "L", 5) === "orange" },
+  { id: "BL", label: "BL edge (blue–orange)", ok: (f) => sticker(f, "B", 5) === "blue" && sticker(f, "L", 3) === "orange" },
+  { id: "DFL", label: "DFL corner", ok: (f) => sticker(f, "D", 0) === "white" && sticker(f, "F", 6) === "green" && sticker(f, "L", 8) === "orange" },
+  { id: "DBL", label: "DBL corner", ok: (f) => sticker(f, "D", 6) === "white" && sticker(f, "B", 8) === "blue" && sticker(f, "L", 6) === "orange" },
 ];
 
 const SB_CHECKS = [
   { id: "DR", label: "DR edge (white–red)", ok: (f) => sticker(f, "D", 5) === "white" && sticker(f, "R", 7) === "red" },
-  { id: "FR", label: "FR edge (blue–red)", ok: (f) => sticker(f, "F", 5) === "blue" && sticker(f, "R", 3) === "red" },
-  { id: "BR", label: "BR edge (green–red)", ok: (f) => sticker(f, "B", 3) === "green" && sticker(f, "R", 5) === "red" },
-  { id: "DFR", label: "DFR corner", ok: (f) => sticker(f, "D", 2) === "white" && sticker(f, "F", 8) === "blue" && sticker(f, "R", 6) === "red" },
-  { id: "DBR", label: "DBR corner", ok: (f) => sticker(f, "D", 8) === "white" && sticker(f, "B", 6) === "green" && sticker(f, "R", 8) === "red" },
+  { id: "FR", label: "FR edge (green–red)", ok: (f) => sticker(f, "F", 5) === "green" && sticker(f, "R", 3) === "red" },
+  { id: "BR", label: "BR edge (blue–red)", ok: (f) => sticker(f, "B", 3) === "blue" && sticker(f, "R", 5) === "red" },
+  { id: "DFR", label: "DFR corner", ok: (f) => sticker(f, "D", 2) === "white" && sticker(f, "F", 8) === "green" && sticker(f, "R", 6) === "red" },
+  { id: "DBR", label: "DBR corner", ok: (f) => sticker(f, "D", 8) === "white" && sticker(f, "B", 6) === "blue" && sticker(f, "R", 8) === "red" },
 ];
 
 export function fbProgress(facelets) {
@@ -97,7 +97,7 @@ export function analyzeFirstBlock(facelets) {
     hint: hint(
       `First block · ${next.label}`,
       placed === 0
-        ? "Build a 1×2×3 on the LEFT: orange centre + white–orange DL edge + blue–orange and green–orange sides + the two white–orange corners on D."
+        ? "Build a 1×2×3 on the LEFT: orange centre + white–orange DL edge + green–orange and blue–orange sides + the two white–orange corners on D."
         : `${placed}/5 pieces in. Next: get ${next.label} into the left block without popping pieces you already placed.`,
       "R U R' / L' U' L / M … (intuitive)",
       "Square first (two corners + DL), then insert the two side edges. Keep white on D."
@@ -140,7 +140,7 @@ export function analyzeSecondBlock(facelets) {
     hint: hint(
       `Second block · ${next.label}`,
       placed === 0
-        ? "Mirror of FB on the RIGHT: red centre + white–red DR + blue–red / green–red sides + two white–red corners. Protect the left block."
+        ? "Mirror of FB on the RIGHT: red centre + white–red DR + green–red / blue–red sides + two white–red corners. Protect the left block."
         : `${placed}/5 pieces in. Next: ${next.label}. Prefer R/U inserts that don’t destroy the left block.`,
       "R U R' / U R U' R' … (intuitive)",
       "Same idea as F2L pairing, but you are finishing a whole right 1×2×3."

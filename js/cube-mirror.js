@@ -1,7 +1,7 @@
 /**
  * Live 3D mirror for a connected smart cube.
  * Reuses the CSS cubie mesh in cubie-view.js. Facelets are coach letters
- * (white on the bottom, blue in front). A turn animates, then the mesh is
+ * (white on the bottom, green in front). A turn animates, then the mesh is
  * rebuilt from the resulting facelets so the picture cannot drift.
  */
 

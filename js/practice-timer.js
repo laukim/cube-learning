@@ -2262,7 +2262,7 @@ export function initPracticeTimer({
     if (kick) {
       kick.textContent =
         open && crossCase
-          ? `Optimal · ${crossCase.length} ${crossCase.length === 1 ? "move" : "moves"} · white on bottom, blue in front`
+          ? `Optimal · ${crossCase.length} ${crossCase.length === 1 ? "move" : "moves"} · white on bottom, green in front`
           : "";
     }
     const locked = state.phase !== "idle";

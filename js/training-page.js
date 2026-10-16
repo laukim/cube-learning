@@ -4,11 +4,17 @@
  * training-queue.js.
  */
 
-import { renderCaseDiagram } from "./case-diagram.js?v=training1";
-import { createCubeMirror } from "./cube-mirror.js?v=training1";
-import { faceletsSolved } from "./move-log.js?v=training1";
-import { initSmartCube } from "./smart-cube.js?v=training1";
-import { formatClock } from "./solve-timer.js?v=training1";
+import { expandWideAlg } from "./alg.js?v=training2";
+import {
+  initAlgProgress,
+  notationTokens,
+  traceAlgMove,
+} from "./alg-progress.js?v=training2";
+import { renderCaseDiagram } from "./case-diagram.js?v=training2";
+import { createCubeMirror } from "./cube-mirror.js?v=training2";
+import { faceletsSolved } from "./move-log.js?v=training2";
+import { initSmartCube } from "./smart-cube.js?v=training2";
+import { formatClock } from "./solve-timer.js?v=training2";
 import {
   STREAK_DOTS,
   addTrainingTime,
@@ -37,7 +43,7 @@ import {
   trainingCubeDecision,
   trainingPool,
   withoutTrainingSet,
-} from "./training-queue.js?v=training1";
+} from "./training-queue.js?v=training2";
 
 const ORDER_LABEL = { random: "Random", weakest: "Weakest first", fixed: "Fixed" };
 
@@ -90,6 +96,7 @@ let picker = null;
 let cubeConnected = false;
 let lastFacelets = "";
 let raf = 0;
+let traceFlashTimer = 0;
 
 function setStatus(text) {
   if (statusEl) statusEl.textContent = text;
@@ -116,9 +123,159 @@ function currentSet() {
 
 function idleStatus() {
   if (!session?.trainingCase) return "Select a case set.";
+  if (session.tracePhase === "setup") {
+    if (cubeConnected) {
+      return "Follow the setup moves. Each correct turn clears the next notation. Skip setup if the case is already on the cube.";
+    }
+    return "Setup notation is below. Skip setup to jump to the algorithm, or space to time when you are ready.";
+  }
+  if (session.tracePhase === "alg") {
+    if (cubeConnected && session.cubeArmed) {
+      return "Case set up. Follow the algorithm notation — wrong turns rewrite the remaining moves.";
+    }
+    if (cubeConnected) {
+      return "Match the case on the cube (or finish setup), then follow the algorithm notation.";
+    }
+    return "Algorithm notation is below. Space or tap to start timing.";
+  }
   if (cubeConnected && session.cubeArmed) return "Case set up. Turn the cube to start. Space still works.";
   if (cubeConnected) return "Set this case up from solved. The timer arms when the cube matches. Space still starts.";
   return "Space or tap to start. Press again to stop, then space for the next case.";
+}
+
+function clearTraceFlash() {
+  if (traceFlashTimer) {
+    clearTimeout(traceFlashTimer);
+    traceFlashTimer = 0;
+  }
+}
+
+function tracePlan(alg) {
+  return initAlgProgress(expandWideAlg(String(alg || "").trim()));
+}
+
+function enterSetupTrace() {
+  if (!session) return;
+  const plan = tracePlan(session.setupNotation);
+  session.tracePhase = plan.remaining ? "setup" : "alg";
+  session.traceFull = plan.fullAlg;
+  session.traceRemaining = plan.remaining;
+  session.traceWrong = "";
+  session.traceFlashFix = false;
+  session.traceFlashWrong = false;
+  if (session.tracePhase === "alg") enterAlgTrace();
+}
+
+function enterAlgTrace() {
+  if (!session) return;
+  const plan = tracePlan(session.alg);
+  session.tracePhase = plan.remaining ? "alg" : "done";
+  session.traceFull = plan.fullAlg;
+  session.traceRemaining = plan.remaining;
+  session.traceWrong = "";
+  session.traceFlashFix = false;
+  session.traceFlashWrong = false;
+}
+
+function skipSetupTrace() {
+  if (!session || session.phase === "running") return;
+  if (session.tracePhase !== "setup") return;
+  skipSetupOnce = true;
+  clearTraceFlash();
+  enterAlgTrace();
+  paintSession();
+  setStatus(idleStatus());
+  reconsiderCube();
+}
+
+function paintTrace() {
+  const root = document.getElementById("training-trace");
+  const kicker = document.getElementById("training-trace-kicker");
+  const strip = document.getElementById("training-trace-strip");
+  const wrongEl = document.getElementById("training-trace-wrong");
+  const skipBtn = document.getElementById("training-skip-setup");
+  if (!root || !strip) return;
+  const active = Boolean(session && (session.tracePhase === "setup" || session.tracePhase === "alg"));
+  root.hidden = !active;
+  if (!active) {
+    if (skipBtn) skipBtn.hidden = true;
+    if (wrongEl) {
+      wrongEl.hidden = true;
+      wrongEl.textContent = "";
+    }
+    strip.innerHTML = "";
+    return;
+  }
+  const setup = session.tracePhase === "setup";
+  if (kicker) kicker.textContent = setup ? "Setup" : "Algorithm";
+  if (skipBtn) skipBtn.hidden = !setup || session.phase === "running";
+  const tokens = notationTokens(session.traceRemaining);
+  if (!tokens.length) {
+    strip.innerHTML = `<p class="training-trace-empty">${setup ? "Setup done" : "Algorithm done"}</p>`;
+  } else {
+    strip.innerHTML = tokens
+      .map((tok, index) => {
+        const classes = ["training-trace-tok"];
+        if (index === 0) {
+          classes.push("is-next");
+          if (session.traceFlashFix) classes.push("is-fix");
+          if (session.traceFlashWrong) classes.push("is-wrong-flash");
+        }
+        return `<span class="${classes.join(" ")}">${esc(tok)}</span>`;
+      })
+      .join("");
+  }
+  if (wrongEl) {
+    if (session.traceWrong && session.traceFlashWrong) {
+      wrongEl.hidden = false;
+      wrongEl.textContent = `Wrong move ${session.traceWrong} — do ${tokens[0] || "the fix"} to continue.`;
+    } else {
+      wrongEl.hidden = true;
+      wrongEl.textContent = "";
+    }
+  }
+}
+
+function advanceTrace(move) {
+  if (!session || (session.tracePhase !== "setup" && session.tracePhase !== "alg")) return;
+  if (!session.traceRemaining) {
+    if (session.tracePhase === "setup") {
+      enterAlgTrace();
+      paintSession();
+      setStatus(idleStatus());
+    }
+    return;
+  }
+  const result = traceAlgMove(session.traceRemaining, move);
+  session.traceRemaining = result.remaining;
+  session.traceWrong = result.wrongMove || "";
+  session.traceFlashFix = result.wrong;
+  session.traceFlashWrong = result.wrong;
+  if (result.matched && result.done) {
+    clearTraceFlash();
+    if (session.tracePhase === "setup") {
+      enterAlgTrace();
+      paintSession();
+      setStatus(idleStatus());
+      return;
+    }
+    session.tracePhase = "done";
+    session.traceFlashFix = false;
+    session.traceFlashWrong = false;
+    paintSession();
+    return;
+  }
+  paintTrace();
+  if (result.wrong) {
+    clearTraceFlash();
+    traceFlashTimer = window.setTimeout(() => {
+      traceFlashTimer = 0;
+      if (!session) return;
+      session.traceFlashFix = false;
+      session.traceFlashWrong = false;
+      paintTrace();
+    }, 650);
+  }
 }
 
 function paintMethod() {
@@ -276,6 +433,7 @@ function paintSession() {
       })
       .join("");
   }
+  paintTrace();
 }
 
 function paint() {
@@ -307,6 +465,8 @@ function showCase(picked) {
   session.wasUnsolved = false;
   session.elapsed = 0;
   session.underGoal = false;
+  clearTraceFlash();
+  enterSetupTrace();
   if (session.stopTimer) {
     clearTimeout(session.stopTimer);
     session.stopTimer = 0;
@@ -369,6 +529,12 @@ function openSession(setId, mode) {
     trainingCase: null,
     facelets: lastFacelets,
     stopTimer: 0,
+    tracePhase: "setup",
+    traceFull: "",
+    traceRemaining: "",
+    traceWrong: "",
+    traceFlashFix: false,
+    traceFlashWrong: false,
   };
   view = "session";
   if (cubeConnected && lastFacelets.length === 54) mirror?.setFacelets(lastFacelets);
@@ -385,6 +551,7 @@ function openSession(setId, mode) {
 
 function closeSession() {
   cancelRaf();
+  clearTraceFlash();
   if (session?.stopTimer) clearTimeout(session.stopTimer);
   session = null;
   view = "home";
@@ -509,12 +676,27 @@ function onCubeFacelets(facelets) {
   session.facelets = text;
   if (session.phase === "running" && text && !faceletsSolved(text)) session.wasUnsolved = true;
   if (text.length === 54) mirror?.setFacelets(text);
+  if (
+    session.tracePhase === "setup" &&
+    session.phase === "idle" &&
+    text.length === 54 &&
+    session.target &&
+    text === session.target
+  ) {
+    clearTraceFlash();
+    enterAlgTrace();
+    paintSession();
+    setStatus(idleStatus());
+  }
   applyCube(trainingCubeDecision(cubeFields()));
 }
 
 function onCubeMove(move) {
   if (!cubeConnected || !session || !move) return;
   mirror?.turn(move);
+  if (session.phase === "idle" || session.phase === "running") {
+    advanceTrace(move);
+  }
   applyCube(trainingCubeDecision(cubeFields({ move, solved: false })));
 }
 
@@ -651,6 +833,8 @@ function applyAlgChoice(algId) {
   session.setupNotation = target.setupNotation;
   session.target = target.facelets;
   session.cubeArmed = false;
+  clearTraceFlash();
+  enterSetupTrace();
   showCube();
   paintSession();
   setStatus(idleStatus());
@@ -705,6 +889,10 @@ document.addEventListener("click", (event) => {
   }
   if (event.target.closest?.("#training-again") && session?.phase !== "running") {
     showCase({ trainingCase: session.trainingCase, cursor: session.cursor });
+    return;
+  }
+  if (event.target.closest?.("#training-skip-setup")) {
+    skipSetupTrace();
     return;
   }
   const jump = event.target.closest?.("[data-jump-case]");

@@ -244,12 +244,38 @@ assert(
 
 const page = readFileSync("training.html", "utf8");
 assert(page.includes('href="/training"'), "training nav points at /training");
-assert(page.includes('styles.css?v=training3'), "training css is cache-busted");
-assert(page.includes('js/training-page.js?v=training1'), "training script is cache-busted");
+assert(page.includes('styles.css?v=training4'), "training css is cache-busted");
+assert(page.includes('js/training-page.js?v=training2'), "training script is cache-busted");
 assert(page.includes('id="training-session"') && page.includes('id="training-picker"'), "training has a session and a case picker");
 assert(page.includes("data-session-mode=\"drill\"") && page.includes("data-session-mode=\"learn\""), "drill and learn are both on the session");
+assert(page.includes('id="training-trace"') && page.includes('id="training-skip-setup"'), "live notation strip and skip setup are on the session");
+assert(page.includes('id="training-trace-strip"'), "notation tokens render into a strip");
 assert(!page.includes("Acubemy") && !/Match/.test(page), "training does not copy Acubemy or Match");
 assert(readFileSync("index.html", "utf8").includes('href="/training"'), "the timer nav reaches Training");
 assert(readFileSync("pll.html", "utf8").includes('href="/training"'), "the PLL nav reaches Training");
+
+const {
+  initAlgProgress,
+  notationTokens,
+  traceAlgMove,
+  consumeAlgMove,
+} = await import("../js/alg-progress.js");
+
+const setup = initAlgProgress(expandWideAlg("F U R U' R' F'"));
+assert(notationTokens(setup.remaining).join() === "F,U,R,U',R',F'", "setup tokens stay readable");
+let step = traceAlgMove(setup.remaining, "F");
+assert(step.matched && step.remaining.startsWith("U"), "a correct setup turn consumes the first move");
+step = traceAlgMove(step.remaining, "R");
+assert(step.wrong && step.wrongMove === "R" && step.remaining.startsWith("R'"), "a wrong turn rewrites remaining with the inverse first");
+step = traceAlgMove(step.remaining, "R'");
+assert(step.matched && step.remaining.startsWith("U"), "the fix move consumes and leaves the original remainder");
+const wide = initAlgProgress(expandWideAlg("f R U R' U' f'"));
+assert(notationTokens(wide.remaining)[0] === "F", "wide setup expands so outer-face turns can match");
+assert(consumeAlgMove(wide.remaining, "F").matched, "expanded wide setup consumes F");
+
+const pageJs = readFileSync("js/training-page.js", "utf8");
+assert(pageJs.includes("traceAlgMove"), "training page advances the live notation strip");
+assert(pageJs.includes("skipSetupTrace") && pageJs.includes("enterAlgTrace"), "skip setup jumps to algorithm tracing");
+assert(pageJs.includes('tracePhase === "setup"'), "setup and alg phases are tracked");
 
 console.log("training queue ok");

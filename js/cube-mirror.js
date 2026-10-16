@@ -10,7 +10,7 @@
  */
 
 import { applyMove, faceletsToString, stringToFacelets } from "./cube.js?v=timer4";
-import { quatToCssMatrix3d } from "./cube-gyro.js?v=gyro3";
+import { quatToCssMatrix3d } from "./cube-gyro.js?v=gyro4";
 import { createCubieCube, parseMove } from "./cubie-view.js?v=cube3d1";
 
 const HOME_X = -24;

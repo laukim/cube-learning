@@ -14,11 +14,11 @@ import {
 import {
   isRotationMove,
   physicalMoveToAlgMove,
-} from "./cube-gyro.js?v=gyro3";
+} from "./cube-gyro.js?v=gyro4";
 import { renderCaseDiagram } from "./case-diagram.js?v=training4";
-import { createCubeMirror } from "./cube-mirror.js?v=gyro3";
+import { createCubeMirror } from "./cube-mirror.js?v=gyro4";
 import { faceletsSolved } from "./move-log.js?v=training4";
-import { initSmartCube } from "./smart-cube.js?v=gyro3";
+import { initSmartCube } from "./smart-cube.js?v=gyro4";
 import { formatClock } from "./solve-timer.js?v=training4";
 import {
   STREAK_DOTS,

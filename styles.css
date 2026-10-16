@@ -3457,6 +3457,14 @@ body.timer-cross .timer-stage {
   margin-bottom: 0.35rem;
 }
 
+.cube-connect-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .cube-connect-title {
   margin: 0;
   font-family: var(--font-body);

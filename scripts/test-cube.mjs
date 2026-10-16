@@ -1033,8 +1033,8 @@ setPllKnownSort("probability");
 assert(getPllKnownSort() === "probability", "probability sort switches back");
 const ja = PLL_KNOWN_CASES.find((c) => c.id === "ja");
 assert(ja && ja.short === "Ja" && ja.name === "Ja-perm", "Ja sits beside Jb");
-assert(ja.alg === "R2 D R D' R F2 r' F r F2", "Ja uses the no-rotation Cube Academy hold");
-assert(ja.algDisplay === "R2 (D R D' R) F2 (r' F r) F2", "Ja display groups the no-rotation hold");
+assert(ja.alg === "x R2 F R F' R U2 r' U r U2 x'", "Ja uses the Cube Academy alg");
+assert(ja.algDisplay === "x R2 (F R F' R) U2 (r' U r) U2 x'", "Ja display groups the Cube Academy alg");
 assert(ja.sides.F[0] === ja.sides.F[1] && ja.sides.F[0] !== ja.sides.F[2], "Ja front pair touches the left side — the L");
 assert(!(ja.sides.F[0] === ja.sides.F[2] && ja.sides.F[1] !== ja.sides.F[0]), "Ja front is an incomplete bar, not headlights");
 const ra = PLL_KNOWN_CASES.find((c) => c.id === "ra");
@@ -1156,14 +1156,14 @@ const ePerm = PLL_KNOWN_CASES.find((c) => c.id === "e");
 assert(aa && aa.short === "Aa" && aa.name === "Aa-perm", "Aa is its own case");
 assert(ab && ab.short === "Ab" && ab.name === "Ab-perm", "Ab is its own case");
 assert(ePerm && ePerm.short === "E" && ePerm.name === "E-perm", "E is its own case");
-assert(aa.alg === "R' F R' B2 R F' R' B2 R2", "Aa uses the no-rotation hold");
-assert(aa.algDisplay === "(R' F R') B2 (R F' R') B2 R2", "Aa display groups the no-rotation hold");
-assert(ab.alg === "R2 B2 R F R' B2 R F' R", "Ab uses the no-rotation hold");
-assert(ab.algDisplay === "R2 B2 (R F R') B2 (R F' R)", "Ab display groups the no-rotation hold");
-assert(ePerm.alg === "R B' R' F R B R' F' R B R' F R B' R' F'", "E uses the no-rotation hold");
+assert(aa.alg === "x R' U R' D2 R U' R' D2 R2 x'", "Aa uses the Cube Academy alg");
+assert(aa.algDisplay === "x (R' U R') D2 (R U' R') D2 R2 x'", "Aa display groups the Cube Academy alg");
+assert(ab.alg === "x R2 D2 R U R' D2 R U' R x'", "Ab uses the Cube Academy alg");
+assert(ab.algDisplay === "x R2 D2 (R U R') D2 (R U' R) x'", "Ab display groups the Cube Academy alg");
+assert(ePerm.alg === "x' R U' R' D R U R' D' R U R' D R U' R' D' x", "E uses the Cube Academy alg");
 assert(
-  ePerm.algDisplay === "(R B' R') F (R B R') F' (R B R') F (R B' R') F'",
-  "E display groups the no-rotation hold"
+  ePerm.algDisplay === "x' (R U' R') D (R U R') D' (R U R') D (R U' R') D' x",
+  "E display groups the Cube Academy alg"
 );
 assert(aa.sides.B[0] === aa.sides.B[2] && aa.sides.B[0] !== aa.sides.B[1], "Aa headlights are on the back");
 assert(aa.sides.F[0] === aa.sides.F[1] && aa.sides.F[0] !== aa.sides.F[2], "Aa block pair is on the front left");

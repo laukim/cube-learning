@@ -1,0 +1,196 @@
+/**
+ * Whole-cube rotations from a smart-cube GYRO quaternion stream.
+ * Face turns leave the housing attitude alone; tilting the cube in your hands
+ * jumps the quaternion. We snap those jumps to x / y / z (and doubles).
+ */
+
+const AXES = {
+  x: [1, 0, 0],
+  y: [0, 1, 0],
+  z: [0, 0, 1],
+};
+
+const ROT_FACE = {
+  x: { U: "F", F: "D", D: "B", B: "U", R: "R", L: "L" },
+  "x'": { U: "B", B: "D", D: "F", F: "U", R: "R", L: "L" },
+  x2: { U: "D", D: "U", F: "B", B: "F", R: "R", L: "L" },
+  y: { F: "L", L: "B", B: "R", R: "F", U: "U", D: "D" },
+  "y'": { F: "R", R: "B", B: "L", L: "F", U: "U", D: "D" },
+  y2: { F: "B", B: "F", L: "R", R: "L", U: "U", D: "D" },
+  z: { U: "L", L: "D", D: "R", R: "U", F: "F", B: "B" },
+  "z'": { U: "R", R: "D", D: "L", L: "U", F: "F", B: "B" },
+  z2: { U: "D", D: "U", L: "R", R: "L", F: "F", B: "B" },
+};
+
+const ROT_MOVES = Object.keys(ROT_FACE);
+
+export function isRotationMove(move) {
+  const t = String(move || "").trim();
+  return Boolean(ROT_FACE[t]);
+}
+
+export function identityFaceMap() {
+  return { U: "U", R: "R", F: "F", D: "D", L: "L", B: "B" };
+}
+
+export function composeFaceMap(a, b) {
+  const out = {};
+  for (const face of Object.keys(a)) out[face] = b[a[face]] || a[face];
+  return out;
+}
+
+/** Where each home centre sits after the listed whole-cube rotations. */
+export function basisFaceMap(rotations) {
+  let map = identityFaceMap();
+  for (const rot of rotations || []) {
+    const step = ROT_FACE[String(rot || "").trim()];
+    if (step) map = composeFaceMap(map, step);
+  }
+  return map;
+}
+
+/**
+ * Map a coach face turn into alg-space after the user has already done the
+ * listed whole-cube rotations (so U after x' is the physical centre now on top).
+ */
+export function physicalMoveToAlgMove(move, rotations) {
+  const token = String(move || "").trim();
+  if (!token) return "";
+  if (isRotationMove(token)) return token;
+  const face = token[0];
+  const suffix = token.slice(1);
+  if (!"URFDLB".includes(face)) return token;
+  const mapped = basisFaceMap(rotations)[face] || face;
+  return mapped + suffix;
+}
+
+function quatLen(q) {
+  return Math.hypot(q.x || 0, q.y || 0, q.z || 0, q.w || 0) || 1;
+}
+
+export function normalizeQuat(q) {
+  const n = quatLen(q);
+  return { x: (q.x || 0) / n, y: (q.y || 0) / n, z: (q.z || 0) / n, w: (q.w || 0) / n };
+}
+
+function quatConjugate(q) {
+  return { x: -q.x, y: -q.y, z: -q.z, w: q.w };
+}
+
+function quatMul(a, b) {
+  return {
+    w: a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z,
+    x: a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
+    y: a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
+    z: a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w,
+  };
+}
+
+function rotateVec(q, v) {
+  const p = { x: v[0], y: v[1], z: v[2], w: 0 };
+  const r = quatMul(quatMul(q, p), quatConjugate(q));
+  return [r.x, r.y, r.z];
+}
+
+function axisAngleFromQuat(q) {
+  const n = normalizeQuat(q);
+  let w = n.w;
+  if (w > 1) w = 1;
+  if (w < -1) w = -1;
+  // Prefer the shorter arc.
+  const sign = w < 0 ? -1 : 1;
+  const qw = w * sign;
+  const qx = n.x * sign;
+  const qy = n.y * sign;
+  const qz = n.z * sign;
+  const angle = 2 * Math.acos(qw);
+  const s = Math.sqrt(Math.max(0, 1 - qw * qw));
+  if (s < 1e-6) return { axis: [1, 0, 0], angle: 0 };
+  return { axis: [qx / s, qy / s, qz / s], angle };
+}
+
+function dot(a, b) {
+  return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+
+/**
+ * Relative housing rotation from q0 → q1, snapped to a single x/y/z move.
+ * Returns "" when the jump is too small or not a clean face-axis turn.
+ */
+export function rotationBetweenQuats(q0, q1, { minAngle = 0.55, axisDot = 0.82 } = {}) {
+  if (!q0 || !q1) return "";
+  const rel = quatMul(normalizeQuat(q1), quatConjugate(normalizeQuat(q0)));
+  // Express the rotation axis in the cube body frame at q0.
+  const { axis: worldAxis, angle } = axisAngleFromQuat(rel);
+  if (angle < minAngle) return "";
+  const bodyAxis = rotateVec(quatConjugate(normalizeQuat(q0)), worldAxis);
+  let best = "";
+  let bestScore = axisDot;
+  for (const [name, axis] of Object.entries(AXES)) {
+    const d = dot(bodyAxis, axis);
+    const ad = Math.abs(d);
+    if (ad < bestScore) continue;
+    bestScore = ad;
+    const turns = Math.round(angle / (Math.PI / 2));
+    if (turns <= 0) continue;
+    const k = ((turns % 4) + 4) % 4;
+    if (k === 0) continue;
+    const positive = d >= 0;
+    // Right-hand: +x is R-like (x), +y is U-like (y), +z is F-like (z).
+    if (k === 2) best = `${name}2`;
+    else if (k === 1) best = positive ? name : `${name}'`;
+    else best = positive ? `${name}'` : name; // 3 quarters = opposite prime
+  }
+  return best;
+}
+
+/**
+ * Follow a GYRO stream and emit discrete whole-cube moves.
+ * Face turns should not call observe — only GYRO packets.
+ */
+export function createGyroTracker({ onRotation, settleMs = 120, minAngle = 0.55 } = {}) {
+  let home = null;
+  let settled = null;
+  let candidate = null;
+  let timer = 0;
+
+  function clearTimer() {
+    if (timer) {
+      clearTimeout(timer);
+      timer = 0;
+    }
+  }
+
+  function observe(quaternion) {
+    if (!quaternion) return;
+    const q = normalizeQuat(quaternion);
+    if (!home) {
+      home = q;
+      settled = q;
+      candidate = q;
+      return;
+    }
+    candidate = q;
+    clearTimer();
+    timer = setTimeout(() => {
+      timer = 0;
+      const from = settled || home;
+      const move = rotationBetweenQuats(from, candidate, { minAngle });
+      settled = candidate;
+      if (move) onRotation?.(move);
+    }, settleMs);
+  }
+
+  function reset() {
+    clearTimer();
+    home = null;
+    settled = null;
+    candidate = null;
+  }
+
+  function dispose() {
+    reset();
+  }
+
+  return { observe, reset, dispose };
+}

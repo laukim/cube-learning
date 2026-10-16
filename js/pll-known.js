@@ -24,11 +24,11 @@ export const PLL_KNOWN_CASES = [
     short: "Aa",
     name: "Aa-perm",
     cue: "Headlights back, block front-left",
-    alg: "R' F R' B2 R F' R' B2 R2",
-    algDisplay: "(R' F R') B2 (R F' R') B2 R2",
+    alg: "x R' U R' D2 R U' R' D2 R2 x'",
+    algDisplay: "x (R' U R') D2 (R U' R') D2 R2 x'",
     steps:
-      "Headlights on the back: the two corner stickers match and the edge between them does not. The block is the front-left corner — a pair on the front, on the left, and a pair on the left toward the front, meeting there. The top is yellow and every edge already matches its centre.\nNot Ab — there the headlights are on the right.\nTurn only U until the headlights are at the back and that block is front-left.\nDo the Aa-perm.",
-        sides: {
+      "Headlights on the back: the two corner stickers match and the edge between them does not. The block is the front-left corner — a pair on the front, on the left, and a pair on the left toward the front, meeting there. The top is yellow and every edge already matches its centre.\nNot Ab — there the headlights are on the right.\nTurn only U until the headlights are at the back and that block is front-left.\nDo the Aa-perm. It starts with x.",
+            sides: {
       B: ["red", "blue", "red"],
       L: ["orange", "orange", "blue"],
       R: ["green", "red", "orange"],
@@ -42,11 +42,11 @@ export const PLL_KNOWN_CASES = [
     short: "Ab",
     name: "Ab-perm",
     cue: "Headlights on the right, block front-left",
-    alg: "R2 B2 R F R' B2 R F' R",
-    algDisplay: "R2 B2 (R F R') B2 (R F' R)",
+    alg: "x R2 D2 R U R' D2 R U' R x'",
+    algDisplay: "x R2 D2 (R U R') D2 (R U' R) x'",
     steps:
-      "Headlights on the right: the two corner stickers match and the edge between them does not. The block is the front-left corner — a pair on the front, on the left, and a pair on the left toward the front. The top is yellow and every edge already matches its centre.\nNot Aa — there the headlights are at the back.\nTurn only U until the headlights are on the right and that block is front-left.\nDo the Ab-perm.",
-        sides: {
+      "Headlights on the right: the two corner stickers match and the edge between them does not. The block is the front-left corner — a pair on the front, on the left, and a pair on the left toward the front. The top is yellow and every edge already matches its centre.\nNot Aa — there the headlights are at the back.\nTurn only U until the headlights are on the right and that block is front-left.\nDo the Ab-perm. It starts with x.",
+            sides: {
       B: ["green", "blue", "orange"],
       L: ["orange", "orange", "red"],
       R: ["blue", "red", "blue"],
@@ -64,7 +64,7 @@ export const PLL_KNOWN_CASES = [
     algDisplay: "R' U' F' (R U R' U') R' F (R2 U' R') U' (R U R') U R",
     steps:
       "One full bar, nothing else — three side stickers the same, and no headlights or pairs on the other sides.\nTurn only U until that bar is on the left.\nDo the F-perm.",
-        sides: {
+            sides: {
       B: ["blue", "green", "red"],
       L: ["orange", "orange", "orange"],
       R: ["green", "red", "blue"],
@@ -82,7 +82,7 @@ export const PLL_KNOWN_CASES = [
     algDisplay: "R2 (U R' U R') U' R U' R2 (D U') R' U R D'",
     steps:
       "Headlights on the left: the two corner stickers match and the edge between them does not. A bar sits on the front, on the right, not attached to those headlights.\nNot Gc — there the bar is on the back. Not Gd — there the bar is on the right, toward the front.\nTurn only U until the headlights are on the left and that bar is on the front.\nDo the Ga-perm.",
-        sides: {
+            sides: {
       B: ["blue", "green", "red"],
       L: ["orange", "blue", "orange"],
       R: ["green", "orange", "blue"],
@@ -100,7 +100,7 @@ export const PLL_KNOWN_CASES = [
     algDisplay: "D R' U' R (U D') R2 U R' U (R U' R U') R2",
     steps:
       "Headlights on the left, and a bar that is not attached to them. The block is in the back: a pair on the right, toward the back. From that angle it looks like an H pattern except one corner.\nNot Gd — there the bar is on the right, toward the front.\nTurn only U until the headlights are on the left and that block is in the back.\nDo the Gb-perm. It starts with D.",
-        sides: {
+            sides: {
       B: ["blue", "orange", "red"],
       L: ["orange", "red", "orange"],
       R: ["green", "green", "blue"],
@@ -118,7 +118,7 @@ export const PLL_KNOWN_CASES = [
     algDisplay: "D R2 (U' R U' R) U R' U R2 (D' U) R U' R'",
     steps:
       "Headlights on the left, and the bar is on the back — a pair on the right of the back face, not attached to the headlights.\nNot Ga — there the bar faces you.\nTurn only U until the headlights are on the left and the bar is at the back.\nDo the Gc-perm. It starts with D.",
-        sides: {
+            sides: {
       B: ["blue", "red", "red"],
       L: ["orange", "green", "orange"],
       R: ["green", "orange", "blue"],
@@ -136,7 +136,7 @@ export const PLL_KNOWN_CASES = [
     algDisplay: "R U R' (U' D) R2 U' R U' (R' U R' U) R2 D'",
     steps:
       "Headlights on the left, and a bar on the right toward the front. The bar is not attached to the headlights.\nNot Gb — there the block is in the back. Not Ga — there the bar faces you.\nTurn only U until the headlights are on the left and that bar is on the right, toward the front.\nDo the Gd-perm.",
-        sides: {
+            sides: {
       B: ["blue", "green", "red"],
       L: ["orange", "red", "orange"],
       R: ["green", "blue", "blue"],
@@ -150,11 +150,11 @@ export const PLL_KNOWN_CASES = [
     short: "Ja",
     name: "Ja-perm",
     cue: "L on the left",
-    alg: "R2 D R D' R F2 r' F r F2",
-    algDisplay: "R2 (D R D' R) F2 (r' F r) F2",
+    alg: "x R2 F R F' R U2 r' U r U2 x'",
+    algDisplay: "x R2 (F R F' R) U2 (r' U r) U2 x'",
     steps:
-      "L on the left. The front is an incomplete bar — two stickers, not three — and that pair sits on the left, touching the matched side. That turn is the L. Not a lone full bar, and not two bars apart.\nNot Jb — there the front pair sits on the right, away from the bar. Not T — T is headlights, and the edge between them does not match.\nTurn only U until that L is on the left.\nDo the Ja-perm. It uses a wide r.",
-        sides: {
+      "L on the left. The front is an incomplete bar — two stickers, not three — and that pair sits on the left, touching the matched side. That turn is the L. Not a lone full bar, and not two bars apart.\nNot Jb — there the front pair sits on the right, away from the bar. Not T — T is headlights, and the edge between them does not match.\nTurn only U until that L is on the left.\nDo the Ja-perm. It starts with x and uses a wide r.",
+            sides: {
       B: ["blue", "red", "red"],
       L: ["orange", "orange", "orange"],
       R: ["green", "blue", "blue"],
@@ -172,7 +172,7 @@ export const PLL_KNOWN_CASES = [
     algDisplay: "(R U R' F') (R U R' U') R' F (R2 U' R') U'",
     steps:
       "Full bar on the left — three side stickers the same — plus a matching pair on each other side. The front pair sits on the right, away from the bar. That pattern is Jb. T’s headlights are not a full bar: the edge between them does not match.\nTurn only U until the bar is on the left.\nDo the Jb-perm. It is the T-perm with F' pulled forward. No x moves.",
-        sides: {
+            sides: {
       B: ["blue", "blue", "red"],
       L: ["orange", "orange", "orange"],
       R: ["green", "green", "blue"],
@@ -190,7 +190,7 @@ export const PLL_KNOWN_CASES = [
     algDisplay: "(R U' R' U') R U R D (R' U' R D') R' U2 R'",
     steps:
       "Headlights on the left: the two corner stickers match and the edge between them does not. One pair sits on the front, on the left, touching those headlights. Not T — T also has a pair on the back.\nTurn only U until the headlights are on the left and that pair is on the front.\nDo the Ra-perm. The D and D' put the bottom back — finish every move.",
-        sides: {
+            sides: {
       B: ["red", "blue", "green"],
       L: ["blue", "red", "blue"],
       R: ["orange", "green", "red"],
@@ -208,7 +208,7 @@ export const PLL_KNOWN_CASES = [
     algDisplay: "(R' U2 R U2) R' F (R U R' U') R' F' R2",
     steps:
       "Headlights on the front: the two corner stickers match and the edge between them does not. One pair sits on the left, toward the front, touching those headlights. Not Ra — there the pair faces you — and not T, which has two pairs.\nTurn only U until the headlights are at the front and the pair is on the left toward the front.\nDo the Rb-perm.",
-        sides: {
+            sides: {
       B: ["green", "red", "blue"],
       L: ["blue", "blue", "red"],
       R: ["red", "orange", "green"],
@@ -226,7 +226,7 @@ export const PLL_KNOWN_CASES = [
     algDisplay: "(R U R' U') R' F (R2 U' R') U' (R U R' F')",
     steps:
       "Headlights on the left: the two corner stickers match and the edge between them does not. Not a full bar.\nTurn only U until those headlights are on the left.\nDo the T-perm. Same alg as 2-look PLL.",
-        sides: {
+            sides: {
       B: ["blue", "blue", "red"],
       L: ["orange", "red", "orange"],
       R: ["green", "orange", "blue"],
@@ -244,7 +244,7 @@ export const PLL_KNOWN_CASES = [
     algDisplay: "(R U R' U) R' U' (R2 U' R') U R' U R",
     steps:
       "One full bar on the front — three matching stickers. The other three sides are headlights.\nTurn only U until that bar is at the front, like the picture.\nDo Cube Academy’s full PLL Ua. The 2-look Ua is a different alg (bar at the back).",
-        sides: {
+            sides: {
       B: ["green", "red", "green"],
       L: ["red", "orange", "red"],
       R: ["orange", "green", "orange"],
@@ -262,7 +262,7 @@ export const PLL_KNOWN_CASES = [
     algDisplay: "R' U (R' U') (R' U') R' U (R U R2)",
     steps:
       "One full bar on the front, and that front edge already matches the front centre. The other three edges cycle.\nTurn only U until the bar is at the front.\nDo Ub. Same moves as 2-look Ub — Cube Academy’s R3 is just R'.",
-        sides: {
+            sides: {
       B: ["blue", "red", "blue"],
       L: ["orange", "blue", "orange"],
       R: ["red", "orange", "red"],
@@ -280,7 +280,7 @@ export const PLL_KNOWN_CASES = [
     algDisplay: "(R' U R' U') R D' R' D R' (U D' R2 U' R2 D R2)",
     steps:
       "No headlights. It looks like an A-perm from this side — a pair on the front, on the left, and a pair on the left toward the front — but both corners are opposite to that block, so it is not Aa or Ab.\nTurn only U until it matches the picture.\nDo the V-perm.",
-        sides: {
+            sides: {
       B: ["green", "red", "blue"],
       L: ["orange", "orange", "red"],
       R: ["red", "blue", "orange"],
@@ -298,7 +298,7 @@ export const PLL_KNOWN_CASES = [
     algDisplay: "F (R U' R' U') R U R' F' (R U R' U') R' F R F'",
     steps:
       "Two bars on the same side, but apart. No headlights.\nHere the front-left is a blue pair and the back-left sticker is also blue, with the left face between them.\nTurn only U until it matches the picture, then the Y-perm. Same alg as 2-look.",
-        sides: {
+            sides: {
       B: ["green", "orange", "blue"],
       L: ["orange", "blue", "red"],
       R: ["red", "red", "orange"],
@@ -312,11 +312,11 @@ export const PLL_KNOWN_CASES = [
     short: "E",
     name: "E-perm",
     cue: "No headlights, edges solved",
-    alg: "R B' R' F R B R' F' R B R' F R B' R' F'",
-    algDisplay: "(R B' R') F (R B R') F' (R B R') F (R B' R') F'",
+    alg: "x' R U' R' D R U R' D' R U R' D R U' R' D' x",
+    algDisplay: "x' (R U' R') D (R U R') D' (R U R') D (R U' R') D' x",
     steps:
-      "No headlights and no bars. The top is yellow. Every edge already matches its centre, and every side is three different colours — the corners swap in two opposite pairs.\nTurn only U until it matches the picture.\nDo the E-perm.",
-        sides: {
+      "No headlights and no bars. The top is yellow. Every edge already matches its centre, and every side is three different colours — the corners swap in two opposite pairs.\nTurn only U until it matches the picture.\nDo the E-perm. It starts with x'.",
+            sides: {
       B: ["orange", "blue", "red"],
       L: ["blue", "orange", "green"],
       R: ["green", "red", "blue"],
@@ -334,7 +334,7 @@ export const PLL_KNOWN_CASES = [
     algDisplay: "M' U' (M2 U') (M2 U') M' U2 M2",
     steps:
       "No full bar. Headlights on every side, but the colours are not the H pattern — the front and back edges swap and the corners cycle.\nTurn only U until it matches the picture, then the Z-perm.\nSame M alg as 2-look.",
-        sides: {
+            sides: {
       B: ["orange", "green", "orange"],
       L: ["green", "orange", "green"],
       R: ["blue", "red", "blue"],
@@ -352,7 +352,7 @@ export const PLL_KNOWN_CASES = [
     algDisplay: "M2 U' (M2 U2 M2) U' M2",
     steps:
       "No bars. Opposite edges are swapped, so every side is headlights.\nMatch the picture (any U that looks like this), then the H-perm.\nM follows L. Same alg as 2-look.",
-        sides: {
+            sides: {
       B: ["blue", "green", "blue"],
       L: ["orange", "red", "orange"],
       R: ["red", "orange", "red"],
@@ -370,7 +370,7 @@ export const PLL_KNOWN_CASES = [
     algDisplay: "(R U R' U) R U R' F' (R U R' U') R' F (R2 U' R') U2 R U' R'",
     steps:
       "Diagonal mess — no bar and no headlights. Every side is a broken pair, and the corners that swap sit on a diagonal.\nTurn only U until the pairs point the same way as the picture.\nDo the Na-perm.",
-        sides: {
+            sides: {
       B: ["blue", "blue", "green"],
       L: ["red", "red", "orange"],
       R: ["orange", "orange", "red"],
@@ -388,7 +388,7 @@ export const PLL_KNOWN_CASES = [
     algDisplay: "(R' U R U') R' (F' U' F) R U (R' U' R U') f R f'",
     steps:
       "Bars and an opposite corner on every side. No headlights. The pattern is the same as Na, but this time the opposite corner sits to the right of the bar.\nNot Na — there that corner sits to the left of the bar.\nTurn only U until the bars point the same way as the picture.\nDo the Nb-perm. It uses a wide f.",
-        sides: {
+            sides: {
       B: ["green", "blue", "blue"],
       L: ["orange", "red", "red"],
       R: ["red", "orange", "orange"],

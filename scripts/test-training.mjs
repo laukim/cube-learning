@@ -244,8 +244,8 @@ assert(
 
 const page = readFileSync("training.html", "utf8");
 assert(page.includes('href="/training"'), "training nav points at /training");
-assert(page.includes('styles.css?v=training5'), "training css is cache-busted");
-assert(page.includes('js/training-page.js?v=training3'), "training script is cache-busted");
+assert(page.includes('styles.css?v=training6'), "training css is cache-busted");
+assert(page.includes('js/training-page.js?v=training4'), "training script is cache-busted");
 assert(page.includes('id="training-session"') && page.includes('id="training-picker"'), "training has a session and a case picker");
 assert(page.includes("data-session-mode=\"drill\"") && page.includes("data-session-mode=\"learn\""), "drill and learn are both on the session");
 assert(page.includes('id="training-trace"') && page.includes('id="training-skip-setup"'), "live notation strip and skip setup are on the session");
@@ -283,11 +283,38 @@ const { COLORS } = await import("../js/cube.js");
 assert(COLORS.U === "yellow" && COLORS.F === "green" && COLORS.B === "blue", "Training hold is yellow on U, green on F");
 const ePerm = pll.find((entry) => entry.id === "e");
 assert(ePerm, "E-perm is in the PLL catalog");
-assert(!/\b[xyz]['2]?\b/.test(ePerm.alg), "E-perm alg has no whole-cube rotations");
-assert(!/\b[xyz]['2]?\b/.test(caseTarget(ePerm).setupNotation), "E-perm setup has no whole-cube rotations");
-for (const entry of pll) {
-  assert(!/\b[xyz]['2]?\b/.test(entry.alg), `${entry.id} alg stays on face turns for a cube without gyro`);
-}
+assert(ePerm.alg.startsWith("x'"), "E-perm keeps the Cube Academy x' opener");
+assert(caseTarget(ePerm).setupNotation.includes("x"), "E-perm setup still carries whole-cube rotations");
 assert(page.includes("yellow on top, green in front"), "Training states the Acubemy-style hold");
+assert(page.includes("cube gyro") || page.includes("Whole-cube"), "Training explains gyro rotation chips");
+
+const {
+  isRotationMove,
+  physicalMoveToAlgMove,
+  rotationBetweenQuats,
+  normalizeQuat,
+} = await import("../js/cube-gyro.js");
+assert(isRotationMove("x'") && !isRotationMove("U'"), "x' is a rotation token and U' is not");
+assert(physicalMoveToAlgMove("F'", ["x'"]) === "U'", "after x', the top face turn is alg U'");
+assert(physicalMoveToAlgMove("U'", []) === "U'", "with no tilt, face turns stay as written");
+
+// Synthetic 90° about body +X (x) from identity quaternion.
+const q0 = normalizeQuat({ x: 0, y: 0, z: 0, w: 1 });
+const half = Math.SQRT1_2;
+const qX = normalizeQuat({ x: half, y: 0, z: 0, w: half }); // +90° about x
+assert(rotationBetweenQuats(q0, qX) === "x", "a +90° housing pitch is x");
+const qXp = normalizeQuat({ x: -half, y: 0, z: 0, w: half });
+assert(rotationBetweenQuats(q0, qXp) === "x'", "a -90° housing pitch is x'");
+
+// Notation: face turn must not clear a leading x'
+const eTrace = initAlgProgress(expandWideAlg(ePerm.alg));
+assert(notationTokens(eTrace.remaining)[0] === "x'", "E-perm live queue starts with x'");
+const faceOnly = traceAlgMove(eTrace.remaining, "U'");
+assert(!faceOnly.matched && faceOnly.wrong, "U' alone does not consume the leading x'");
+const tilt = traceAlgMove(eTrace.remaining, "x'");
+assert(tilt.matched && notationTokens(tilt.remaining)[0] === "R", "gyro x' clears the rotation chip and leaves R");
+
+assert(pageJs.includes("onCubeRotation") && pageJs.includes('kind: "rotation"'), "training listens for gyro rotations");
+assert(readFileSync("js/smart-cube.js", "utf8").includes('type === "GYRO"'), "smart-cube forwards GYRO packets");
 
 console.log("training queue ok");

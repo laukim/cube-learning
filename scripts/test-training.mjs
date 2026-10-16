@@ -245,7 +245,7 @@ assert(
 const page = readFileSync("training.html", "utf8");
 assert(page.includes('href="/training"'), "training nav points at /training");
 assert(page.includes('styles.css?v=training6'), "training css is cache-busted");
-assert(page.includes('js/training-page.js?v=training4'), "training script is cache-busted");
+assert(page.includes('js/training-page.js?v=gyro3'), "training script is cache-busted");
 assert(page.includes('id="training-session"') && page.includes('id="training-picker"'), "training has a session and a case picker");
 assert(page.includes("data-session-mode=\"drill\"") && page.includes("data-session-mode=\"learn\""), "drill and learn are both on the session");
 assert(page.includes('id="training-trace"') && page.includes('id="training-skip-setup"'), "live notation strip and skip setup are on the session");
@@ -287,12 +287,16 @@ assert(ePerm.alg.startsWith("x'"), "E-perm keeps the Cube Academy x' opener");
 assert(caseTarget(ePerm).setupNotation.includes("x"), "E-perm setup still carries whole-cube rotations");
 assert(page.includes("yellow on top, green in front"), "Training states the Acubemy-style hold");
 assert(page.includes("cube gyro") || page.includes("Whole-cube"), "Training explains gyro rotation chips");
+assert(page.includes("tips live") || page.includes("3D cube tips"), "Training mentions live gyro on the 3D cube");
 
 const {
   isRotationMove,
   physicalMoveToAlgMove,
   rotationBetweenQuats,
   normalizeQuat,
+  relativeQuat,
+  quatToCssMatrix3d,
+  createGyroTracker,
 } = await import("../js/cube-gyro.js");
 assert(isRotationMove("x'") && !isRotationMove("U'"), "x' is a rotation token and U' is not");
 // After x' (yellow toward you), old B sits on top — that physical turn is alg U, not D'.
@@ -302,13 +306,42 @@ assert(physicalMoveToAlgMove("F", ["x'"]) === "D", "after x', old F is on bottom
 assert(physicalMoveToAlgMove("U'", []) === "U'", "with no tilt, face turns stay as written");
 assert(physicalMoveToAlgMove("B'", ["x'"]) !== "D'", "regression: top turn after x' must not become D'");
 
-// Synthetic 90° about body +X: geometric U→F is training x' (yellow to front).
+// GAN GYRO body frame is white-U / green-F. +90° about +X pitches white toward F
+// (yellow away) → x. −90° pitches yellow toward you → x' (Cube Academy E-perm grip).
 const q0 = normalizeQuat({ x: 0, y: 0, z: 0, w: 1 });
 const half = Math.SQRT1_2;
-const qX = normalizeQuat({ x: half, y: 0, z: 0, w: half }); // +90° about x → U toward F
-assert(rotationBetweenQuats(q0, qX) === "x'", "a +90° housing pitch (yellow to front) is x'");
-const qXp = normalizeQuat({ x: -half, y: 0, z: 0, w: half });
-assert(rotationBetweenQuats(q0, qXp) === "x", "a -90° housing pitch is x");
+const qX = normalizeQuat({ x: half, y: 0, z: 0, w: half }); // +90° about x → GAN U toward F
+assert(rotationBetweenQuats(q0, qX) === "x", "a +90° GAN pitch (white to front / yellow away) is x");
+const qXp = normalizeQuat({ x: -half, y: 0, z: 0, w: half }); // −90° → yellow toward you
+assert(rotationBetweenQuats(q0, qXp) === "x'", "a −90° GAN pitch (yellow to self) is x'");
+assert(rotationBetweenQuats(q0, qXp) !== "x", "yellow-to-self must not report as bare x");
+
+// Live orientation helpers: relative quat + CSS matrix for the 3D housing.
+const rel = relativeQuat(q0, qXp);
+assert(Math.abs(rel.x + half) < 1e-9 && Math.abs(rel.w - half) < 1e-9, "relativeQuat keeps −90° about x");
+const css = quatToCssMatrix3d(rel);
+assert(css.startsWith("matrix3d(") && css.endsWith(")"), "quatToCssMatrix3d emits matrix3d()");
+assert(!css.includes("NaN"), "housing matrix has no NaN");
+
+// Tracker streams onOrientation every packet, not only on discrete snaps.
+const orientations = [];
+const snaps = [];
+const tracker = createGyroTracker({
+  settleMs: 20,
+  onOrientation(_q, info) {
+    orientations.push(info.relative);
+  },
+  onRotation(move) {
+    snaps.push(move);
+  },
+});
+tracker.observe(q0);
+tracker.observe(qXp);
+assert(orientations.length >= 2, "live gyro orientation fires before the discrete snap");
+assert(Math.abs(orientations[0].w - 1) < 1e-9, "first orientation at home is identity");
+await new Promise((r) => setTimeout(r, 50));
+assert(snaps[0] === "x'", "settled yellow-to-self snap is still x'");
+tracker.dispose();
 
 // Notation: face turn must not clear a leading x'
 const eTrace = initAlgProgress(expandWideAlg(ePerm.alg));
@@ -333,6 +366,11 @@ for (let i = 0; i < eBodyAfterXp.length; i++) {
 assert(notationTokens(rem)[0] === "R", "after R U' R' D the next chip is R");
 
 assert(pageJs.includes("onCubeRotation") && pageJs.includes('kind: "rotation"'), "training listens for gyro rotations");
-assert(readFileSync("js/smart-cube.js", "utf8").includes('type === "GYRO"'), "smart-cube forwards GYRO packets");
+assert(pageJs.includes("onCubeGyro") && pageJs.includes("setHousingOrientation"), "training applies live gyro to the 3D cube");
+const smartJs = readFileSync("js/smart-cube.js", "utf8");
+assert(smartJs.includes('type === "GYRO"'), "smart-cube forwards GYRO packets");
+assert(smartJs.includes("onOrientation") && smartJs.includes("onCubeGyro"), "smart-cube streams live gyro orientation");
+const mirrorJs = readFileSync("js/cube-mirror.js", "utf8");
+assert(mirrorJs.includes("setHousingOrientation") && mirrorJs.includes("quatToCssMatrix3d"), "cube mirror can follow live housing attitude");
 
 console.log("training queue ok");

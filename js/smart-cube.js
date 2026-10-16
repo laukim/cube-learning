@@ -10,9 +10,9 @@ import {
   promptForCubeMac,
   shouldApplyAdapterIdleStatus,
 } from "./bluetooth-support.js?v=cube2";
-import { createCubeMirror } from "./cube-mirror.js?v=postsolve1";
+import { createCubeMirror } from "./cube-mirror.js?v=gyro3";
 import { faceletsForScramble, renderCubeNet } from "./cube-reconstruction.js?v=lllive1";
-import { createGyroTracker } from "./cube-gyro.js?v=gyro2";
+import { createGyroTracker } from "./cube-gyro.js?v=gyro3";
 import { ganFaceletsToApp, ganMoveToApp, normalizeMoves } from "./move-log.js?v=lllive1";
 
 const FEED_LIMIT = 24;
@@ -76,6 +76,10 @@ export function initSmartCube({ timer } = {}) {
       rememberMove(move);
       timer?.onCubeRotation?.(move);
     },
+    onOrientation(_q, { relative } = {}) {
+      mirror?.setHousingOrientation?.(relative);
+      timer?.onCubeGyro?.(relative);
+    },
   });
 
   function setStatus(text) {
@@ -113,6 +117,7 @@ export function initSmartCube({ timer } = {}) {
       if (!connected) {
         mirror.reset();
         mirroredFacelets = "";
+        mirror.clearHousingOrientation?.();
       } else if (facelets && facelets !== mirroredFacelets) {
         mirror.setFacelets(facelets);
         mirroredFacelets = facelets;

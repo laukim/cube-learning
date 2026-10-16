@@ -1,7 +1,13 @@
 /**
  * Whole-cube rotations from a smart-cube GYRO quaternion stream.
  * Face turns leave the housing attitude alone; tilting the cube in your hands
- * jumps the quaternion. We snap those jumps to x / y / z (and doubles).
+ * jumps the quaternion. We snap those jumps to x / y / z (and doubles), and
+ * also stream the live attitude so the on-screen cube can follow the tilt.
+ *
+ * GAN firmware quaternions are in the cube's white-U / green-F body frame.
+ * Training algs use yellow-U / green-F (Acubemy hold). The same physical tip
+ * that brings yellow toward you is therefore a −90° pitch about +X in the GAN
+ * frame (white goes to back), which we label x' to match Cube Academy.
  */
 
 const AXES = {
@@ -11,8 +17,8 @@ const AXES = {
 };
 
 const ROT_FACE = {
-  // Product / Cube Academy E-perm grip: x' tips yellow (U) toward you (to F).
-  // Singmaster often writes the opposite sense for x'; we follow the training algs.
+  // Cube Academy / Acubemy: x' tips yellow (app U) toward you (to F).
+  // cubejs Singmaster matches this for yellow-U: after x', F holds U.
   x: { U: "B", B: "D", D: "F", F: "U", R: "R", L: "L" },
   "x'": { U: "F", F: "D", D: "B", B: "U", R: "R", L: "L" },
   x2: { U: "D", D: "U", F: "B", B: "F", R: "R", L: "L" },
@@ -23,8 +29,6 @@ const ROT_FACE = {
   "z'": { U: "R", R: "D", D: "L", L: "U", F: "F", B: "B" },
   z2: { U: "D", D: "U", L: "R", R: "L", F: "F", B: "B" },
 };
-
-const ROT_MOVES = Object.keys(ROT_FACE);
 
 export function isRotationMove(move) {
   const t = String(move || "").trim();
@@ -78,17 +82,23 @@ export function normalizeQuat(q) {
   return { x: (q.x || 0) / n, y: (q.y || 0) / n, z: (q.z || 0) / n, w: (q.w || 0) / n };
 }
 
-function quatConjugate(q) {
+export function quatConjugate(q) {
   return { x: -q.x, y: -q.y, z: -q.z, w: q.w };
 }
 
-function quatMul(a, b) {
+export function quatMul(a, b) {
   return {
     w: a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z,
     x: a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
     y: a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
     z: a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w,
   };
+}
+
+/** Rotation that takes q0's attitude to q1's (body frame at q0). */
+export function relativeQuat(q0, q1) {
+  if (!q0 || !q1) return normalizeQuat({ x: 0, y: 0, z: 0, w: 1 });
+  return quatMul(normalizeQuat(q1), quatConjugate(normalizeQuat(q0)));
 }
 
 function rotateVec(q, v) {
@@ -121,10 +131,14 @@ function dot(a, b) {
 /**
  * Relative housing rotation from q0 → q1, snapped to a single x/y/z move.
  * Returns "" when the jump is too small or not a clean face-axis turn.
+ *
+ * Axis sense matches the GAN white-U body frame: +90° about +X pitches white
+ * (GAN U) toward green (F) → our x (yellow away). −90° pitches yellow toward
+ * you → x'. Do not flip the x axis — that made yellow-to-self report as x.
  */
 export function rotationBetweenQuats(q0, q1, { minAngle = 0.55, axisDot = 0.82 } = {}) {
   if (!q0 || !q1) return "";
-  const rel = quatMul(normalizeQuat(q1), quatConjugate(normalizeQuat(q0)));
+  const rel = relativeQuat(q0, q1);
   // Express the rotation axis in the cube body frame at q0.
   const { axis: worldAxis, angle } = axisAngleFromQuat(rel);
   if (angle < minAngle) return "";
@@ -141,23 +155,53 @@ export function rotationBetweenQuats(q0, q1, { minAngle = 0.55, axisDot = 0.82 }
     const k = ((turns % 4) + 4) % 4;
     if (k === 0) continue;
     const positive = d >= 0;
-    // Right-hand geometric +X pitches U toward F. Training algs call that x'
-    // (yellow to front), so only the x axis flips sense vs Singmaster naming.
-    // y / z stay standard: +y → y, +z → z.
-    let sensePositive = positive;
-    if (name === "x") sensePositive = !positive;
+    // Right-hand in the GAN body frame: +x → x, +y → y, +z → z.
     if (k === 2) best = `${name}2`;
-    else if (k === 1) best = sensePositive ? name : `${name}'`;
-    else best = sensePositive ? `${name}'` : name; // 3 quarters = opposite prime
+    else if (k === 1) best = positive ? name : `${name}'`;
+    else best = positive ? `${name}'` : name; // 3 quarters = opposite prime
   }
   return best;
 }
 
 /**
- * Follow a GYRO stream and emit discrete whole-cube moves.
+ * CSS matrix3d() for a unit quaternion (column-major, local → parent).
+ * Cubie axes: x right, y up, z toward camera — same as the quat body frame.
+ */
+export function quatToCssMatrix3d(q) {
+  const n = normalizeQuat(q || { x: 0, y: 0, z: 0, w: 1 });
+  const { x, y, z, w } = n;
+  const xx = x * x;
+  const yy = y * y;
+  const zz = z * z;
+  const xy = x * y;
+  const xz = x * z;
+  const yz = y * z;
+  const wx = w * x;
+  const wy = w * y;
+  const wz = w * z;
+  const m00 = 1 - 2 * (yy + zz);
+  const m01 = 2 * (xy - wz);
+  const m02 = 2 * (xz + wy);
+  const m10 = 2 * (xy + wz);
+  const m11 = 1 - 2 * (xx + zz);
+  const m12 = 2 * (yz - wx);
+  const m20 = 2 * (xz - wy);
+  const m21 = 2 * (yz + wx);
+  const m22 = 1 - 2 * (xx + yy);
+  const f = (v) => {
+    const n = Math.abs(v) < 1e-10 ? 0 : v;
+    return Number(n.toFixed(6));
+  };
+  // matrix3d is column-major: (m00, m10, m20, 0, m01, m11, m21, 0, ...)
+  return `matrix3d(${f(m00)}, ${f(m10)}, ${f(m20)}, 0, ${f(m01)}, ${f(m11)}, ${f(m21)}, 0, ${f(m02)}, ${f(m12)}, ${f(m22)}, 0, 0, 0, 0, 1)`;
+}
+
+/**
+ * Follow a GYRO stream: emit discrete whole-cube moves after settle, and stream
+ * live orientation every packet so the 3D cube can track the housing.
  * Face turns should not call observe — only GYRO packets.
  */
-export function createGyroTracker({ onRotation, settleMs = 120, minAngle = 0.55 } = {}) {
+export function createGyroTracker({ onRotation, onOrientation, settleMs = 120, minAngle = 0.55 } = {}) {
   let home = null;
   let settled = null;
   let candidate = null;
@@ -177,9 +221,15 @@ export function createGyroTracker({ onRotation, settleMs = 120, minAngle = 0.55 
       home = q;
       settled = q;
       candidate = q;
+      onOrientation?.(q, {
+        home,
+        relative: normalizeQuat({ x: 0, y: 0, z: 0, w: 1 }),
+      });
       return;
     }
     candidate = q;
+    const relative = relativeQuat(home, q);
+    onOrientation?.(q, { home, relative });
     clearTimer();
     timer = setTimeout(() => {
       timer = 0;

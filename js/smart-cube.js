@@ -10,9 +10,9 @@ import {
   promptForCubeMac,
   shouldApplyAdapterIdleStatus,
 } from "./bluetooth-support.js?v=cube2";
-import { createCubeMirror } from "./cube-mirror.js?v=gyro4";
+import { createCubeMirror } from "./cube-mirror.js?v=gyro5";
 import { faceletsForScramble, renderCubeNet } from "./cube-reconstruction.js?v=lllive1";
-import { createGyroTracker } from "./cube-gyro.js?v=gyro4";
+import { createGyroTracker } from "./cube-gyro.js?v=gyro5";
 import { ganFaceletsToApp, ganMoveToApp, normalizeMoves } from "./move-log.js?v=lllive1";
 
 const FEED_LIMIT = 24;
@@ -137,13 +137,15 @@ export function initSmartCube({ timer } = {}) {
 
   /**
    * Re-home GYRO to the current physical hold (yellow on top, green in front)
-   * and snap the 3D housing back to the resting orbit. Does not touch facelets
-   * or Training notation remapping (matched x'/y stay as they were).
+   * and snap the 3D model back to the face-on resting orbit (not a 3-face
+   * isometric). Does not touch facelets or Training notation remapping.
    */
   function resetGyro() {
     if (!session) return false;
     gyro.rehome();
-    mirror?.clearHousingOrientation?.();
+    if (mirror?.resetRestingView) mirror.resetRestingView();
+    else mirror?.clearHousingOrientation?.();
+    timer?.onCubeGyroHome?.();
     return true;
   }
 

@@ -10,11 +10,13 @@
  */
 
 import { applyMove, faceletsToString, stringToFacelets } from "./cube.js?v=timer4";
-import { quatToCssMatrix3d } from "./cube-gyro.js?v=gyro4";
+import { quatToCssMatrix3d } from "./cube-gyro.js?v=gyro5";
 import { createCubieCube, parseMove } from "./cubie-view.js?v=cube3d1";
 
-const HOME_X = -24;
-const HOME_Y = 32;
+/** Face-on resting hold: yellow U peeking, green F square-on — not isometric 3 faces. */
+export const RESTING_ORBIT = { x: -28, y: 0 };
+const HOME_X = RESTING_ORBIT.x;
+const HOME_Y = RESTING_ORBIT.y;
 
 export function createCubeMirror(cubeEl, { reducedMotion = false, duration = 170 } = {}) {
   const view = createCubieCube(cubeEl);
@@ -174,10 +176,12 @@ export function createCubeMirror(cubeEl, { reducedMotion = false, duration = 170
     const y = Number(relativeQuat.y);
     const z = Number(relativeQuat.z);
     if (![w, x, y, z].every(Number.isFinite)) return;
-    // Near-identity: keep the resting orbit view so a still cube does not jitter.
+    // Near-identity (incl. after Reset gyro): drop the housing matrix so only the
+    // resting face-on orbit remains — never leave a ghost matrix3d on top.
     const identityish = Math.abs(w) > 0.9995 && Math.hypot(x, y, z) < 0.04;
-    if (identityish && !gyroLive) {
+    if (identityish) {
       housingMatrix = "";
+      gyroLive = false;
       applyTilt();
       return;
     }
@@ -190,6 +194,13 @@ export function createCubeMirror(cubeEl, { reducedMotion = false, duration = 170
     housingMatrix = "";
     gyroLive = false;
     applyTilt();
+  }
+
+  /** Snap orbit + housing back to yellow-top / green-front face-on rest. */
+  function resetRestingView() {
+    tiltX = HOME_X;
+    tiltY = HOME_Y;
+    clearHousingOrientation();
   }
 
   function reset() {
@@ -277,6 +288,10 @@ export function createCubeMirror(cubeEl, { reducedMotion = false, duration = 170
     bindOrbit,
     setHousingOrientation,
     clearHousingOrientation,
+    resetRestingView,
+    restingTransform() {
+      return `rotateX(${HOME_X}deg) rotateY(${HOME_Y}deg)`;
+    },
     facelets() {
       return lettersOf(colors);
     },

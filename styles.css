@@ -5573,6 +5573,114 @@ body.training-page .foot {
   text-align: center;
 }
 
+.training-trace {
+  width: min(100%, 28rem);
+  margin-top: 0.55rem;
+  text-align: center;
+}
+
+.training-trace-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+.training-trace-kicker {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.training-trace-strip {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.3rem;
+  min-height: 2rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(8, 14, 12, 0.55);
+}
+
+.training-trace-tok {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.65rem;
+  padding: 0.22rem 0.4rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ink);
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+  font-size: 0.92rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+}
+
+.training-trace-tok.is-next {
+  border-color: rgba(109, 255, 176, 0.55);
+  background: var(--accent-dim);
+  color: var(--accent);
+  box-shadow: 0 0 0 1px rgba(109, 255, 176, 0.12);
+}
+
+.training-trace-tok.is-fix {
+  border-color: rgba(255, 196, 90, 0.7);
+  background: rgba(255, 196, 90, 0.16);
+  color: #ffd27a;
+}
+
+.training-trace-tok.is-wrong-flash {
+  border-color: rgba(255, 107, 107, 0.75);
+  background: rgba(255, 107, 107, 0.18);
+  color: #ff9b9b;
+  animation: training-trace-shake 0.35s ease;
+}
+
+.training-trace-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.training-trace-wrong {
+  margin: 0.35rem 0 0;
+  color: #ff9b9b;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+@keyframes training-trace-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-2px);
+  }
+  75% {
+    transform: translateX(2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .training-trace-tok {
+    transition: none;
+  }
+  .training-trace-tok.is-wrong-flash {
+    animation: none;
+  }
+}
+
 .training-alg-pick {
   display: grid;
   gap: 0.25rem;

@@ -1,6 +1,7 @@
 /**
  * Track progress through a hinted alg as the user turns faces.
  * R2 is satisfied by one R2 or by R then R (same for other doubles).
+ * Wrong moves rewrite the remaining queue (invert the mistake, then continue).
  */
 
 function normalizeToken(tok) {
@@ -107,4 +108,45 @@ export function initAlgProgress(alg) {
     .filter((t) => t && !t.includes("…"))
     .join(" ");
   return { fullAlg: clean, remaining: clean };
+}
+
+/** Display tokens for a live notation strip (keeps R2 as one chip). */
+export function notationTokens(alg) {
+  return String(alg || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+/**
+ * Live notation step: correct moves consume; wrong moves rewrite remaining as
+ * invert(wrong) + remaining so the user can undo and continue (Acubemy-style).
+ * @returns {{ remaining: string, matched: boolean, wrong: boolean, wrongMove: string, done: boolean }}
+ */
+export function traceAlgMove(remainingAlg, userMove) {
+  const consumed = consumeAlgMove(remainingAlg, userMove);
+  if (consumed.matched) {
+    const remaining = consumed.remaining;
+    return {
+      remaining,
+      matched: true,
+      wrong: false,
+      wrongMove: "",
+      done: !remaining,
+    };
+  }
+  const user = toAtomics(userMove);
+  if (!user.length) {
+    const remaining = remainingAlg || "";
+    return { remaining, matched: false, wrong: false, wrongMove: "", done: !remaining };
+  }
+  const fix = user.map(invertAtomic);
+  const rem = toAtomics(remainingAlg);
+  return {
+    remaining: fromAtomics([...fix, ...rem]),
+    matched: false,
+    wrong: true,
+    wrongMove: fromAtomics(user),
+    done: false,
+  };
 }

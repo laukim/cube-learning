@@ -16,7 +16,7 @@
       href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Syne:wght@700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="styles.css?v=training3" />
+    <link rel="stylesheet" href="styles.css?v=training4" />
   </head>
   <body class="training-page">
     <div class="ambient" aria-hidden="true"></div>
@@ -106,6 +106,16 @@
                 Algorithm
                 <select id="training-alg-select" aria-label="Choose an algorithm"></select>
               </label>
+            </div>
+            <div class="training-trace" id="training-trace" hidden>
+              <div class="training-trace-head">
+                <p class="training-trace-kicker" id="training-trace-kicker">Setup</p>
+                <button type="button" class="btn btn-ghost btn-small" id="training-skip-setup" hidden>
+                  Skip setup
+                </button>
+              </div>
+              <div class="training-trace-strip" id="training-trace-strip" aria-live="polite"></div>
+              <p class="training-trace-wrong" id="training-trace-wrong" hidden></p>
             </div>
             <div class="cube-mirror-slot training-cube-slot">
               <div
@@ -208,13 +218,13 @@
     <footer class="foot">
       <p class="foot-notes">
         <span>Works offline · times stay on this device</span>
-        <span>Drill hides the alg · Learn shows it · space or a GAN cube</span>
+        <span>Live notation on setup and alg · Skip setup · space or a GAN cube</span>
       </p>
       <span class="build-stamp" data-build-stamp>v0.0.0-dev</span>
     </footer>
 
     <script src="vendor/cubejs.js?v=cube3d2"></script>
-    <script type="module" src="js/training-page.js?v=training1"></script>
+    <script type="module" src="js/training-page.js?v=training2"></script>
     <!-- Cloudflare Web Analytics --><script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "fd680e4c7f304be681f2fca80e8000e2"}'></script><!-- End Cloudflare Web Analytics -->
   </body>
 </html>

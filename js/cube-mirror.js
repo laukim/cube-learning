@@ -3,9 +3,14 @@
  * Reuses the CSS cubie mesh in cubie-view.js. Facelets are coach letters
  * (white on the bottom, green in front). A turn animates, then the mesh is
  * rebuilt from the resulting facelets so the picture cannot drift.
+ *
+ * Whole-cube attitude comes from the GYRO stream (setHousingOrientation) so
+ * the on-screen cube tips as the physical cube tips. Face turns still go
+ * through turn(); rotation chips never rewrite facelets here.
  */
 
 import { applyMove, faceletsToString, stringToFacelets } from "./cube.js?v=timer4";
+import { quatToCssMatrix3d } from "./cube-gyro.js?v=gyro3";
 import { createCubieCube, parseMove } from "./cubie-view.js?v=cube3d1";
 
 const HOME_X = -24;
@@ -24,6 +29,8 @@ export function createCubeMirror(cubeEl, { reducedMotion = false, duration = 170
   let replayTimer = 0;
   let tiltX = HOME_X;
   let tiltY = HOME_Y;
+  let housingMatrix = "";
+  let gyroLive = false;
   let unbindOrbit = () => {};
   let resizeObserver = null;
 
@@ -32,7 +39,8 @@ export function createCubeMirror(cubeEl, { reducedMotion = false, duration = 170
   }
 
   function applyTilt() {
-    cubeEl.style.transform = `rotateX(${tiltX}deg) rotateY(${tiltY}deg)`;
+    const orbit = `rotateX(${tiltX}deg) rotateY(${tiltY}deg)`;
+    cubeEl.style.transform = housingMatrix ? `${orbit} ${housingMatrix}` : orbit;
   }
 
   function show(next) {
@@ -150,12 +158,47 @@ export function createCubeMirror(cubeEl, { reducedMotion = false, duration = 170
     pump();
   }
 
+  /**
+   * Apply a GYRO-relative quaternion so the mesh housing tracks the physical
+   * cube in real time. Pass null/identity to clear back to orbit-only tilt.
+   */
+  function setHousingOrientation(relativeQuat) {
+    if (!relativeQuat) {
+      housingMatrix = "";
+      gyroLive = false;
+      applyTilt();
+      return;
+    }
+    const w = Number(relativeQuat.w);
+    const x = Number(relativeQuat.x);
+    const y = Number(relativeQuat.y);
+    const z = Number(relativeQuat.z);
+    if (![w, x, y, z].every(Number.isFinite)) return;
+    // Near-identity: keep the resting orbit view so a still cube does not jitter.
+    const identityish = Math.abs(w) > 0.9995 && Math.hypot(x, y, z) < 0.04;
+    if (identityish && !gyroLive) {
+      housingMatrix = "";
+      applyTilt();
+      return;
+    }
+    gyroLive = true;
+    housingMatrix = quatToCssMatrix3d(relativeQuat);
+    applyTilt();
+  }
+
+  function clearHousingOrientation() {
+    housingMatrix = "";
+    gyroLive = false;
+    applyTilt();
+  }
+
   function reset() {
     cancelReplay();
     epoch += 1;
     queue = [];
     busy = false;
     colors = null;
+    clearHousingOrientation();
     delete cubeEl.dataset.facelets;
     cubeEl.innerHTML = "";
     view.state.cubies.clear();
@@ -232,6 +275,8 @@ export function createCubeMirror(cubeEl, { reducedMotion = false, duration = 170
     reset,
     fit,
     bindOrbit,
+    setHousingOrientation,
+    clearHousingOrientation,
     facelets() {
       return lettersOf(colors);
     },

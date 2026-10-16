@@ -69,7 +69,8 @@ globalThis.document = {
   },
 };
 
-const { createCubeMirror } = await import("../js/cube-mirror.js?v=cube3d1");
+const { createCubeMirror } = await import("../js/cube-mirror.js?v=gyro3");
+const { normalizeQuat } = await import("../js/cube-gyro.js?v=gyro3");
 const { faceletIndex } = await import("../js/cubie-view.js?v=cube3d1");
 
 const SOLVED = "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB";
@@ -144,5 +145,21 @@ animated.turn("R'");
 await wait(90);
 assert(animated.facelets() === applied(SOLVED, "U R U' R'"), "queued turns catch up to the same facelets");
 assert(painted(animatedRoot) === animated.facelets(), "the mesh catches up after the animation");
+
+const housingRoot = new El();
+const housing = createCubeMirror(housingRoot, { reducedMotion: true });
+housing.setFacelets(SOLVED);
+const half = Math.SQRT1_2;
+housing.setHousingOrientation(normalizeQuat({ x: -half, y: 0, z: 0, w: half }));
+assert(
+  String(housingRoot.style.transform || "").includes("matrix3d("),
+  "live gyro applies a matrix3d housing transform"
+);
+housing.clearHousingOrientation();
+assert(
+  !String(housingRoot.style.transform || "").includes("matrix3d("),
+  "clearing housing drops the gyro matrix"
+);
+assert(housing.facelets() === SOLVED, "housing tilt does not rewrite facelets");
 
 console.log("cube mirror ok");

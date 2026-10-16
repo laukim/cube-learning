@@ -14,7 +14,7 @@ import {
 import {
   isRotationMove,
   physicalMoveToAlgMove,
-} from "./cube-gyro.js?v=gyro1";
+} from "./cube-gyro.js?v=gyro2";
 import { renderCaseDiagram } from "./case-diagram.js?v=training4";
 import { createCubeMirror } from "./cube-mirror.js?v=training4";
 import { faceletsSolved } from "./move-log.js?v=training4";

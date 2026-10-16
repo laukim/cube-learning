@@ -11,8 +11,10 @@ const AXES = {
 };
 
 const ROT_FACE = {
-  x: { U: "F", F: "D", D: "B", B: "U", R: "R", L: "L" },
-  "x'": { U: "B", B: "D", D: "F", F: "U", R: "R", L: "L" },
+  // Product / Cube Academy E-perm grip: x' tips yellow (U) toward you (to F).
+  // Singmaster often writes the opposite sense for x'; we follow the training algs.
+  x: { U: "B", B: "D", D: "F", F: "U", R: "R", L: "L" },
+  "x'": { U: "F", F: "D", D: "B", B: "U", R: "R", L: "L" },
   x2: { U: "D", D: "U", F: "B", B: "F", R: "R", L: "L" },
   y: { F: "L", L: "B", B: "R", R: "F", U: "U", D: "D" },
   "y'": { F: "R", R: "B", B: "L", L: "F", U: "U", D: "D" },
@@ -50,8 +52,9 @@ export function basisFaceMap(rotations) {
 }
 
 /**
- * Map a coach face turn into alg-space after the user has already done the
- * listed whole-cube rotations (so U after x' is the physical centre now on top).
+ * Map a sticker-fixed coach face turn into alg-space after matched whole-cube
+ * rotations. After x' (yellow tipped toward you), the old B centre sits on top;
+ * turning that physical top face must read as alg U — never D'.
  */
 export function physicalMoveToAlgMove(move, rotations) {
   const token = String(move || "").trim();
@@ -60,6 +63,8 @@ export function physicalMoveToAlgMove(move, rotations) {
   const face = token[0];
   const suffix = token.slice(1);
   if (!"URFDLB".includes(face)) return token;
+  // basisFaceMap: home centre → slot after the tilts. Remap the sticker face
+  // the cube reported into the alg face name for that slot.
   const mapped = basisFaceMap(rotations)[face] || face;
   return mapped + suffix;
 }
@@ -136,10 +141,14 @@ export function rotationBetweenQuats(q0, q1, { minAngle = 0.55, axisDot = 0.82 }
     const k = ((turns % 4) + 4) % 4;
     if (k === 0) continue;
     const positive = d >= 0;
-    // Right-hand: +x is R-like (x), +y is U-like (y), +z is F-like (z).
+    // Right-hand geometric +X pitches U toward F. Training algs call that x'
+    // (yellow to front), so only the x axis flips sense vs Singmaster naming.
+    // y / z stay standard: +y → y, +z → z.
+    let sensePositive = positive;
+    if (name === "x") sensePositive = !positive;
     if (k === 2) best = `${name}2`;
-    else if (k === 1) best = positive ? name : `${name}'`;
-    else best = positive ? `${name}'` : name; // 3 quarters = opposite prime
+    else if (k === 1) best = sensePositive ? name : `${name}'`;
+    else best = sensePositive ? `${name}'` : name; // 3 quarters = opposite prime
   }
   return best;
 }

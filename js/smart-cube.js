@@ -12,7 +12,7 @@ import {
 } from "./bluetooth-support.js?v=cube2";
 import { createCubeMirror } from "./cube-mirror.js?v=postsolve1";
 import { faceletsForScramble, renderCubeNet } from "./cube-reconstruction.js?v=lllive1";
-import { createGyroTracker } from "./cube-gyro.js?v=gyro1";
+import { createGyroTracker } from "./cube-gyro.js?v=gyro2";
 import { ganFaceletsToApp, ganMoveToApp, normalizeMoves } from "./move-log.js?v=lllive1";
 
 const FEED_LIMIT = 24;

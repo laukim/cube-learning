@@ -295,16 +295,20 @@ const {
   normalizeQuat,
 } = await import("../js/cube-gyro.js");
 assert(isRotationMove("x'") && !isRotationMove("U'"), "x' is a rotation token and U' is not");
-assert(physicalMoveToAlgMove("F'", ["x'"]) === "U'", "after x', the top face turn is alg U'");
+// After x' (yellow toward you), old B sits on top — that physical turn is alg U, not D'.
+assert(physicalMoveToAlgMove("B", ["x'"]) === "U", "after x', physical top (B) is alg U");
+assert(physicalMoveToAlgMove("B'", ["x'"]) === "U'", "after x', physical top B' is alg U' — never D'");
+assert(physicalMoveToAlgMove("F", ["x'"]) === "D", "after x', old F is on bottom (alg D)");
 assert(physicalMoveToAlgMove("U'", []) === "U'", "with no tilt, face turns stay as written");
+assert(physicalMoveToAlgMove("B'", ["x'"]) !== "D'", "regression: top turn after x' must not become D'");
 
-// Synthetic 90° about body +X (x) from identity quaternion.
+// Synthetic 90° about body +X: geometric U→F is training x' (yellow to front).
 const q0 = normalizeQuat({ x: 0, y: 0, z: 0, w: 1 });
 const half = Math.SQRT1_2;
-const qX = normalizeQuat({ x: half, y: 0, z: 0, w: half }); // +90° about x
-assert(rotationBetweenQuats(q0, qX) === "x", "a +90° housing pitch is x");
+const qX = normalizeQuat({ x: half, y: 0, z: 0, w: half }); // +90° about x → U toward F
+assert(rotationBetweenQuats(q0, qX) === "x'", "a +90° housing pitch (yellow to front) is x'");
 const qXp = normalizeQuat({ x: -half, y: 0, z: 0, w: half });
-assert(rotationBetweenQuats(q0, qXp) === "x'", "a -90° housing pitch is x'");
+assert(rotationBetweenQuats(q0, qXp) === "x", "a -90° housing pitch is x");
 
 // Notation: face turn must not clear a leading x'
 const eTrace = initAlgProgress(expandWideAlg(ePerm.alg));
@@ -313,6 +317,20 @@ const faceOnly = traceAlgMove(eTrace.remaining, "U'");
 assert(!faceOnly.matched && faceOnly.wrong, "U' alone does not consume the leading x'");
 const tilt = traceAlgMove(eTrace.remaining, "x'");
 assert(tilt.matched && notationTokens(tilt.remaining)[0] === "R", "gyro x' clears the rotation chip and leaves R");
+
+// E-perm after matched x': sticker-fixed body turns remap like the tilted grip.
+// x' R U' R' D … → body R, B', R', F …
+let rem = tilt.remaining;
+const eBodyAfterXp = ["R", "B'", "R'", "F"];
+const eAlgAfterXp = ["R", "U'", "R'", "D"];
+for (let i = 0; i < eBodyAfterXp.length; i++) {
+  const algMove = physicalMoveToAlgMove(eBodyAfterXp[i], ["x'"]);
+  assert(algMove === eAlgAfterXp[i], `E-perm step ${i}: body ${eBodyAfterXp[i]} → ${eAlgAfterXp[i]}, got ${algMove}`);
+  const step = traceAlgMove(rem, algMove);
+  assert(step.matched, `E-perm step ${i} (${algMove}) matches live queue`);
+  rem = step.remaining;
+}
+assert(notationTokens(rem)[0] === "R", "after R U' R' D the next chip is R");
 
 assert(pageJs.includes("onCubeRotation") && pageJs.includes('kind: "rotation"'), "training listens for gyro rotations");
 assert(readFileSync("js/smart-cube.js", "utf8").includes('type === "GYRO"'), "smart-cube forwards GYRO packets");

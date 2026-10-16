@@ -10,9 +10,9 @@ import {
   promptForCubeMac,
   shouldApplyAdapterIdleStatus,
 } from "./bluetooth-support.js?v=cube2";
-import { createCubeMirror } from "./cube-mirror.js?v=gyro3";
+import { createCubeMirror } from "./cube-mirror.js?v=gyro4";
 import { faceletsForScramble, renderCubeNet } from "./cube-reconstruction.js?v=lllive1";
-import { createGyroTracker } from "./cube-gyro.js?v=gyro3";
+import { createGyroTracker } from "./cube-gyro.js?v=gyro4";
 import { ganFaceletsToApp, ganMoveToApp, normalizeMoves } from "./move-log.js?v=lllive1";
 
 const FEED_LIMIT = 24;
@@ -50,6 +50,7 @@ export function initSmartCube({ timer } = {}) {
   const netEl = document.getElementById("cube-connect-net");
   const feedEl = document.getElementById("cube-connect-feed");
   const button = document.getElementById("cube-connect-btn");
+  const resetGyroBtn = document.getElementById("cube-gyro-reset");
   const macForm = document.getElementById("cube-connect-mac");
   const macInput = document.getElementById("cube-connect-mac-input");
   const macCancel = document.getElementById("cube-connect-mac-cancel");
@@ -91,6 +92,10 @@ export function initSmartCube({ timer } = {}) {
     button.textContent = connected ? "Disconnect" : "Connect";
     button.disabled = busy;
     button.classList.toggle("btn-ghost", connected);
+    if (resetGyroBtn) {
+      resetGyroBtn.hidden = !connected;
+      resetGyroBtn.disabled = busy || !connected;
+    }
     if (metaEl) {
       if (!connected) {
         metaEl.hidden = true;
@@ -128,6 +133,18 @@ export function initSmartCube({ timer } = {}) {
       feedEl.hidden = !connected;
       feedEl.textContent = feed.length ? feed.join(" ") : "Turns show up here.";
     }
+  }
+
+  /**
+   * Re-home GYRO to the current physical hold (yellow on top, green in front)
+   * and snap the 3D housing back to the resting orbit. Does not touch facelets
+   * or Training notation remapping (matched x'/y stay as they were).
+   */
+  function resetGyro() {
+    if (!session) return false;
+    gyro.rehome();
+    mirror?.clearHousingOrientation?.();
+    return true;
   }
 
   async function disconnect() {
@@ -306,6 +323,12 @@ export function initSmartCube({ timer } = {}) {
     else connect();
   });
 
+  resetGyroBtn?.addEventListener("click", () => {
+    resetGyroBtn.blur();
+    if (!resetGyro()) return;
+    setStatus("Gyro reset — yellow on top, green in front is home again.");
+  });
+
   bluetoothAdapterMessage().then((blocked) => {
     adapterNote = blocked;
     if (!shouldApplyAdapterIdleStatus({ connected: Boolean(session), busy, settled: statusSettled })) return;
@@ -342,5 +365,5 @@ export function initSmartCube({ timer } = {}) {
     window.setTimeout(step, 700);
   }
 
-  return { disconnect };
+  return { disconnect, resetGyro };
 }

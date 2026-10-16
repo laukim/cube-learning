@@ -69,8 +69,8 @@ globalThis.document = {
   },
 };
 
-const { createCubeMirror } = await import("../js/cube-mirror.js?v=gyro3");
-const { normalizeQuat } = await import("../js/cube-gyro.js?v=gyro3");
+const { createCubeMirror } = await import("../js/cube-mirror.js?v=gyro4");
+const { normalizeQuat } = await import("../js/cube-gyro.js?v=gyro4");
 const { faceletIndex } = await import("../js/cubie-view.js?v=cube3d1");
 
 const SOLVED = "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB";

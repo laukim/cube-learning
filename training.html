@@ -135,7 +135,12 @@
             <section class="cube-connect training-connect" id="cube-connect" aria-label="Smart cube">
               <div class="cube-connect-head">
                 <h2 class="cube-connect-title">Smart cube</h2>
-                <button type="button" class="btn btn-small" id="cube-connect-btn">Connect</button>
+                <div class="cube-connect-actions">
+                  <button type="button" class="btn btn-small btn-ghost" id="cube-gyro-reset" hidden>
+                    Reset gyro
+                  </button>
+                  <button type="button" class="btn btn-small" id="cube-connect-btn">Connect</button>
+                </div>
               </div>
               <p class="cube-connect-status" id="cube-connect-status" aria-live="polite">Checking Bluetooth…</p>
               <form class="cube-connect-mac" id="cube-connect-mac" hidden>
@@ -162,7 +167,8 @@
                 Hold yellow on top, green in front (white on bottom). The timer arms when the cube matches this case and
                 stops when it is solved. The next turn loads another case. Space still works with no cube. Whole-cube
                 moves like x' come from the cube gyro (yellow toward you) — a face turn alone will not clear a rotation
-                chip. The 3D cube tips live with the gyro while you hold it.
+                chip. The 3D cube tips live with the gyro while you hold it. Use Reset gyro when the hold drifts so
+                yellow-top / green-front is home again.
               </p>
             </section>
           </div>
@@ -225,7 +231,7 @@
     </footer>
 
     <script src="vendor/cubejs.js?v=cube3d2"></script>
-    <script type="module" src="js/training-page.js?v=gyro3"></script>
+    <script type="module" src="js/training-page.js?v=gyro4"></script>
     <!-- Cloudflare Web Analytics --><script type="module" src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "fd680e4c7f304be681f2fca80e8000e2"}'></script><!-- End Cloudflare Web Analytics -->
   </body>
 </html>

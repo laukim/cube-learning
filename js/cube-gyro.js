@@ -247,9 +247,34 @@ export function createGyroTracker({ onRotation, onOrientation, settleMs = 120, m
     candidate = null;
   }
 
+  /**
+   * Treat the current physical attitude as the new home (yellow U / green F).
+   * Clears the settle timer, snaps live relative orientation to identity, and
+   * makes the next discrete x/y/z snaps measure from this hold. Pass a quat to
+   * force that attitude; otherwise uses the latest GYRO packet.
+   */
+  function rehome(quaternion) {
+    clearTimer();
+    const q = quaternion
+      ? normalizeQuat(quaternion)
+      : candidate || settled || home;
+    if (!q) {
+      home = null;
+      settled = null;
+      candidate = null;
+      return false;
+    }
+    home = q;
+    settled = q;
+    candidate = q;
+    const identity = normalizeQuat({ x: 0, y: 0, z: 0, w: 1 });
+    onOrientation?.(q, { home, relative: identity });
+    return true;
+  }
+
   function dispose() {
     reset();
   }
 
-  return { observe, reset, dispose };
+  return { observe, reset, rehome, dispose };
 }

@@ -245,7 +245,7 @@ assert(
 const page = readFileSync("training.html", "utf8");
 assert(page.includes('href="/training"'), "training nav points at /training");
 assert(page.includes('styles.css?v=training6'), "training css is cache-busted");
-assert(page.includes('js/training-page.js?v=gyro3'), "training script is cache-busted");
+assert(page.includes('js/training-page.js?v=gyro4'), "training script is cache-busted");
 assert(page.includes('id="training-session"') && page.includes('id="training-picker"'), "training has a session and a case picker");
 assert(page.includes("data-session-mode=\"drill\"") && page.includes("data-session-mode=\"learn\""), "drill and learn are both on the session");
 assert(page.includes('id="training-trace"') && page.includes('id="training-skip-setup"'), "live notation strip and skip setup are on the session");
@@ -288,6 +288,8 @@ assert(caseTarget(ePerm).setupNotation.includes("x"), "E-perm setup still carrie
 assert(page.includes("yellow on top, green in front"), "Training states the Acubemy-style hold");
 assert(page.includes("cube gyro") || page.includes("Whole-cube"), "Training explains gyro rotation chips");
 assert(page.includes("tips live") || page.includes("3D cube tips"), "Training mentions live gyro on the 3D cube");
+assert(page.includes('id="cube-gyro-reset"') && page.includes("Reset gyro"), "Training has a Reset gyro control");
+assert(page.includes("Reset gyro when the hold drifts") || page.includes("yellow-top / green-front is home"), "Training explains Reset gyro re-homes the hold");
 
 const {
   isRotationMove,
@@ -341,6 +343,36 @@ assert(orientations.length >= 2, "live gyro orientation fires before the discret
 assert(Math.abs(orientations[0].w - 1) < 1e-9, "first orientation at home is identity");
 await new Promise((r) => setTimeout(r, 50));
 assert(snaps[0] === "x'", "settled yellow-to-self snap is still x'");
+
+// Reset gyro / rehome: current attitude becomes home; relative snaps to identity;
+// later tilts measure from the new home. Face remapping helpers stay unchanged.
+const afterRehome = [];
+const rehomeSnaps = [];
+const rehomeTracker = createGyroTracker({
+  settleMs: 20,
+  onOrientation(_q, info) {
+    afterRehome.push(info.relative);
+  },
+  onRotation(move) {
+    rehomeSnaps.push(move);
+  },
+});
+rehomeTracker.observe(q0);
+rehomeTracker.observe(qXp);
+await new Promise((r) => setTimeout(r, 50));
+assert(rehomeSnaps[0] === "x'", "pre-rehome snap still sees yellow-to-self as x'");
+const ok = rehomeTracker.rehome();
+assert(ok, "rehome succeeds when a GYRO packet is known");
+assert(Math.abs(afterRehome.at(-1).w - 1) < 1e-9, "rehome fires identity relative orientation");
+afterRehome.length = 0;
+rehomeSnaps.length = 0;
+// Still at qXp (new home). A further −90° from there (to −180°) should snap as another x'.
+const qXp2 = normalizeQuat({ x: -1, y: 0, z: 0, w: 0 }); // −180° about x from identity = −90° from qXp
+rehomeTracker.observe(qXp2);
+await new Promise((r) => setTimeout(r, 50));
+assert(rehomeSnaps[0] === "x'", "after rehome, further yellow-pitch from new home is still x'");
+assert(physicalMoveToAlgMove("B", ["x'"]) === "U", "rehome does not change face remapping after matched x'");
+rehomeTracker.dispose();
 tracker.dispose();
 
 // Notation: face turn must not clear a leading x'
@@ -370,7 +402,12 @@ assert(pageJs.includes("onCubeGyro") && pageJs.includes("setHousingOrientation")
 const smartJs = readFileSync("js/smart-cube.js", "utf8");
 assert(smartJs.includes('type === "GYRO"'), "smart-cube forwards GYRO packets");
 assert(smartJs.includes("onOrientation") && smartJs.includes("onCubeGyro"), "smart-cube streams live gyro orientation");
+assert(smartJs.includes("resetGyro") && smartJs.includes("gyro.rehome"), "smart-cube exposes Reset gyro → rehome");
+assert(smartJs.includes("clearHousingOrientation"), "Reset gyro clears the 3D housing offset");
+assert(!smartJs.includes("traceRotations"), "Reset gyro does not touch Training notation remapping state");
 const mirrorJs = readFileSync("js/cube-mirror.js", "utf8");
 assert(mirrorJs.includes("setHousingOrientation") && mirrorJs.includes("quatToCssMatrix3d"), "cube mirror can follow live housing attitude");
+const gyroJs = readFileSync("js/cube-gyro.js", "utf8");
+assert(gyroJs.includes("function rehome") && gyroJs.includes("rehome,"), "gyro tracker exports rehome");
 
 console.log("training queue ok");

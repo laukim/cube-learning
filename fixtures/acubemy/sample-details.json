@@ -1,0 +1,132 @@
+[
+  {
+    "id": 3105720,
+    "totalTime": 35370,
+    "date": "2026-10-18T06:00:32.426Z",
+    "scramble": "D2 R2 D' B2 R2 U' F2 L2 R2 U B2 U' F L2 F U F D L' R' U'",
+    "flag": "none",
+    "analysis": {
+      "type": "CFOP",
+      "cross": {
+        "moveSequence": [
+          {
+            "sliceTurn": "R",
+            "timeStamp": 0
+          },
+          {
+            "sliceTurn": "U",
+            "timeStamp": 5942
+          }
+        ]
+      },
+      "f2l": {
+        "slots": [
+          {
+            "moveSequence": [
+              {
+                "sliceTurn": "U",
+                "timeStamp": 7000
+              },
+              {
+                "sliceTurn": "R",
+                "timeStamp": 24151
+              }
+            ]
+          }
+        ]
+      },
+      "oll": {
+        "case": 1,
+        "moveSequence": [
+          {
+            "sliceTurn": "R",
+            "timeStamp": 25000
+          },
+          {
+            "sliceTurn": "U",
+            "timeStamp": 30661
+          }
+        ]
+      },
+      "pll": {
+        "case": "Ua",
+        "moveSequence": [
+          {
+            "sliceTurn": "R",
+            "timeStamp": 31000
+          },
+          {
+            "sliceTurn": "U",
+            "timeStamp": 35370
+          }
+        ]
+      }
+    },
+    "solutionSequence": [
+      {
+        "sliceTurn": "R",
+        "timeStamp": 0
+      },
+      {
+        "sliceTurn": "U",
+        "timeStamp": 1000
+      }
+    ]
+  },
+  {
+    "id": 3092543,
+    "totalTime": 39810,
+    "date": "2026-10-17T16:04:00.000Z",
+    "scramble": "R U R' U'",
+    "flag": "none",
+    "analysis": {
+      "cross": {
+        "moveSequence": [
+          {
+            "sliceTurn": "F",
+            "timeStamp": 5340
+          }
+        ]
+      },
+      "f2l": {
+        "slots": [
+          {
+            "moveSequence": [
+              {
+                "sliceTurn": "R",
+                "timeStamp": 27390
+              }
+            ]
+          }
+        ]
+      },
+      "oll": {
+        "moveSequence": [
+          {
+            "sliceTurn": "R",
+            "timeStamp": 34260
+          }
+        ]
+      },
+      "pll": {
+        "case": "Y",
+        "moveSequence": [
+          {
+            "sliceTurn": "R",
+            "timeStamp": 39810
+          }
+        ]
+      }
+    },
+    "rawSolutionSequence": [
+      {
+        "sliceTurn": "F",
+        "timeStamp": 0
+      },
+      {
+        "sliceTurn": "R",
+        "timeStamp": 500
+      }
+    ]
+  }
+]

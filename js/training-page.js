@@ -14,11 +14,11 @@ import {
 import {
   isRotationMove,
   physicalMoveToAlgMove,
-} from "./cube-gyro.js?v=gyro4";
+} from "./cube-gyro.js?v=gyro5";
 import { renderCaseDiagram } from "./case-diagram.js?v=training4";
-import { createCubeMirror } from "./cube-mirror.js?v=gyro4";
+import { createCubeMirror } from "./cube-mirror.js?v=gyro5";
 import { faceletsSolved } from "./move-log.js?v=training4";
-import { initSmartCube } from "./smart-cube.js?v=gyro4";
+import { initSmartCube } from "./smart-cube.js?v=gyro5";
 import { formatClock } from "./solve-timer.js?v=training4";
 import {
   STREAK_DOTS,
@@ -773,6 +773,13 @@ function onCubeGyro(relative) {
   mirror?.setHousingOrientation?.(relative);
 }
 
+/** Reset gyro: snap Training's 3D cube to yellow-top / green-front face-on rest. */
+function onCubeGyroHome() {
+  if (!cubeConnected) return;
+  if (mirror?.resetRestingView) mirror.resetRestingView();
+  else mirror?.clearHousingOrientation?.();
+}
+
 function setCubeConnected(connected) {
   cubeConnected = Boolean(connected);
   if (!cubeConnected) {
@@ -1061,6 +1068,7 @@ initSmartCube({
     onCubeMove,
     onCubeRotation,
     onCubeGyro,
+    onCubeGyroHome,
     setCubeConnected,
   },
 });

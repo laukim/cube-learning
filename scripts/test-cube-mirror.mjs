@@ -69,8 +69,8 @@ globalThis.document = {
   },
 };
 
-const { createCubeMirror } = await import("../js/cube-mirror.js?v=gyro4");
-const { normalizeQuat } = await import("../js/cube-gyro.js?v=gyro4");
+const { createCubeMirror } = await import("../js/cube-mirror.js?v=gyro5");
+const { normalizeQuat } = await import("../js/cube-gyro.js?v=gyro5");
 const { faceletIndex } = await import("../js/cubie-view.js?v=cube3d1");
 
 const SOLVED = "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB";
@@ -149,6 +149,16 @@ assert(painted(animatedRoot) === animated.facelets(), "the mesh catches up after
 const housingRoot = new El();
 const housing = createCubeMirror(housingRoot, { reducedMotion: true });
 housing.setFacelets(SOLVED);
+const resting = housing.restingTransform();
+assert(
+  resting === "rotateX(-28deg) rotateY(0deg)",
+  `resting orbit is face-on yellow-top/green-front, got ${resting}`
+);
+assert(
+  String(housingRoot.style.transform || "") === resting,
+  "initial transform matches the face-on resting orbit"
+);
+assert(!resting.includes("32deg"), "resting orbit must not yaw into a 3-face isometric");
 const half = Math.SQRT1_2;
 housing.setHousingOrientation(normalizeQuat({ x: -half, y: 0, z: 0, w: half }));
 assert(
@@ -160,6 +170,32 @@ assert(
   !String(housingRoot.style.transform || "").includes("matrix3d("),
   "clearing housing drops the gyro matrix"
 );
+assert(
+  String(housingRoot.style.transform || "") === resting,
+  "clearing housing returns to the face-on resting orbit"
+);
 assert(housing.facelets() === SOLVED, "housing tilt does not rewrite facelets");
+
+// Identity relative (Reset gyro path) must drop housing even after live tips.
+housing.setHousingOrientation(normalizeQuat({ x: -half, y: 0, z: 0, w: half }));
+housing.setHousingOrientation(normalizeQuat({ x: 0, y: 0, z: 0, w: 1 }));
+assert(
+  !String(housingRoot.style.transform || "").includes("matrix3d("),
+  "identity relative clears housing after live gyro"
+);
+assert(
+  String(housingRoot.style.transform || "") === resting,
+  "identity relative leaves the face-on resting orbit"
+);
+
+// resetRestingView snaps a dragged orbit back home and clears housing.
+housingRoot.style.transform = "rotateX(10deg) rotateY(80deg)";
+housing.setHousingOrientation(normalizeQuat({ x: -half, y: 0, z: 0, w: half }));
+housing.resetRestingView();
+assert(
+  String(housingRoot.style.transform || "") === resting,
+  "resetRestingView snaps orbit + housing to face-on rest"
+);
+assert(housing.facelets() === SOLVED, "resetRestingView does not rewrite facelets");
 
 console.log("cube mirror ok");

@@ -6,7 +6,7 @@
   "scripts": {
     "start": "npx --yes serve .",
     "build": "node scripts/write-app-version.mjs",
-    "test": "node scripts/test-cube.mjs && node scripts/test-times-sync.mjs && node scripts/test-cross-drill.mjs && node scripts/test-cube-moves.mjs && node scripts/test-cube-mirror.mjs && node scripts/test-training.mjs && node scripts/test-build-stamp.mjs",
+    "test": "node scripts/test-cube.mjs && node scripts/test-times-sync.mjs && node scripts/test-cross-drill.mjs && node scripts/test-cube-moves.mjs && node scripts/test-cube-mirror.mjs && node scripts/test-training.mjs && node scripts/test-build-stamp.mjs && node scripts/test-acubemy-import.mjs",
     "build:smartcube": "node scripts/bundle-smartcube.mjs"
   },
   "dependencies": {
